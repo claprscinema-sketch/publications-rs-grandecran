@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 20h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 22h15</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1640,8 +1640,13 @@ const flyerSeance = d=>`${JOURS[d.getDay()].slice(0,3)} ${dnum(d)} · ${hm(d)}${
 function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 
 // Pastilles de séances qui passent à la ligne ; renvoie la hauteur
-function seanceChips(ctx, seances, x, y, maxW, size, color, draw){
-  ctx.font=`${size}px ${FONT}`; const ph=size*.45, h=size*1.25, g=size*.3;
+function seanceChips(ctx, seances, x, y, maxW, size, color, draw, boxH=0){
+  let ph=size*.45, h=size*1.25, g=size*.3;
+  if(boxH && seances.length){ // encarts de hauteur imposée (20 % de l'affiche) : texte le plus grand possible, sur une ligne si on peut
+    h=boxH; g=boxH*.16; ctx.font=`100px ${FONT}`;
+    const W=seances.reduce((a,d)=>a+ctx.measureText(flyerSeance(d)).width,0), n=seances.length;
+    size=Math.max(boxH*.36, Math.min(boxH*.68, (maxW-(n-1)*g)/(W/100+n*.8))); ph=size*.4; }
+  ctx.font=`${size}px ${FONT}`;
   let cx=x, cy=y;
   for(const d of seances){
     const t=flyerSeance(d), w=ctx.measureText(t).width+ph*2;
@@ -1704,16 +1709,16 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const pw=pwMax;   // colonne de l'affiche
   const tags=filmTags(st,f.seances);
   const lcw=tags.length?Math.round(Math.min(230*s,(w-pw)*.26)):0, lgap=lcw?Math.round(30*s):0;   // colonne des logos à droite
-  const pass=(draw)=>{
-  const R=side==="right", tx=R?x:x+pw+Math.round(40*s), tw=w-pw-Math.round(40*s)-lcw-lgap; let ty=y;
+  const pass=(draw,dy=0)=>{
+  const R=side==="right", tx=R?x:x+pw+Math.round(40*s), tw=w-pw-Math.round(40*s)-lcw-lgap; let ty=y+dy;
     // titre
-    let ts=Math.round(78*s); ctx.font=`${ts}px ${FONT}`;
+    let ts=Math.round(104*s); ctx.font=`${ts}px ${FONT}`;
     const title=(d.title||f.title).toUpperCase();
     const tl=wrapLines(ctx,title,tw).slice(0,2);
     if(draw){ ctx.fillStyle="#1d1d22"; ctx.textAlign="left"; ctx.textBaseline="top"; tl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*ts*1.0)); }
-    ty+=tl.length*ts*1.0+6*s;
+    ty+=tl.length*ts*0.98+4*s;
     // genre · durée · public (restrictions)
-    const bs=Math.round(30*s), lh=bs*1.32;
+    const bs=Math.round(30*s), lh=bs*1.26;
     const restr = d.public && !/^tout public$/i.test(d.public.trim());
     const meta=[d.genres, d.duree&&d.duree.replace(/^0h/,"")+(/^0h/.test(d.duree)?" min":""), !restr&&d.public].filter(Boolean).join("  ·  ");
     ctx.font=`bold ${bs}px ${BODY}`;
@@ -1731,17 +1736,26 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     // étiquettes VO, AVP…
     // synopsis
     const synBase=syn400Cache[f.key]||(d.synopsis?sentencesUpTo(d.synopsis,SYN_MAX):"");
-    const synTxt=synBase.length<=synMax?synBase:sentencesUpTo(synBase,synMax);   // phrases entières seulement
+    const synTxt=synBase.length<=synMax?synBase:wholeSentences(synBase,synMax);   // phrases entières seulement
     if(synTxt){
-      ty+=14*s; ctx.font=`${bs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
+      ty+=8*s; ctx.font=`${bs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
       const sl=wrapLines(ctx,synTxt,tw);
       if(draw){ ctx.fillStyle="#222"; sl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); }
       ty+=sl.length*lh;
     }
-    // séances
-    ty+=14*s; ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(36*s),color,draw);
+    // séances (hors cadre fixe : à la suite du texte)
+    if(!ROW_PH){ ty+=14*s; ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(36*s),color,draw); }
     return ty-y; };
-  const th=Math.max(pass(false), charColumn(ctx,tags,0,0,lcw,Math.round(22*s),false));
+  // encarts des séances : hauteur = 20 % de l'affiche, calés en bas du cadre du film
+  const colH=charColumn(ctx,tags,0,0,lcw,Math.round(22*s),false);
+  let chipBox=null;
+  if(ROW_PH && f.seances.length){
+    const cbh=Math.round(ROW_PH*.2), R=side==="right", cx=R?x:x+pw+Math.round(40*s), wide=w-pw-Math.round(40*s), narrow=wide-lcw-lgap;
+    let cw=wide, chH=seanceChips(ctx,f.seances,0,0,cw,0,color,false,cbh);
+    if(lcw && colH>ROW_PH-chH-ROW_PH*.04){ cw=narrow; chH=seanceChips(ctx,f.seances,0,0,cw,0,color,false,cbh); }
+    chipBox={cx,cw,cbh,chH,gap:Math.round(ROW_PH*.04)};
+  }
+  const txtOnly=pass(false), txtH=txtOnly+(chipBox?chipBox.gap+chipBox.chH:0), th=Math.max(txtH, colH);
   // affiche : à la hauteur du texte (sans dépasser sa largeur de colonne ni descendre sous 60 % de sa taille)
   // toutes les affiches à la même largeur (colonne entière), hauteur selon leur format
   const aw=pwMax, ph=ROW_PH||pwMax*ratio;
@@ -1752,7 +1766,9 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
       ctx.beginPath(); ctx.rect(ax,y,aw,ph); ctx.clip(); cover(ctx,poster,ax,y,aw,ph); ctx.restore(); }
     else if(poster){ shadowOn(ctx,14,.25,5); ctx.drawImage(poster,ax,y,aw,ph); shadowOff(ctx); }
     else { ctx.fillStyle="#ddd"; ctx.fillRect(ax,y,aw,ph); }
-    pass(true);
+    const avail=ph-(chipBox?chipBox.gap+chipBox.chH:0);
+    pass(true, ROW_PH?Math.max(0,(avail-txtOnly)/2):0);   // texte centré verticalement au-dessus des séances
+    if(chipBox) seanceChips(ctx,f.seances,chipBox.cx,y+ph-chipBox.chH,chipBox.cw,0,color,true,chipBox.cbh);
     if(lcw) charColumn(ctx,tags,side==="right"?x+w-pw-Math.round(40*s)-lcw:x+w-lcw,y,lcw,Math.round(22*s),true);
   }
   return Math.max(ph, th);
@@ -1812,7 +1828,7 @@ async function flyerMini(ctx, f, x, y, w, s, draw){
   if(restr){ const pl=wrapLines(ctx,"⚠ "+d.public,tw); if(draw){ ctx.fillStyle="#b71c1c"; pl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=pl.length*lh; }
   const who=[d.real&&`De ${d.real}`, d.avec&&`${/voix/i.test(d.avecLabel||"")?"avec les voix de":"avec"} ${d.avec}`].filter(Boolean).join(", ");
   if(who){ ctx.font=`${bs}px ${BODY}`; const wl=wrapLines(ctx,who,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=wl.length*lh; }
-  if(MINI_SYN>0){ const base=syn400Cache[f.key]||d.synopsis||""; const t=base.length<=MINI_SYN?base:sentencesUpTo(base,MINI_SYN);
+  if(MINI_SYN>0){ const base=syn400Cache[f.key]||d.synopsis||""; const t=base.length<=MINI_SYN?base:wholeSentences(base,MINI_SYN);
     if(t){ ty+=6*s; ctx.font=`${bs}px ${BODY}`; ctx.textAlign="left"; ctx.textBaseline="top"; const sl=wrapLines(ctx,t,tw); if(draw){ ctx.fillStyle="#222"; sl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=sl.length*lh; } }
   ty+=10*s;
   ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(30*s),color,draw);
@@ -1874,10 +1890,10 @@ async function flyerBand(ctx, y, h){
   const bg=assets.flyerBg?await loadImg(assets.flyerBg):null;
   if(bg){ ctx.save(); ctx.beginPath(); ctx.rect(0,y,FW,h); ctx.clip(); ctx.globalAlpha=.4; cover(ctx,bg,0,0,FW,FH); ctx.restore(); }   // une seule image sur toute la feuille, transparence 60 %
 }
-// Zone des films : la même image de fond, légère (transparence 80 %) sur blanc
+// Zone des films : la même image de fond sous un voile blanc à 70 %
 async function flyerPageBg(ctx){
   const bg=assets.flyerBg?await loadImg(assets.flyerBg):null;
-  if(bg){ ctx.save(); ctx.globalAlpha=.2; cover(ctx,bg,0,0,FW,FH); ctx.restore(); }
+  if(bg){ ctx.save(); ctx.globalAlpha=.3; cover(ctx,bg,0,0,FW,FH); ctx.restore(); }   // voile blanc à 70 %
 }
 async function flyerHeader(ctx, week, draw, compact=false, endDate=null){
   const H=compact?200:270; if(!draw) return H;
@@ -1907,6 +1923,10 @@ function sentencesUpTo(t,max){ const out=[]; let cur="";
   const parts=String(t).match(/[^.!?…]+(?:[.!?…]+|$)\s*/g)||[String(t)];
   for(const p of parts){ const nxt=(cur+p); if(nxt.trim().length>max) break; cur=nxt; }
   cur=cur.trim(); return cur || String(t).slice(0,max).replace(/\s+\S*$/,"").replace(/[,;:]$/,"")+"."; }
+// phrases entières uniquement : si la 1re phrase dépasse la limite, elle est gardée en entier (jamais coupée)
+function wholeSentences(t,max){ const parts=String(t).match(/[^.!?…]+(?:[.!?…]+|$)\s*/g)||[String(t)];
+  let cur=""; for(const p of parts){ if((cur+p).trim().length>max) break; cur+=p; }
+  return (cur||parts[0]||"").trim(); }
 async function aiShortSyn(f, syn){
   const prompt=`Réécris ce synopsis de film en français en ${SYN_MAX} caractères MAXIMUM (espaces compris), en phrases complètes, sans rien inventer, sans guillemets. Film : « ${f.title} ». Synopsis : ${syn}\nRéponds en JSON : {"syn":"..."}`;
   const sample=await getSample();
@@ -1952,9 +1972,11 @@ async function rowFit(pt, w, s, syn, H, GAP, cols=1){
 }
 const CG2=56;
 // Texte agrandi film par film pour occuper toute la hauteur de sa ligne (synopsis complet si la place le permet)
+const SYN_FILL=150;
 async function growText(f, cw, s, syn, ph){
   const tmp=canvas(10,10).getContext("2d"), fits=async(sc,sy)=>await flyerBlock(tmp,f,0,0,cw,sc,sy,false)<=ph+0.5;
-  if(syn<SYN_MAX && await fits(s,SYN_MAX)) syn=SYN_MAX;
+  // synopsis le plus long (phrases entières) qui tient dans le cadre du film
+  for(let sy=SYN_MAX; sy>syn; sy-=15) if(await fits(s,sy)){ syn=sy; break; }
   return {s, syn};   // même taille de police pour tous les films du document
 }   // écart entre les 2 colonnes (option 3)
 async function rowsDraw(ctx, pt, x, y, w, s, syn, GAP, H, cols=1){
@@ -1973,8 +1995,10 @@ async function rowsDraw(ctx, pt, x, y, w, s, syn, GAP, H, cols=1){
 }
 async function fitRows(fits, sMax, sRead){
   const steps=[];
-  for(let s=sMax; s>=sRead-1e-9; s-=0.05) steps.push([s,SYN_MAX]);
-  for(const syn of [320,250,190,140]) for(let s=sRead+0.1; s>=sRead-0.1-1e-9; s-=0.05) steps.push([s,syn]);
+  // police la plus grande possible (identique pour tous) : chaque film garde au moins un synopsis de ~200 caractères,
+  // puis reçoit le synopsis le plus long qui remplit son cadre (jusqu'à 400)
+  for(let s=sMax; s>=sRead-1e-9; s-=0.025) steps.push([s,SYN_FILL]);
+  for(const syn of [120,100]) for(let s=sRead+0.1; s>=sRead-0.1-1e-9; s-=0.025) steps.push([s,syn]);
   for(let s=sRead-0.1; s>=0.2-1e-9; s-=0.025) steps.push([s,100]);
   for(const [s,syn] of steps){ const sc=+s.toFixed(3); if(await fits(sc,syn)) return {s:sc,syn,pf:1}; }
   return {s:0.2,syn:100,pf:1};
@@ -2037,7 +2061,7 @@ async function renderFlyer(){
   await prepareSyn400(ws.flatMap(w=>w.films), t=>$("#flyerProgress").textContent=t); await loadCharImgs();
   const parts=ws.map(w=>{ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]);
     return {week:w, news:byFirst.filter(f=>!flags(f).reprise), reps:byFirst.filter(f=>flags(f).reprise)}; });
-  const tmp=canvas(10,10).getContext("2d"), GAP=50, W0=FW-2*FM;
+  const tmp=canvas(10,10).getContext("2d"), GAP=30, W0=FW-2*FM;
   const headHs=[await flyerHeader(tmp,ws[0],false), await flyerHeader(tmp,ws[0],false,true)], footH=await flyerFooter(tmp,FM,0,W0,false);
   const avail=k=>FH-headHs[k]-2*FM+30-footH;
   // pour chaque face : 1 ou 2 colonnes de films, la disposition la plus lisible l'emporte
@@ -2112,7 +2136,7 @@ async function renderA3(){
   try{
     const parts=ws.map(w=>{ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]);
       return {week:w, news:byFirst.filter(f=>!flags(f).reprise), reps:byFirst.filter(f=>flags(f).reprise)}; });
-    const tmp=canvas(10,10).getContext("2d"), GAP=40, CG=50;
+    const tmp=canvas(10,10).getContext("2d"), GAP=30, CG=50;
     const ncol=parts.length, CW=(FW-2*FM-CG*(ncol-1))/ncol, WF=FW-2*FM;
     const headH=await flyerHeader(tmp,ws[0],false), footH=await flyerFooter(tmp,FM,0,FW-2*FM,false), WH=86;
     const zone=FH-headH-footH-2*FM+30;
