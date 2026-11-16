@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 22h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 22h40</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1844,11 +1844,13 @@ async function flyerMini(ctx, f, x, y, w, s, draw){
 
 // Pied de page (recto et verso) : à gauche les logos puis coordonnées et tarifs, à droite les QR codes
 // Logo recentré dans un cadre blanc arrondi avec une marge régulière (≈ 14 % de la hauteur)
+// Cadre blanc aux proportions d'origine de l'image ; le motif est centré avec une marge
 async function framedLogo(src){
-  const ink=await loadInk(src); if(!ink) return null;
-  const pad=Math.round(Math.max(ink.width,ink.height)*.14), W2=ink.width+2*pad, H2=ink.height+2*pad;
+  const orig=await loadImg(src), ink=await loadInk(src); if(!orig||!ink) return orig||null;
+  const W2=orig.naturalWidth||orig.width, H2=orig.naturalHeight||orig.height;
+  const k=Math.min(W2*.84/ink.width, H2*.84/ink.height, 1.6), iw=ink.width*k, ih=ink.height*k;
   const c=canvas(W2,H2), x=c.getContext("2d"); x.fillStyle="#fff"; x.beginPath(); x.roundRect(0,0,W2,H2,Math.round(Math.min(W2,H2)*.1)); x.fill();
-  x.drawImage(ink,pad,pad); return c;
+  x.drawImage(ink,(W2-iw)/2,(H2-ih)/2,iw,ih); return c;
 }
 async function flyerFooter(ctx, x, y, w, draw){
   const H=300;
@@ -2264,6 +2266,7 @@ async function prepareCarton(f, seances){
   const VW=Math.round(PW*.30), vgap=60;
   const tags=[]; for(const [k,,a] of CHARS){ if(st[k]){ const im=assets[a]?await loadTrimmed(assets[a]):null; tags.push({k,im,label:CHARS.find(c=>c[0]===k)[1]}); } }
   const vh=tags.map(t=>t.im?Math.min(VW*t.im.height/t.im.width, VW*1.1):VW*.32), VH=tags.length?Math.max(...vh):0;
+  const vw=tags.map((t,i)=>t.im?vh[i]*t.im.width/t.im.height:VW);   // proportions d'origine des logos
   // séances (texte « machine à écrire »)
   const lines=seances.map(ecranLine);
   let ss=150; const BW=ZW, maxBoxH=logoTop-80;  // hauteur bornée plus bas
@@ -2277,14 +2280,14 @@ async function prepareCarton(f, seances){
   const vy=top+tl.length*ts*1.02+50, boxY=vy+(tags.length?VH+70:20);
   // cadre blanc des séances (fixe)
   b.fillStyle="#fff"; shadowOn(b,40,.45,12); rr(b,X0,boxY,BW,L.boxH,40); b.fill(); shadowOff(b);
-  return {bg, tags, VW, VH, vh, vgap, X0, vy, boxY, BW, boxH:L.boxH, lh:L.lh, ss, lines, color, T:cartonDuration(seances.length)};
+  return {bg, tags, VW, VH, vh, vw, vgap, X0, vy, boxY, BW, boxH:L.boxH, lh:L.lh, ss, lines, color, T:cartonDuration(seances.length)};
 }
 function drawCartonFrame(ctx, P, t, mode){
   ctx.drawImage(P.bg,0,0);
   // vignettes
   let x=P.X0;
   P.tags.forEach((tg,i)=>{
-    const w=P.VW, h=P.vh[i], y=P.vy+(P.VH-h)/2, blink=BLINK_KEYS.includes(tg.k);
+    const w=P.vw[i], h=P.vh[i], y=P.vy+(P.VH-h)/2, blink=BLINK_KEYS.includes(tg.k);
     let a=1, s=1;
     if(blink){ if(mode==="clignote"){ a=((t*2)%1)<.65?1:0; } else { const ph=(Math.sin(2*Math.PI*1.5*t-Math.PI/2)+1)/2; a=.45+.55*ph; s=1+.07*ph; } }
     ctx.save(); ctx.globalAlpha=a; ctx.translate(x+w/2,y+h/2); ctx.scale(s,s);
