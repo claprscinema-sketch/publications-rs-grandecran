@@ -1,0 +1,10 @@
+Site « Publications réseaux sociaux » du Cinéma Grand Écran
+https://publications-rs-grandecran.netlify.app/
+
+Contenu
+- public/index.html            : l'outil
+- netlify/functions/base.mjs   : la base partagée (Excel, images, infos des films) stockée chez Netlify
+- package.json, netlify.toml   : réglages pour Netlify (ne pas modifier)
+
+Mise à jour de l'outil : remplacer seulement public/index.html dans le dépôt GitHub.
+Code d'équipe : variable d'environnement CODE_EQUIPE dans Netlify (Site configuration > Environment variables).

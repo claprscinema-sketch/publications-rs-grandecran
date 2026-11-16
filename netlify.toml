@@ -1,0 +1,10 @@
+# Site : https://publications-rs-grandecran.netlify.app/
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Content-Type-Options = "nosniff"
