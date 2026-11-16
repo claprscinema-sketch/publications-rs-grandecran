@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, newsletter</p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 17h40</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1916,7 +1916,10 @@ async function fitPlan(fits, sMax, sRead){
   for(let s=sMax; s>=sRead-1e-9; s-=0.05) for(const pf of PFS) steps.push([s,SYN_MAX,pf]);
   for(const syn of [320,250,190,140]) for(let s=sRead+0.1; s>=sRead-0.1-1e-9; s-=0.05) for(const pf of PFS) steps.push([s,syn,pf]);
   for(let s=sRead-0.1; s>=0.2-1e-9; s-=0.025) steps.push([s,100,.55]);
-  for(let i=0;i<steps.length;i++){ const [s,syn,pf]=steps[i], sc=+s.toFixed(3); POSTER_PF=pf; const ok=await fits(sc,syn); if(ok) return {s:sc,syn,pf,i}; }
+  for(let i=0;i<steps.length;i++){ const [s,syn,pf]=steps[i], sc=+s.toFixed(3); POSTER_PF=pf; const ok=await fits(sc,syn);
+    if(ok){ // affiches aussi grandes que la place le permet (mêmes largeurs partout), au lieu de laisser des vides
+      let best=pf; for(let p2=Math.min(2,pf+1); p2>pf+0.01; p2-=0.05){ POSTER_PF=p2; if(await fits(sc,syn)){ best=p2; break; } }
+      POSTER_PF=best; return {s:sc,syn,pf:best,i}; } }
   POSTER_PF=.55; return {s:0.2,syn:100,pf:.55,i:1e9};
 }
 // Films d'une semaine sur 1 ou 2 colonnes (2 colonnes pour les semaines chargées), puis « Toujours à l'affiche »
@@ -1968,7 +1971,7 @@ async function renderFlyer(){
   // pour chaque face : 1 ou 2 colonnes de films, la disposition la plus lisible l'emporte
   const plans=[];
   for(let k=0;k<parts.length;k++){ let best=null;
-    for(const cols of (FLYER_LAYOUT!=="alternance" && parts[k].news.length>=4)?[1,2]:[1]){   // option 2 : une ligne entière par film
+    for(const cols of [1]){   // chaque film occupe toute la largeur de la page
       const pl=await fitPlan(async(sc,syn)=>await regionNeed(parts[k],W0,cols,sc,syn,GAP)<=avail(k), cols===1?2.6:1.6, 0.7);
       if(!best || pl.i<best.i) best={...pl,cols};
     }
@@ -2035,12 +2038,13 @@ async function renderA3(){
     const headH=await flyerHeader(tmp,ws[0],false), footH=await flyerFooter(tmp,FM,0,FW-2*FM,false), WH=86;
     const zone=FH-headH-footH-2*FM+30;
     // disposition A : semaines côte à côte ; disposition B (quinzaines chargées) : semaines l'une sous l'autre, films sur 2 colonnes
-    const plA=await fitPlan(async(s,syn)=>{ for(const pt of parts) if(await regionNeed(pt,CW,1,s,syn,GAP)>zone-WH-24) return false; return true; }, 2.2, 0.45);
-    let plB={i:1e9}; const BC=FLYER_LAYOUT==="alternance"?1:2;   // option 2 : une ligne entière par film
-    if(parts.length>1 && (BC===1 || parts.some(pt=>pt.news.length>=4))){
-      plB=await fitPlan(async(s,syn)=>{ let h=0; for(const pt of parts) h+=WH+24+await regionNeed(pt,WF,BC,s,syn,GAP)+GAP; return h-GAP<=zone; }, 1.6, 0.45);
+    const plA=parts.length>1?{i:1e9}:await fitPlan(async(s,syn)=>{ for(const pt of parts) if(await regionNeed(pt,CW,1,s,syn,GAP)>zone-WH-24) return false; return true; }, 2.2, 0.45);
+    let plB={i:1e9}; const BC=1;   // chaque film occupe toute la largeur de la page
+    if(parts.length>1){
+      plB=await fitPlan(async(s,syn)=>{ let h=0; for(const pt of parts) h+=WH+24+await regionNeed(pt,WF,BC,s,syn,GAP)+GAP; return h-GAP<=zone; }, 2.2, 0.45);
     }
-    const stacked=plB.i<plA.i, pl=stacked?plB:plA, sc=pl.s, synA3=pl.syn; POSTER_PF=pl.pf;
+    const stacked=parts.length>1,   // A3 : semaines l'une sous l'autre, films sur toute la largeur
+          _unused=plA, pl=stacked?plB:plA, sc=pl.s, synA3=pl.syn; POSTER_PF=pl.pf;
     const c=canvas(A3W,A3H), ctx=c.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,A3W,A3H); ctx.scale(A3K,A3K); await flyerPageBg(ctx);
     const last=new Date(ws[ws.length-1].start); last.setDate(last.getDate()+6);
