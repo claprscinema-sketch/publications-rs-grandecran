@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 22h40</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 22h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -158,6 +158,7 @@
     <button class="primary" id="btnInfos" style="background:#5b3cc4">✨ Compléter les infos des films</button>
     <span class="progress" id="infoProgress">Genre, durée, réalisation, acteurs, public et synopsis, pour les légendes et la newsletter. L'affiche est lue pour retrouver le réalisateur et les acteurs.</span>
   </div>
+  <div id="flyerFields" style="margin:16px 0 4px;padding:12px 14px;border:2px solid #5b3cc4;border-radius:8px;background:#f6f3ff;display:flex;gap:14px;align-items:center;flex-wrap:wrap"></div>
   <div class="films" id="infoList"></div>
 </section>
 <section data-tab="base">
@@ -170,7 +171,6 @@
   </details>
   <details id="flyerSet" style="margin-top:12px"><summary>🔒 Base commune — flyers et affiches A3 (fond, logos, QR codes)</summary>
     <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
-    <div class="fields" id="flyerFields" style="margin-bottom:12px"></div>
     <div class="settings" id="flyerAssets"></div>
   </details>
 </section>
@@ -942,8 +942,12 @@ function renderAssets(){
   $("#commonFields").innerHTML=Object.entries(L).map(([k,l])=>`<label>${l}<input type="text" data-set="${k}" value="${esc(settings[k]||"")}"></label>`).join("");
   // longueur des synopsis des flyers et affiches A3 (réglable, partagée)
   const L2={synLen:"Longueur maximale des synopsis (caractères)"};
-  if($("#flyerFields")) $("#flyerFields").innerHTML=`<label>${L2.synLen}<input type="number" min="${SYN_MIN_LEN}" max="${SYN_MAX_LEN}" step="10" data-set="synLen" value="${esc(settings.synLen||DEFAULTS.synLen)}"></label>
-    <span class="hint" style="margin:0">Entre ${SYN_MIN_LEN} et ${SYN_MAX_LEN}. Les synopsis plus longs sont résumés par l'IA en phrases complètes à cette longueur (sinon : phrases entières du synopsis d'origine). Plus c'est court, plus le texte des flyers et affiches peut être grand.</span>`;
+  if($("#flyerFields")){ const v=synLimit(settings.synLen||DEFAULTS.synLen);
+    $("#flyerFields").innerHTML=`<label style="font-weight:700;display:flex;gap:12px;align-items:center;flex:1 1 100%">📝 Longueur des synopsis (flyers et affiches A3)
+      <input type="range" data-set="synLen" min="${SYN_MIN_LEN}" max="${SYN_MAX_LEN}" step="10" value="${v}" style="flex:1;accent-color:#5b3cc4;min-width:200px">
+      <output id="synLenOut" style="min-width:120px;font-size:16px;color:#5b3cc4">${v} caractères</output></label>
+    <span class="hint" style="margin:0">Glisse le curseur (de ${SYN_MIN_LEN} à ${SYN_MAX_LEN} caractères). Les synopsis plus longs sont résumés par l'IA en phrases complètes à cette longueur (sinon : phrases entières du synopsis d'origine). Plus c'est court, plus le texte des flyers et affiches peut être grand.</span>`;
+    const rg=$("#flyerFields input[type=range]"); rg.oninput=()=>{ $("#synLenOut").textContent=rg.value+" caractères"; }; }
   document.querySelectorAll("#commonFields [data-set], #flyerFields [data-set]").forEach(inp=>inp.onchange=async()=>{
     if(inp.dataset.set==="synLen"){ inp.value=String(synLimit(inp.value)); }
     settings[inp.dataset.set]=inp.value.trim();
