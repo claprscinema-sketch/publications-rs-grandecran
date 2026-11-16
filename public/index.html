@@ -44,6 +44,10 @@
   .fields label{display:flex;flex-direction:column;gap:4px;font-weight:600}
   .shared{background:#eef5ff;border:1px solid #bcd3f5;border-radius:9px;padding:9px 12px;font-size:14px;margin-bottom:12px}
   .shared.ok{background:#eefaf0;border-color:#b5dfbd}.shared.err{background:#fff3f0;border-color:#f0c2b5}
+  .layoutpick{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#f7f5f0;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:6px 0 14px}
+  .lp{display:flex;align-items:center;gap:8px;border:2px solid transparent;border-radius:9px;padding:6px 10px;cursor:pointer;font-size:14px;background:#fff}
+  .lp.on{border-color:#6e264c;box-shadow:0 0 0 3px rgba(110,38,76,.12)} .lp input{accent-color:#6e264c} .lp small{color:#666}
+  .weekpick{background:#fff6dc;border:1px solid #f0d58a;border-radius:10px;padding:10px 14px;margin-bottom:12px;align-items:center}
   .compact{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:10px}
   .cfilm{border:1px solid var(--line);border-radius:9px;padding:8px;font-size:13px;display:flex;flex-direction:column;gap:6px}
   .cposter{height:200px;border-radius:5px;background:#eee center/contain no-repeat;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px}
@@ -143,10 +147,6 @@
     <div class="drop folder" id="dropW0" data-w="0"><b>📁 Semaine 1</b><br><span class="lbl">Dépose d'abord le fichier Excel (étape 1)</span><div class="rep"></div></div>
     <div class="drop folder" id="dropW1" data-w="1"><b>📁 Semaine 2</b><br><span class="lbl">Dépose d'abord le fichier Excel (étape 1)</span><div class="rep"></div></div>
   </div>
-  <div class="row" style="margin-top:14px" id="weekRow" hidden>
-    <label style="font-weight:600;font-size:14px">Semaine à préparer (réseaux sociaux et écrans) :</label>
-    <select id="weekSel"></select>
-  </div>
 
 </section>
 
@@ -176,6 +176,11 @@
 
 <!-- 2. Films -->
 <section id="secFilms" data-tab="reseaux" hidden>
+  <div class="row weekpick" id="weekRow" hidden>
+    <label style="font-weight:700;font-size:16px">📅 Semaine à publier :</label>
+    <select id="weekSel" style="font-size:15px;padding:6px 8px"></select>
+    <span class="hint" style="margin:0">(les écrans dynamiques et les cartons écran suivent aussi cette semaine)</span>
+  </div>
   <h2>Films de la semaine</h2>
   <p class="hint">L'<b>affiche</b> et l'<b>image de fond</b> de chaque film viennent des dossiers d'images (onglet Base de données) ; tu peux en remplacer une en la glissant ici. Vérifie les cases Reprise, VO, Avant-première… remplies d'après l'Excel et corrige-les si besoin. La couleur du bandeau des horaires est tirée de l'affiche ; tu peux la changer.</p>
   <div class="row" style="margin-bottom:14px;font-size:14px">
@@ -230,17 +235,29 @@
 </section>
 
 <section data-tab="flyers" hidden><h2>Flyer A5 recto-verso — programme de la quinzaine</h2>
+  <div class="layoutpick" data-for="flyerLayout">
+    <span style="font-weight:700;font-size:15px">Mise en page :</span>
+    <label class="lp"><input type="radio" name="flyerLayoutR" value="colonne" checked><svg viewBox="0 0 84 120" width="70" height="100"><rect width="84" height="120" fill="#fff" stroke="#ccc"/><rect width="84" height="16" fill="#1d1d22"/><rect x="0" y="108" width="84" height="12" fill="#1d1d22"/><rect x="8" y="24" width="18" height="24" fill="#8e2430"/><rect x="30" y="26" width="22" height="3" fill="#999"/><rect x="30" y="32" width="26" height="3" fill="#999"/><rect x="30" y="38" width="26" height="3" fill="#999"/><rect x="30" y="44" width="26" height="3" fill="#999"/><rect x="8" y="52" width="18" height="24" fill="#8e2430"/><rect x="30" y="54" width="22" height="3" fill="#999"/><rect x="30" y="60" width="26" height="3" fill="#999"/><rect x="30" y="66" width="26" height="3" fill="#999"/><rect x="30" y="72" width="26" height="3" fill="#999"/><rect x="8" y="80" width="18" height="24" fill="#8e2430"/><rect x="30" y="82" width="22" height="3" fill="#999"/><rect x="30" y="88" width="26" height="3" fill="#999"/><rect x="30" y="94" width="26" height="3" fill="#999"/><rect x="30" y="100" width="26" height="3" fill="#999"/></svg><span>Option 1<br><small>affiches en colonne, à gauche</small></span></label>
+    <label class="lp"><input type="radio" name="flyerLayoutR" value="alternance"><svg viewBox="0 0 84 120" width="70" height="100"><rect width="84" height="120" fill="#fff" stroke="#ccc"/><rect width="84" height="16" fill="#1d1d22"/><rect x="0" y="108" width="84" height="12" fill="#1d1d22"/><rect x="8" y="24" width="18" height="24" fill="#8e2430"/><rect x="30" y="26" width="22" height="3" fill="#999"/><rect x="30" y="32" width="26" height="3" fill="#999"/><rect x="30" y="38" width="26" height="3" fill="#999"/><rect x="30" y="44" width="26" height="3" fill="#999"/><rect x="58" y="52" width="18" height="24" fill="#8e2430"/><rect x="8" y="54" width="22" height="3" fill="#999"/><rect x="8" y="60" width="26" height="3" fill="#999"/><rect x="8" y="66" width="26" height="3" fill="#999"/><rect x="8" y="72" width="26" height="3" fill="#999"/><rect x="8" y="80" width="18" height="24" fill="#8e2430"/><rect x="30" y="82" width="22" height="3" fill="#999"/><rect x="30" y="88" width="26" height="3" fill="#999"/><rect x="30" y="94" width="26" height="3" fill="#999"/><rect x="30" y="100" width="26" height="3" fill="#999"/></svg><span>Option 2<br><small>affiches en alternance gauche / droite</small></span></label>
+    <input type="hidden" id="flyerLayout" value="colonne">
+  </div>
   <p class="hint">Utilise l'Excel, les dossiers d'images et les infos des films (onglet Base de données), pour les deux semaines du fichier Excel. Recto : la 1re semaine ; verso : la 2e semaine. Chaque film avec affiche, genre, durée, réalisation, casting, synopsis, restrictions, VO et séances. Sur chaque face, « Toujours à l'affiche » (films en reprise) et en bas : labels, QR codes Instagram et Facebook, coordonnées et tarifs. Vérifie les cases de chaque film avant de composer (elles sont remplies d'après l'Excel).</p>
   <div id="flyerFilms"></div>
-  <div class="row" style="margin-top:10px"><label style="font-size:14px;font-weight:600">Disposition des affiches <select id="flyerLayout"><option value="colonne">Option 1 : en colonne, à gauche</option><option value="alternance">Option 2 : en alternance gauche / droite</option></select></label><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
+  <div class="row" style="margin-top:10px"><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
   <div id="flyerProgress" class="hint"></div>
   <div id="flyerOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
   <style>#flyerOut figure{margin:0;text-align:center}#flyerOut img{width:330px;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#flyerOut figcaption{font-size:13px;color:#666;margin-top:4px}</style>
 </section>
 <section data-tab="a3" hidden><h2>Affiche A3 — programme de la quinzaine</h2>
+  <div class="layoutpick" data-for="a3Layout">
+    <span style="font-weight:700;font-size:15px">Mise en page :</span>
+    <label class="lp"><input type="radio" name="a3LayoutR" value="colonne" checked><svg viewBox="0 0 84 120" width="70" height="100"><rect width="84" height="120" fill="#fff" stroke="#ccc"/><rect width="84" height="16" fill="#1d1d22"/><rect x="0" y="108" width="84" height="12" fill="#1d1d22"/><rect x="8" y="24" width="18" height="24" fill="#8e2430"/><rect x="30" y="26" width="22" height="3" fill="#999"/><rect x="30" y="32" width="26" height="3" fill="#999"/><rect x="30" y="38" width="26" height="3" fill="#999"/><rect x="30" y="44" width="26" height="3" fill="#999"/><rect x="8" y="52" width="18" height="24" fill="#8e2430"/><rect x="30" y="54" width="22" height="3" fill="#999"/><rect x="30" y="60" width="26" height="3" fill="#999"/><rect x="30" y="66" width="26" height="3" fill="#999"/><rect x="30" y="72" width="26" height="3" fill="#999"/><rect x="8" y="80" width="18" height="24" fill="#8e2430"/><rect x="30" y="82" width="22" height="3" fill="#999"/><rect x="30" y="88" width="26" height="3" fill="#999"/><rect x="30" y="94" width="26" height="3" fill="#999"/><rect x="30" y="100" width="26" height="3" fill="#999"/></svg><span>Option 1<br><small>affiches en colonne, à gauche</small></span></label>
+    <label class="lp"><input type="radio" name="a3LayoutR" value="alternance"><svg viewBox="0 0 84 120" width="70" height="100"><rect width="84" height="120" fill="#fff" stroke="#ccc"/><rect width="84" height="16" fill="#1d1d22"/><rect x="0" y="108" width="84" height="12" fill="#1d1d22"/><rect x="8" y="24" width="18" height="24" fill="#8e2430"/><rect x="30" y="26" width="22" height="3" fill="#999"/><rect x="30" y="32" width="26" height="3" fill="#999"/><rect x="30" y="38" width="26" height="3" fill="#999"/><rect x="30" y="44" width="26" height="3" fill="#999"/><rect x="58" y="52" width="18" height="24" fill="#8e2430"/><rect x="8" y="54" width="22" height="3" fill="#999"/><rect x="8" y="60" width="26" height="3" fill="#999"/><rect x="8" y="66" width="26" height="3" fill="#999"/><rect x="8" y="72" width="26" height="3" fill="#999"/><rect x="8" y="80" width="18" height="24" fill="#8e2430"/><rect x="30" y="82" width="22" height="3" fill="#999"/><rect x="30" y="88" width="26" height="3" fill="#999"/><rect x="30" y="94" width="26" height="3" fill="#999"/><rect x="30" y="100" width="26" height="3" fill="#999"/></svg><span>Option 2<br><small>affiches en alternance gauche / droite</small></span></label>
+    <input type="hidden" id="a3Layout" value="colonne">
+  </div>
   <p class="hint">Une seule affiche A3 (portrait) pour les deux semaines du fichier Excel : la 1re semaine dans la colonne de gauche, la 2e dans celle de droite, chacune avec ses films (affiche, infos, synopsis de 400 caractères maximum, séances) et son « Toujours à l'affiche ». Elle utilise la base commune des flyers (onglet Base de données). Vérifie les cases de chaque film avant de composer.</p>
   <div id="a3Films"></div>
-  <div class="row" style="margin-top:10px"><label style="font-size:14px;font-weight:600">Disposition des affiches <select id="a3Layout"><option value="colonne">Option 1 : en colonne, à gauche</option><option value="alternance">Option 2 : en alternance gauche / droite</option></select></label><button class="primary" id="btnA3">Composer l'affiche A3</button><button id="btnA3Pdf" disabled>⬇ PDF A3</button><button id="btnA3Jpg" disabled>⬇ Image JPG</button></div>
+  <div class="row" style="margin-top:10px"><button class="primary" id="btnA3">Composer l'affiche A3</button><button id="btnA3Pdf" disabled>⬇ PDF A3</button><button id="btnA3Jpg" disabled>⬇ Image JPG</button></div>
   <div id="a3Progress" class="hint"></div>
   <div id="a3Out" style="margin-top:10px"></div>
   <style>#a3Out img{width:460px;max-width:100%;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}</style>
@@ -1903,7 +1920,7 @@ async function fitPlan(fits, sMax, sRead){
 // Films d'une semaine sur 1 ou 2 colonnes (2 colonnes pour les semaines chargées), puis « Toujours à l'affiche »
 // Disposition des affiches : "colonne" (toutes à gauche) ou "alternance" (gauche, droite, gauche…)
 let FLYER_LAYOUT="colonne";
-async function regionNews(ctx, news, x, y, w, cols, s, syn, draw, GAP){
+async function regionNews(ctx, news, x, y, w, cols, s, syn, draw, GAP, extra=0){
   const CG=Math.round(46*Math.max(s,.5)), cw=(w-CG*(cols-1))/cols; let h=0;
   for(let i=0;i<news.length;i+=cols){
     const row=news.slice(i,i+cols), hs=[];
@@ -1912,9 +1929,20 @@ async function regionNews(ctx, news, x, y, w, cols, s, syn, draw, GAP){
     if(draw) for(let j=0;j<row.length;j++){ const idx=i+j, side=FLYER_LAYOUT==="alternance"&&idx%2===1?"right":"left";
       await flyerBlock(ctx,row[j],x+j*(cw+CG),y+h,cw,s,syn,true,side); }
     if(draw && cols>1 && row.length>1){ ctx.save(); ctx.strokeStyle="rgba(0,0,0,.12)"; ctx.lineWidth=2; for(let j=1;j<row.length;j++){ const lx=x+j*(cw+CG)-CG/2; ctx.beginPath(); ctx.moveTo(lx,y+h); ctx.lineTo(lx,y+h+rh); ctx.stroke(); } ctx.restore(); }
-    h+=rh+GAP;
+    h+=rh+GAP+extra;
   }
-  return news.length?h-GAP:0;
+  return news.length?h-GAP-extra:0;
+}
+// Dessine une semaine en occupant toute la hauteur disponible : l'espace restant est réparti entre les films
+async function regionFill(ctx, pt, x, y, w, cols, s, syn, GAP, H){
+  const need=await regionNeed(pt,w,cols,s,syn,GAP), left=Math.max(0,H-need);
+  const rows=Math.ceil(pt.news.length/cols), gaps=Math.max(0,rows-1)+(pt.reps.length&&rows?1:0);
+  let extra=0, y0=y;
+  if(gaps>0) extra=left/gaps; else y0=y+left/2;
+  const nh=await regionNews(ctx,pt.news,x,y0,w,cols,s,syn,true,GAP,extra);
+  if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,x,0,w,s,false);
+    await flyerToujours(ctx,pt.reps,x,(rows?y0+nh+GAP+extra:y0),w,s,true); }
+  return H;
 }
 async function regionNeed(pt, w, cols, s, syn, GAP){
   const tmp=canvas(10,10).getContext("2d");
@@ -1939,7 +1967,7 @@ async function renderFlyer(){
   const plans=[];
   for(let k=0;k<parts.length;k++){ let best=null;
     for(const cols of parts[k].news.length>=4?[1,2]:[1]){
-      const pl=await fitPlan(async(sc,syn)=>await regionNeed(parts[k],W0,cols,sc,syn,GAP)<=avail(k), cols===1?1.8:1.2, 0.7);
+      const pl=await fitPlan(async(sc,syn)=>await regionNeed(parts[k],W0,cols,sc,syn,GAP)<=avail(k), cols===1?2.6:1.6, 0.7);
       if(!best || pl.i<best.i) best={...pl,cols};
     }
     plans.push(best); }
@@ -1952,9 +1980,7 @@ async function renderFlyer(){
     if(pt){
       await flyerHeader(ctx,pt.week,true,k===1);
       let y=headHs[k]+FM-30;
-      const nh=await regionNews(ctx,pt.news,FM,y,W0,plans[k].cols,plans[k].s,plans[k].syn,true,GAP); y+=nh+(nh?GAP:0);
-      if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,FM,0,W0,plans[k].s,false);
-        const bottom=FH-FM-(hasFoot?footH:0)+30; await flyerToujours(ctx,pt.reps,FM,Math.max(y, bottom-th),W0,plans[k].s,true); }
+      await regionFill(ctx,pt,FM,y,W0,plans[k].cols,plans[k].s,plans[k].syn,GAP,avail(k));
     }
     await flyerFooter(ctx,FM,FH-footH,W0,true);
   }
@@ -2007,7 +2033,7 @@ async function renderA3(){
     const headH=await flyerHeader(tmp,ws[0],false), footH=await flyerFooter(tmp,FM,0,FW-2*FM,false), WH=86;
     const zone=FH-headH-footH-2*FM+30;
     // disposition A : semaines côte à côte ; disposition B (quinzaines chargées) : semaines l'une sous l'autre, films sur 2 colonnes
-    const plA=await fitPlan(async(s,syn)=>{ for(const pt of parts) if(await regionNeed(pt,CW,1,s,syn,GAP)>zone-WH-24) return false; return true; }, 1.6, 0.45);
+    const plA=await fitPlan(async(s,syn)=>{ for(const pt of parts) if(await regionNeed(pt,CW,1,s,syn,GAP)>zone-WH-24) return false; return true; }, 2.2, 0.45);
     let plB={i:1e9};
     if(parts.length>1 && parts.some(pt=>pt.news.length>=4)){
       plB=await fitPlan(async(s,syn)=>{ let h=0; for(const pt of parts) h+=WH+24+await regionNeed(pt,WF,2,s,syn,GAP)+GAP; return h-GAP<=zone; }, 1.2, 0.45);
@@ -2024,18 +2050,17 @@ async function renderA3(){
       ctx.fillStyle="#FBD30F"; ctx.textAlign="center"; ctx.textBaseline="middle"; fitText(ctx,t,w-40,60); ctx.fillText(t,x+w/2,y+WH/2+3); };
     if(stacked){
       let y=headH+FM-30;
-      for(const pt of parts){
+      const needs=[]; for(const pt of parts) needs.push(await regionNeed(pt,WF,2,sc,synA3,GAP));
+      const left=Math.max(0, zone-parts.reduce((a,_,i)=>a+WH+24+needs[i]+GAP,0)+GAP), share=left/parts.length;
+      for(let i=0;i<parts.length;i++){ const pt=parts[i];
         weekTitle(pt,FM,y,WF); y+=WH+24;
-        const nh=await regionNews(ctx,pt.news,FM,y,WF,2,sc,synA3,true,GAP); y+=nh+(nh?GAP:0);
-        if(pt.reps.length){ y+=await flyerToujours(ctx,pt.reps,FM,y,WF,sc,true)+GAP; }
+        await regionFill(ctx,pt,FM,y,WF,2,sc,synA3,GAP,needs[i]+share); y+=needs[i]+share+GAP;
       }
     } else {
       for(let k=0;k<parts.length;k++){
         const pt=parts[k], x=FM+k*(CW+CG); let y=headH+FM-30;
         weekTitle(pt,x,y,CW); y+=WH+24;
-        const nh=await regionNews(ctx,pt.news,x,y,CW,1,sc,synA3,true,GAP); y+=nh+(nh?GAP:0);
-        if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,x,0,CW,sc,false);
-          await flyerToujours(ctx,pt.reps,x,Math.max(y, FH-FM-footH+30-th),CW,sc,true); }
+        await regionFill(ctx,pt,x,y,CW,1,sc,synA3,GAP,zone-WH-24);
       }
     }
     // séparateur entre les colonnes
@@ -2059,7 +2084,10 @@ async function showA3(){
     +(noPost.length?`<div class="warn">⚠️ Affiche manquante : ${noPost.join(", ")}</div>`:"")+(noSyn.length?`<div class="warn">⚠️ Pas de synopsis : ${noSyn.join(", ")}</div>`:"");
   $("#btnA3Pdf").disabled=false; $("#btnA3Jpg").disabled=false;
 }
-["flyerLayout","a3Layout"].forEach(id=>{ const el=$("#"+id); try{ const v=localStorage.getItem(id); if(v) el.value=v; }catch(e){} el.onchange=()=>{ try{ localStorage.setItem(id,el.value); }catch(e){} }; });
+["flyerLayout","a3Layout"].forEach(id=>{ const el=$("#"+id), radios=[...document.querySelectorAll(`input[name="${id}R"]`)];
+  const set=v=>{ el.value=v; radios.forEach(r=>{ r.checked=r.value===v; r.closest(".lp").classList.toggle("on",r.checked); }); try{ localStorage.setItem(id,v); }catch(e){} };
+  let v0="colonne"; try{ v0=localStorage.getItem(id)||"colonne"; }catch(e){} set(v0);
+  radios.forEach(r=>r.onchange=()=>set(r.value)); });
 $("#btnA3").onclick=async()=>{ if(weeks.length && !await requirePosters(fortnightFilms(),"Génération de l'affiche A3")) return; showA3().catch(e=>{ console.error(e); $("#a3Progress").textContent="Erreur : "+e.message; }); };
 $("#btnA3Pdf").onclick=async()=>{ if(!lastA3) return; if(!window.jspdf){ $("#a3Progress").textContent="PDF indisponible (bibliothèque non chargée)."; return; }
   const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a3",compress:true});
