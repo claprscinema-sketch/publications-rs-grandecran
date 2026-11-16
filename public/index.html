@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 18h40</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 19h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -161,15 +161,15 @@
   <div class="films" id="infoList"></div>
 </section>
 <section data-tab="base">
-  <h2><span class="n">4</span> Bases communes <span class="hint" style="margin:0;font-weight:400">— identiques pour tous (verrouillage par code à venir)</span></h2>
+  <h2><span class="n">4</span> Bases communes <span class="hint" style="margin:0;font-weight:400">— sur le site, partagées avec tout le monde (modification protégée par le code d'équipe)</span></h2>
   <details id="setDetails" open>
     <summary>🔒 Base commune — réseaux sociaux et écrans (logos, fonds, tarifs, textes)</summary>
-    <p class="hint" style="margin-top:8px">Clique sur une vignette ou glisse l'image dessus pour la remplacer. Une image déposée ici s'applique aux visuels faits <b>dans ce navigateur</b> ; pour qu'elle devienne la base commune de tout le monde, envoie-la à Claude. Les logos des caractéristiques (Reprise, Sortie nationale, Avant-première, VO, Documentaire, Entrée gratuite) apparaissent sur les visuels des films pour lesquels la case est cochée.</p>
+    <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
     <div class="settings" id="assets"></div>
     <div class="fields" id="commonFields"></div>
   </details>
   <details id="flyerSet" style="margin-top:12px"><summary>🔒 Base commune — flyers et affiches A3 (fond, logos, QR codes)</summary>
-    <p class="hint" style="margin-top:8px">Clique sur une vignette ou glisse l'image dessus pour la remplacer dans ce navigateur ; pour qu'elle devienne la base commune de tout le monde, envoie-la à Claude.</p>
+    <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
     <div class="settings" id="flyerAssets"></div>
   </details>
 </section>
@@ -914,7 +914,7 @@ function captionCarousel(week, news, reps){
 
 /* ========================== Interface ========================== */
 async function initSettings(){
-  settings={...DEFAULTS};
+  settings={...DEFAULTS, ...((await Store.get("settingsCommuns"))||{})};
   for(const a of ASSETS){
     assets[a.k] = COMMON_IMAGES[a.k] || a.def || null;
     const own=await Store.get("asset:"+a.k); if(own!==undefined) assets[a.k]=own;   // image déposée dans ce navigateur
@@ -931,14 +931,18 @@ function renderAssets(){
       <div class="thumb drop-ok" style="${assets[a.k]?`background-image:url('${assets[a.k]}')`:""}">${assets[a.k]?"":"cliquer ou glisser l'image ici"}</div>
       ${assets[a.k]&&assets[a.k]!==orig?'<button class="small" data-rm>Retirer</button> ':""}${orig&&assets[a.k]!==orig?'<button class="small" data-reset>Image d\'origine</button>':""}`;
     {
-      makeDrop(d.querySelector(".thumb"),"image/*",async file=>{ assets[a.k]=await shrink(await readFile(file),a.k==="flyerBg"?3508:2400); await Store.set("asset:"+a.k,assets[a.k]); renderAssets(); refreshVisuals(); });
-      const rm=d.querySelector("[data-rm]"); if(rm) rm.onclick=async()=>{ assets[a.k]=orig; await Store.del("asset:"+a.k); renderAssets(); refreshVisuals(); };
-      const rs=d.querySelector("[data-reset]"); if(rs) rs.onclick=async()=>{ assets[a.k]=COMMON_IMAGES[a.k]||a.def||null; await Store.del("asset:"+a.k); renderAssets(); refreshVisuals(); };
+      makeDrop(d.querySelector(".thumb"),"image/*",async file=>{ assets[a.k]=await shrink(await readFile(file),a.k==="flyerBg"?3508:2400); await Store.set("asset:"+a.k,assets[a.k]); renderAssets(); refreshVisuals(); shareAsset(a.k,assets[a.k]); });
+      const rm=d.querySelector("[data-rm]"); if(rm) rm.onclick=async()=>{ assets[a.k]=orig; await Store.del("asset:"+a.k); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
+      const rs=d.querySelector("[data-reset]"); if(rs) rs.onclick=async()=>{ assets[a.k]=COMMON_IMAGES[a.k]||a.def||null; await Store.del("asset:"+a.k); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
     }
     box.appendChild(d);
   }
   const L={pAdult:"Tarif adulte",pReduit:"Tarif réduit",pJeune:"Tarif -16 ans",link:"Lien de réservation",address:"Adresse",flyerAddress:"Adresse (flyer)",phone:"Téléphone",web:"Site web",hashtags:"Hashtags",tCarousel:"Carrousel du mercredi",tFilms:"1re publication film"};
-  $("#commonFields").innerHTML=Object.entries(L).map(([k,l])=>`<label>${l}<input type="text" value="${esc(settings[k]||"")}" readonly></label>`).join("");
+  $("#commonFields").innerHTML=Object.entries(L).map(([k,l])=>`<label>${l}<input type="text" data-set="${k}" value="${esc(settings[k]||"")}"></label>`).join("");
+  $("#commonFields").querySelectorAll("[data-set]").forEach(inp=>inp.onchange=async()=>{
+    settings[inp.dataset.set]=inp.value.trim();
+    const own={}; for(const k of Object.keys(L)) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k];
+    await Store.set("settingsCommuns",own); refreshVisuals(); shareSettings(); });
 }
 
 /* ========================== Import d'un dossier complet ========================== */
@@ -2338,7 +2342,7 @@ function showSharedInfo(){
   const m=sharedManifest; if(!m) return;
   const d=m.updatedAt?new Date(m.updatedAt):null;
   const nImg=Object.values(m.weeks||{}).reduce((n,a)=>n+a.length,0);
-  sharedStatus(`☁️ <b>Base partagée</b> — ${m.excel?esc(m.excel.name):"aucun Excel"}, ${nImg} image(s) en pleine définition${d?` · mise à jour le ${d.toLocaleDateString("fr-FR")} à ${d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`:""}. Ce que tu déposes ici remplace la base pour tout le monde.`,"ok");
+  sharedStatus(`☁️ <b>Base partagée</b> — ${m.excel?esc(m.excel.name):"aucun Excel"}, ${nImg} image(s) en pleine définition, base commune ${(m.common&&m.common.assets&&m.common.assets.length)?m.common.assets.length+" image(s) personnalisée(s)":"d'origine"}${d?` · mise à jour le ${d.toLocaleDateString("fr-FR")} à ${d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`:""}. Ce que tu déposes ici remplace la base pour tout le monde.`,"ok");
 }
 // Images envoyées en pleine définition (jusqu'à 4096 px, pour l'écran 4K de 10 m), sous 5,5 Mo (limite Netlify)
 async function uploadable(file){
@@ -2390,6 +2394,39 @@ async function shareFilmImage(f, kind, file){
     a.push(key); m.weeks[iso]=a; await putManifest(m);
   }catch(e){ console.warn(e); sharedStatus("⚠️ Image non partagée : "+esc(e.message),"err"); }
 }
+// Base commune partagée : images déposées dans les cases et textes (tarifs, lien, adresse…)
+function dataURLtoBlob(u){ const [h,b]=u.split(","), mime=(h.match(/data:([^;]+)/)||[])[1]||"application/octet-stream";
+  const bin=atob(b), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:mime}); }
+async function shareAsset(k, dataURL){
+  if(!SHARED||sharedLoading) return;
+  try{
+    sharedStatus("☁️ Mise à jour de la base commune partagée…");
+    const key="common/asset-"+k;
+    if(dataURL){ let blob=dataURLtoBlob(dataURL);
+      if(blob.size>5.5e6){ blob=dataURLtoBlob(await shrink(dataURL,1600)); }
+      await api("PUT","file/"+keyPart(key),blob,blob.type); }
+    else await api("DELETE","prefix/"+keyPart(key));
+    const m=await getManifest(); const set=new Set((m.common&&m.common.assets)||[]);
+    dataURL?set.add(k):set.delete(k); m.common={...(m.common||{}), assets:[...set]}; await putManifest(m);
+  }catch(e){ console.warn(e); sharedStatus("⚠️ Base commune non partagée : "+esc(e.message),"err"); }
+}
+async function shareSettings(){
+  if(!SHARED||sharedLoading) return;
+  try{ const own={}; for(const k of Object.keys(DEFAULTS)) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k];
+    await api("PUT","file/common%2Fsettings.json",JSON.stringify(own),"application/json");
+    const m=await getManifest(); m.common={...(m.common||{}), settings:true}; await putManifest(m);
+  }catch(e){ console.warn(e); sharedStatus("⚠️ Textes communs non partagés : "+esc(e.message),"err"); }
+}
+async function loadSharedCommon(m){
+  const c=m.common||{}, list=new Set(c.assets||[]);
+  for(const a of ASSETS){
+    const orig=COMMON_IMAGES[a.k]||a.def||null;
+    if(list.has(a.k)){ try{ const r=await api("GET","file/"+keyPart("common/asset-"+a.k)); assets[a.k]=await readFile(await r.blob()); await Store.set("asset:"+a.k,assets[a.k]); }catch(e){ console.warn(e); } }
+    else if(c.assets){ assets[a.k]=orig; await Store.del("asset:"+a.k); }   // la base partagée fait foi
+  }
+  if(c.settings){ try{ const r=await api("GET","file/common%2Fsettings.json"); const own=await r.json(); settings={...DEFAULTS,...own}; await Store.set("settingsCommuns",own); }catch(e){ console.warn(e); } }
+  renderAssets(); refreshVisuals();
+}
 let detailsTimer=null;
 function shareDetailsSoon(){
   if(!SHARED||sharedLoading) return;
@@ -2408,6 +2445,7 @@ async function sharedInit(){
   let m;
   try{ const r=await fetch(API+"manifest",{cache:"no-store"}); if(!r.ok) return; m=await r.json(); }catch(e){ return; }
   SHARED=true; sharedManifest=m; showSharedInfo();
+  if(m.common){ sharedLoading=true; sharedStatus("☁️ Chargement de la base commune partagée…"); try{ await loadSharedCommon(m); }catch(e){ console.warn(e); } sharedLoading=false; showSharedInfo(); }
   if(!m.excel){ sharedStatus("☁️ <b>Base partagée vide</b> : dépose l'Excel et les dossiers d'images, ils seront disponibles pour tout le monde.","ok"); return; }
   sharedLoading=true;
   try{
