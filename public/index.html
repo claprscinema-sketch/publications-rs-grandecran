@@ -785,33 +785,43 @@ async function renderWeek(week){
   return c;
 }
 
-const LAYOUTS = {
-  1:[[300,250,480]],
-  2:[[100,240,390],[590,560,390]],
-  3:[[90,225,330],[650,405,330],[175,800,330]],
-  4:[[90,215,300],[650,250,300],[150,745,300],[600,770,300]],
-  5:[[55,210,280],[397,300,280],[740,210,280],[140,775,280],[500,800,280]],
-  6:[[55,205,265],[402,270,265],[750,205,265],[55,770,265],[402,835,265],[750,770,265]],
-};
+// Affiches des visuels « Nouveautés » / « Toujours à l'affiche » : toutes à la même largeur,
+// la plus grande grille qui tient dans la zone disponible, sans chevauchement, rangées centrées.
+function collageGrid(n, ratios, X=40, Y=190, ZW=1000, ZH=1120, G=36){
+  const A=Math.max(...ratios,1.3);
+  let best=null;
+  for(let rows=1; rows<=n; rows++){
+    const cols=Math.ceil(n/rows);
+    const w=Math.min((ZW-G*(cols-1))/cols, ((ZH-G*(rows-1))/rows)/A, 680);
+    if(!best || w>best.w+0.5) best={rows,cols,w};
+  }
+  const {rows,cols,w}=best, rowH=w*A, totalH=rows*rowH+(rows-1)*G, y0=Y+(ZH-totalH)/2, slots=[];
+  for(let r=0;r<rows;r++){
+    const inRow=Math.min(cols, n-r*cols), rowW=inRow*w+(inRow-1)*G, x0=X+(ZW-rowW)/2;
+    for(let c=0;c<inRow;c++) slots.push({x:x0+c*(w+G), y:y0+r*(rowH+G), w, rowH});
+  }
+  return slots;
+}
 async function renderCollage(title, films){
   const c=canvas(W,H), ctx=c.getContext("2d");
   await drawBg(ctx, assets.bgCollage, W, H, ["#3b3a52","#5a4f6e","#2a2335"]);
   ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="alphabetic";
   shadowOn(ctx,12,.3,3); fitText(ctx,title,900,118); ctx.fillText(title,540,118); shadowOff(ctx);
   ctx.fillRect(152,150,776,5);
-  const list=films.slice(0,6);
-  const slots=LAYOUTS[Math.max(1,list.length)]||LAYOUTS[6];
+  const list=films;
+  const imgs=[]; for(const f of list) imgs.push(await loadImg(filmState[f.key].poster));
+  const ratios=imgs.map(im=>im?im.height/im.width:1.42);
+  const slots=collageGrid(list.length, ratios);
   const extras=[];
   for(let i=0;i<list.length;i++){
-    const f=list[i], st=filmState[f.key], [x,y,w]=slots[i];
-    const img=await loadImg(st.poster);
-    const h = img ? w*img.height/img.width : w*1.4;
+    const f=list[i], st=filmState[f.key], img=imgs[i], {x,w,rowH}=slots[i];
+    const h=w*ratios[i], y=slots[i].y+(rowH-h)/2;     // affiches centrées dans leur rangée
     shadowOn(ctx,26,.45,10);
     if(img) ctx.drawImage(img,x,y,w,h); else { ctx.fillStyle="#777"; ctx.fillRect(x,y,w,h); }
     shadowOff(ctx);
-    if(!img){ ctx.fillStyle="#fff"; ctx.font=`40px ${FONT}`; ctx.fillText(f.title.toUpperCase().slice(0,22),x+w/2,y+h/2); }
+    if(!img){ ctx.fillStyle="#fff"; fitText(ctx,f.title.toUpperCase(),w-20,40); ctx.fillText(f.title.toUpperCase(),x+w/2,y+h/2); }
     // « Toujours à l'affiche » : jamais le bandeau Reprise
-    const lg=await charLogos(/TOUJOURS/.test(title)?{...st, reprise:false}:st); if(lg.length) extras.push({lg, x:x+w/2, y:y+h-22, w});
+    const lg=await charLogos(/TOUJOURS/.test(title)?{...st, reprise:false}:st); if(lg.length) extras.push({lg, x:x+w/2, y:y+h-w*.3-8, w});
   }
   for(const e of extras) drawLogoRow(ctx,e.lg,e.x,e.y,Math.min(e.w*.42,(e.w*.95-10*(e.lg.length-1))/e.lg.length),e.w*.3);
   return c;
@@ -1696,7 +1706,8 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw){
     for(const line of who){ const wl=wrapLines(ctx,line,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=wl.length*lh; }
     // étiquettes VO, AVP…
     // synopsis
-    const synTxt=syn400Cache[f.key]||(d.synopsis?sentencesUpTo(d.synopsis,SYN_MAX):"");
+    const synBase=syn400Cache[f.key]||(d.synopsis?sentencesUpTo(d.synopsis,SYN_MAX):"");
+    const synTxt=synBase.length<=synMax?synBase:sentencesUpTo(synBase,synMax);   // phrases entières seulement
     if(synTxt){
       ty+=14*s; ctx.font=`${bs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
       const sl=wrapLines(ctx,synTxt,tw);
@@ -1879,6 +1890,35 @@ async function prepareSyn400(films, onProgress){
   }
 }
 
+// Recherche de la mise en page : la plus grande échelle lisible avec les synopsis complets (400 car.) ;
+// si la semaine est trop chargée, synopsis plus courts (toujours en phrases entières), puis texte plus petit.
+async function fitPlan(fits, sMax, sRead){
+  const steps=[];
+  for(let s=sMax; s>=sRead-1e-9; s-=0.025) steps.push([s,SYN_MAX]);
+  for(const syn of [320,250,190,140]) for(let s=sRead+0.1; s>=sRead-0.1-1e-9; s-=0.025) steps.push([s,syn]);
+  for(let s=sRead-0.1; s>=0.3-1e-9; s-=0.025) steps.push([s,100]);
+  for(let i=0;i<steps.length;i++){ const [s,syn]=steps[i], sc=+s.toFixed(3); if(await fits(sc,syn)) return {s:sc,syn,i}; }
+  return {s:0.3,syn:100,i:1e9};
+}
+// Films d'une semaine sur 1 ou 2 colonnes (2 colonnes pour les semaines chargées), puis « Toujours à l'affiche »
+async function regionNews(ctx, news, x, y, w, cols, s, syn, draw, GAP){
+  const CG=Math.round(46*Math.max(s,.5)), cw=(w-CG*(cols-1))/cols; let h=0;
+  for(let i=0;i<news.length;i+=cols){
+    const row=news.slice(i,i+cols), hs=[];
+    for(const f of row) hs.push(await flyerBlock(ctx,f,0,0,cw,s,syn,false));
+    const rh=Math.max(...hs);
+    if(draw) for(let j=0;j<row.length;j++) await flyerBlock(ctx,row[j],x+j*(cw+CG),y+h,cw,s,syn,true);
+    if(draw && cols>1 && row.length>1){ ctx.save(); ctx.strokeStyle="rgba(0,0,0,.12)"; ctx.lineWidth=2; for(let j=1;j<row.length;j++){ const lx=x+j*(cw+CG)-CG/2; ctx.beginPath(); ctx.moveTo(lx,y+h); ctx.lineTo(lx,y+h+rh); ctx.stroke(); } ctx.restore(); }
+    h+=rh+GAP;
+  }
+  return news.length?h-GAP:0;
+}
+async function regionNeed(pt, w, cols, s, syn, GAP){
+  const tmp=canvas(10,10).getContext("2d");
+  const h=await regionNews(tmp,pt.news,0,0,w,cols,s,syn,false,GAP), tj=await flyerToujours(tmp,pt.reps,0,0,w,s,false);
+  return h+(tj?(h?GAP:0)+tj:0);
+}
+
 // Programme de quinzaine : 1re semaine au recto, 2e semaine au verso (+ pied de page)
 async function renderFlyer(){
   await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ0123456789");
@@ -1891,15 +1931,14 @@ async function renderFlyer(){
   const tmp=canvas(10,10).getContext("2d"), GAP=50, W0=FW-2*FM;
   const headHs=[await flyerHeader(tmp,ws[0],false), await flyerHeader(tmp,ws[0],false,true)], footH=await flyerFooter(tmp,FM,0,W0,false);
   const avail=k=>FH-headHs[k]-2*FM+30-footH;
-  const need=async(pt,s,syn)=>{ let h=0; for(const f of pt.news) h+=await flyerBlock(tmp,f,0,0,W0,s,syn,false)+GAP;
-    const tj=await flyerToujours(tmp,pt.reps,0,0,W0,s,false); return h+(tj?tj:-GAP); };
-  // même échelle sur les deux faces : la plus grande qui fait tout tenir
-  // pour chaque face : texte lisible d'abord, puis synopsis raccourcis, puis texte plus petit
-  const cands=[]; for(let s=1.25; s>=0.5-1e-9; s-=0.025) cands.push([+s.toFixed(3),SYN_MAX]);
+  // pour chaque face : 1 ou 2 colonnes de films, la disposition la plus lisible l'emporte
   const plans=[];
-  for(let k=0;k<parts.length;k++){ let pl=null;
-    for(const [sc,syn] of cands) if(await need(parts[k],sc,syn)<=avail(k)){ pl={s:sc,syn}; break; }
-    plans.push(pl||{s:0.5,syn:SYN_MAX}); }
+  for(let k=0;k<parts.length;k++){ let best=null;
+    for(const cols of parts[k].news.length>=4?[1,2]:[1]){
+      const pl=await fitPlan(async(sc,syn)=>await regionNeed(parts[k],W0,cols,sc,syn,GAP)<=avail(k), cols===1?1.8:1.2, 0.7);
+      if(!best || pl.i<best.i) best={...pl,cols};
+    }
+    plans.push(best); }
   const plan={s:Math.min(...plans.map(p=>p.s)), syn:Math.min(...plans.map(p=>p.syn))};
   const faces=[canvas(FW,FH),canvas(FW,FH)];
   for(const c of faces){ const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,FW,FH); await flyerPageBg(x); }
@@ -1909,7 +1948,7 @@ async function renderFlyer(){
     if(pt){
       await flyerHeader(ctx,pt.week,true,k===1);
       let y=headHs[k]+FM-30;
-      for(const f of pt.news){ y+=await flyerBlock(ctx,f,FM,y,W0,plans[k].s,plans[k].syn,true)+GAP; }
+      const nh=await regionNews(ctx,pt.news,FM,y,W0,plans[k].cols,plans[k].s,plans[k].syn,true,GAP); y+=nh+(nh?GAP:0);
       if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,FM,0,W0,plans[k].s,false);
         const bottom=FH-FM-(hasFoot?footH:0)+30; await flyerToujours(ctx,pt.reps,FM,Math.max(y, bottom-th),W0,plans[k].s,true); }
     }
@@ -1933,7 +1972,7 @@ async function showFlyer(){
   box.querySelectorAll("img").forEach(im=>im.onclick=()=>{ $("#zoom img").src=faces[+im.dataset.i].toDataURL("image/jpeg",.9); $("#zoom").style.display="flex"; });
   const noSyn=lastFlyer.news.filter(f=>!(findDetails(f.key)||{}).synopsis).map(f=>titleOf(f));
   const noPost=[...new Set(lastFlyer.weeks.flatMap(w=>w.films).filter(f=>!filmState[f.key].poster).map(f=>titleOf(f)))];
-  $("#flyerProgress").innerHTML=`✓ Flyer prêt${plan.s<0.75?" — beaucoup de films : texte réduit pour tout faire tenir, vérifie la lisibilité à l'impression":""}.`
+  $("#flyerProgress").innerHTML=`✓ Flyer prêt${plan.syn<SYN_MAX?" — semaine chargée : certains synopsis raccourcis (phrases entières) pour rester lisible":""}.`
     +(noPost.length?`<div class="warn">⚠️ Affiche manquante : ${noPost.join(", ")}</div>`:"")+(noSyn.length?`<div class="warn">⚠️ Pas de synopsis : ${noSyn.join(", ")}</div>`:"");
   $("#btnFlyerPdf").disabled=false; $("#btnFlyerJpg").disabled=false;
 }
@@ -1959,34 +1998,45 @@ async function renderA3(){
     const parts=ws.map(w=>{ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]);
       return {week:w, news:byFirst.filter(f=>!flags(f).reprise), reps:byFirst.filter(f=>flags(f).reprise)}; });
     const tmp=canvas(10,10).getContext("2d"), GAP=40, CG=50;
-    const ncol=parts.length, CW=(FW-2*FM-CG*(ncol-1))/ncol;
+    const ncol=parts.length, CW=(FW-2*FM-CG*(ncol-1))/ncol, WF=FW-2*FM;
     const headH=await flyerHeader(tmp,ws[0],false), footH=await flyerFooter(tmp,FM,0,FW-2*FM,false), WH=86;
-    const avail=FH-headH-footH-2*FM+30-WH-24;
-    const need=async(pt,s)=>{ let h=0; for(const f of pt.news) h+=await flyerBlock(tmp,f,0,0,CW,s,SYN_MAX,false)+GAP;
-      const tj=await flyerToujours(tmp,pt.reps,0,0,CW,s,false); return h+(tj?tj:-GAP); };
-    let sc=0.45;
-    for(let s=1.1; s>=0.45-1e-9; s-=0.025){ let ok=true; for(const pt of parts) if(await need(pt,+s.toFixed(3))>avail){ ok=false; break; } if(ok){ sc=+s.toFixed(3); break; } }
+    const zone=FH-headH-footH-2*FM+30;
+    // disposition A : semaines côte à côte ; disposition B (quinzaines chargées) : semaines l'une sous l'autre, films sur 2 colonnes
+    const plA=await fitPlan(async(s,syn)=>{ for(const pt of parts) if(await regionNeed(pt,CW,1,s,syn,GAP)>zone-WH-24) return false; return true; }, 1.6, 0.45);
+    let plB={i:1e9};
+    if(parts.length>1 && parts.some(pt=>pt.news.length>=4)){
+      plB=await fitPlan(async(s,syn)=>{ let h=0; for(const pt of parts) h+=WH+24+await regionNeed(pt,WF,2,s,syn,GAP)+GAP; return h-GAP<=zone; }, 1.2, 0.45);
+    }
+    const stacked=plB.i<plA.i, pl=stacked?plB:plA, sc=pl.s, synA3=pl.syn;
     const c=canvas(A3W,A3H), ctx=c.getContext("2d");
     ctx.fillStyle="#fff"; ctx.fillRect(0,0,A3W,A3H); ctx.scale(A3K,A3K); await flyerPageBg(ctx);
     const last=new Date(ws[ws.length-1].start); last.setDate(last.getDate()+6);
     await flyerHeader(ctx,ws[0],true,false,last);
-    for(let k=0;k<parts.length;k++){
-      const pt=parts[k], x=FM+k*(CW+CG); let y=headH+FM-30;
-      // titre de la semaine
-      const w=pt.week, e=new Date(w.start); e.setDate(e.getDate()+6);
-      const sm=w.start.getMonth()===e.getMonth()?"":" "+MOIS[w.start.getMonth()];
-      const t=`SEMAINE DU ${dnum(w.start)}${sm} AU ${dnum(e)} ${MOIS[e.getMonth()]}`.toUpperCase();
-      ctx.fillStyle="#1d1d22"; rr(ctx,x,y,CW,WH,14); ctx.fill();
-      ctx.fillStyle="#FBD30F"; ctx.textAlign="center"; ctx.textBaseline="middle"; fitText(ctx,t,CW-40,60); ctx.fillText(t,x+CW/2,y+WH/2+3);
-      y+=WH+24;
-      for(const f of pt.news){ y+=await flyerBlock(ctx,f,x,y,CW,sc,SYN_MAX,true)+GAP; }
-      if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,x,0,CW,sc,false);
-        await flyerToujours(ctx,pt.reps,x,Math.max(y, FH-FM-footH+30-th),CW,sc,true); }
+    const weekTitle=(pt,x,y,w)=>{ const wk=pt.week, e=new Date(wk.start); e.setDate(e.getDate()+6);
+      const sm=wk.start.getMonth()===e.getMonth()?"":" "+MOIS[wk.start.getMonth()];
+      const t=`SEMAINE DU ${dnum(wk.start)}${sm} AU ${dnum(e)} ${MOIS[e.getMonth()]}`.toUpperCase();
+      ctx.fillStyle="#1d1d22"; rr(ctx,x,y,w,WH,14); ctx.fill();
+      ctx.fillStyle="#FBD30F"; ctx.textAlign="center"; ctx.textBaseline="middle"; fitText(ctx,t,w-40,60); ctx.fillText(t,x+w/2,y+WH/2+3); };
+    if(stacked){
+      let y=headH+FM-30;
+      for(const pt of parts){
+        weekTitle(pt,FM,y,WF); y+=WH+24;
+        const nh=await regionNews(ctx,pt.news,FM,y,WF,2,sc,synA3,true,GAP); y+=nh+(nh?GAP:0);
+        if(pt.reps.length){ y+=await flyerToujours(ctx,pt.reps,FM,y,WF,sc,true)+GAP; }
+      }
+    } else {
+      for(let k=0;k<parts.length;k++){
+        const pt=parts[k], x=FM+k*(CW+CG); let y=headH+FM-30;
+        weekTitle(pt,x,y,CW); y+=WH+24;
+        const nh=await regionNews(ctx,pt.news,x,y,CW,1,sc,synA3,true,GAP); y+=nh+(nh?GAP:0);
+        if(pt.reps.length){ const th=await flyerToujours(ctx,pt.reps,x,0,CW,sc,false);
+          await flyerToujours(ctx,pt.reps,x,Math.max(y, FH-FM-footH+30-th),CW,sc,true); }
+      }
     }
     // séparateur entre les colonnes
-    if(parts.length>1){ ctx.strokeStyle="#d8d2c8"; ctx.lineWidth=3; const sx=FM+CW+CG/2; ctx.beginPath(); ctx.moveTo(sx,headH+FM-30); ctx.lineTo(sx,FH-footH-FM+10); ctx.stroke(); }
+    if(parts.length>1 && !stacked){ ctx.strokeStyle="#d8d2c8"; ctx.lineWidth=3; const sx=FM+CW+CG/2; ctx.beginPath(); ctx.moveTo(sx,headH+FM-30); ctx.lineTo(sx,FH-footH-FM+10); ctx.stroke(); }
     await flyerFooter(ctx,FM,FH-footH,FW-2*FM,true);
-    return {canvas:c, s:sc, weeks:ws};
+    return {canvas:c, s:sc, syn:synA3, weeks:ws};
   } finally { FH=saveFH; }
 }
 let lastA3=null;
@@ -2000,7 +2050,7 @@ async function showA3(){
   const films=lastA3.weeks.flatMap(w=>w.films);
   const noPost=[...new Set(films.filter(f=>!filmState[f.key].poster).map(f=>titleOf(f)))];
   const noSyn=[...new Set(films.filter(f=>!flags(f).reprise && !(findDetails(f.key)||{}).synopsis).map(f=>titleOf(f)))];
-  $("#a3Progress").innerHTML=`✓ Affiche prête${lastA3.s<0.5?" — beaucoup de films : texte réduit, vérifie la lisibilité":""}.`
+  $("#a3Progress").innerHTML=`✓ Affiche prête${lastA3.syn<SYN_MAX?" — quinzaine chargée : synopsis raccourcis (phrases entières) pour rester lisible":""}.`
     +(noPost.length?`<div class="warn">⚠️ Affiche manquante : ${noPost.join(", ")}</div>`:"")+(noSyn.length?`<div class="warn">⚠️ Pas de synopsis : ${noSyn.join(", ")}</div>`:"");
   $("#btnA3Pdf").disabled=false; $("#btnA3Jpg").disabled=false;
 }
