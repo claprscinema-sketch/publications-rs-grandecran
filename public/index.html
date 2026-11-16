@@ -232,7 +232,7 @@
 <section data-tab="flyers" hidden><h2>Flyer A5 recto-verso — programme de la quinzaine</h2>
   <p class="hint">Utilise l'Excel, les dossiers d'images et les infos des films (onglet Base de données), pour les deux semaines du fichier Excel. Recto : la 1re semaine ; verso : la 2e semaine. Chaque film avec affiche, genre, durée, réalisation, casting, synopsis, restrictions, VO et séances. Sur chaque face, « Toujours à l'affiche » (films en reprise) et en bas : labels, QR codes Instagram et Facebook, coordonnées et tarifs. Vérifie les cases de chaque film avant de composer (elles sont remplies d'après l'Excel).</p>
   <div id="flyerFilms"></div>
-  <div class="row" style="margin-top:10px"><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
+  <div class="row" style="margin-top:10px"><label style="font-size:14px;font-weight:600">Disposition des affiches <select id="flyerLayout"><option value="colonne">Option 1 : en colonne, à gauche</option><option value="alternance">Option 2 : en alternance gauche / droite</option></select></label><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
   <div id="flyerProgress" class="hint"></div>
   <div id="flyerOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
   <style>#flyerOut figure{margin:0;text-align:center}#flyerOut img{width:330px;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#flyerOut figcaption{font-size:13px;color:#666;margin-top:4px}</style>
@@ -240,7 +240,7 @@
 <section data-tab="a3" hidden><h2>Affiche A3 — programme de la quinzaine</h2>
   <p class="hint">Une seule affiche A3 (portrait) pour les deux semaines du fichier Excel : la 1re semaine dans la colonne de gauche, la 2e dans celle de droite, chacune avec ses films (affiche, infos, synopsis de 400 caractères maximum, séances) et son « Toujours à l'affiche ». Elle utilise la base commune des flyers (onglet Base de données). Vérifie les cases de chaque film avant de composer.</p>
   <div id="a3Films"></div>
-  <div class="row" style="margin-top:10px"><button class="primary" id="btnA3">Composer l'affiche A3</button><button id="btnA3Pdf" disabled>⬇ PDF A3</button><button id="btnA3Jpg" disabled>⬇ Image JPG</button></div>
+  <div class="row" style="margin-top:10px"><label style="font-size:14px;font-weight:600">Disposition des affiches <select id="a3Layout"><option value="colonne">Option 1 : en colonne, à gauche</option><option value="alternance">Option 2 : en alternance gauche / droite</option></select></label><button class="primary" id="btnA3">Composer l'affiche A3</button><button id="btnA3Pdf" disabled>⬇ PDF A3</button><button id="btnA3Jpg" disabled>⬇ Image JPG</button></div>
   <div id="a3Progress" class="hint"></div>
   <div id="a3Out" style="margin-top:10px"></div>
   <style>#a3Out img{width:460px;max-width:100%;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}</style>
@@ -1674,14 +1674,14 @@ function filmTags(st, seances){
 }
 
 // Bloc film : affiche à gauche, infos à droite. draw=false → mesure seulement.
-async function flyerBlock(ctx, f, x, y, w, s, synMax, draw){
+async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const st={...(filmState[f.key]||{}), ...flags(f)}, d=findDetails(f.key)||{}, color=st.ecran||st.color||(st.palette||[])[0]||"#6E264C";
   const pwMax=Math.round(290*s), poster=await loadImg(st.poster), ratio=poster?poster.height/poster.width:1.42;
   const pw=pwMax;   // colonne de l'affiche
   const tags=filmTags(st,f.seances);
   const lcw=tags.length?Math.round(Math.min(230*s,(w-pw)*.26)):0, lgap=lcw?Math.round(30*s):0;   // colonne des logos à droite
   const pass=(draw)=>{
-  const tx=x+pw+Math.round(40*s), tw=w-(tx-x)-lcw-lgap; let ty=y;
+  const R=side==="right", tx=R?x:x+pw+Math.round(40*s), tw=w-pw-Math.round(40*s)-lcw-lgap; let ty=y;
     // titre
     let ts=Math.round(78*s); ctx.font=`${ts}px ${FONT}`;
     const title=(d.title||f.title).toUpperCase();
@@ -1722,11 +1722,11 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw){
   // toutes les affiches à la même largeur (colonne entière), hauteur selon leur format
   const aw=pwMax, ph=pwMax*ratio;
   if(draw){
-    const ax=x+(pwMax-aw)/2;
+    const ax=side==="right"?x+w-pwMax:x;   // affiche calée au bord gauche ou droit
     if(poster){ shadowOn(ctx,14,.25,5); ctx.drawImage(poster,ax,y,aw,ph); shadowOff(ctx); }
     else { ctx.fillStyle="#ddd"; ctx.fillRect(ax,y,aw,ph); }
     pass(true);
-    if(lcw) charColumn(ctx,tags,x+w-lcw,y,lcw,Math.round(22*s),true);
+    if(lcw) charColumn(ctx,tags,side==="right"?x+w-pw-Math.round(40*s)-lcw:x+w-lcw,y,lcw,Math.round(22*s),true);
   }
   return Math.max(ph, th);
 }
@@ -1901,13 +1901,16 @@ async function fitPlan(fits, sMax, sRead){
   return {s:0.3,syn:100,i:1e9};
 }
 // Films d'une semaine sur 1 ou 2 colonnes (2 colonnes pour les semaines chargées), puis « Toujours à l'affiche »
+// Disposition des affiches : "colonne" (toutes à gauche) ou "alternance" (gauche, droite, gauche…)
+let FLYER_LAYOUT="colonne";
 async function regionNews(ctx, news, x, y, w, cols, s, syn, draw, GAP){
   const CG=Math.round(46*Math.max(s,.5)), cw=(w-CG*(cols-1))/cols; let h=0;
   for(let i=0;i<news.length;i+=cols){
     const row=news.slice(i,i+cols), hs=[];
     for(const f of row) hs.push(await flyerBlock(ctx,f,0,0,cw,s,syn,false));
     const rh=Math.max(...hs);
-    if(draw) for(let j=0;j<row.length;j++) await flyerBlock(ctx,row[j],x+j*(cw+CG),y+h,cw,s,syn,true);
+    if(draw) for(let j=0;j<row.length;j++){ const idx=i+j, side=FLYER_LAYOUT==="alternance"&&idx%2===1?"right":"left";
+      await flyerBlock(ctx,row[j],x+j*(cw+CG),y+h,cw,s,syn,true,side); }
     if(draw && cols>1 && row.length>1){ ctx.save(); ctx.strokeStyle="rgba(0,0,0,.12)"; ctx.lineWidth=2; for(let j=1;j<row.length;j++){ const lx=x+j*(cw+CG)-CG/2; ctx.beginPath(); ctx.moveTo(lx,y+h); ctx.lineTo(lx,y+h+rh); ctx.stroke(); } ctx.restore(); }
     h+=rh+GAP;
   }
@@ -1921,6 +1924,7 @@ async function regionNeed(pt, w, cols, s, syn, GAP){
 
 // Programme de quinzaine : 1re semaine au recto, 2e semaine au verso (+ pied de page)
 async function renderFlyer(){
+  FLYER_LAYOUT=($("#flyerLayout")&&$("#flyerLayout").value)||"colonne";
   await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ0123456789");
   const ws=weekPair.map(i=>weeks[i]).filter(Boolean);
   if(!ws.length) ws.push(curWeek());
@@ -1989,6 +1993,7 @@ $("#btnFlyerJpg").onclick=async()=>{ if(!lastFlyer) return; const z=new JSZip();
 // Même mise en page logique que le flyer (1748 px de large), agrandie ×1,419 pour l'A3 : 2480 × 3508 px (≈ 212 dpi)
 const A3W=2480, A3H=3508, A3K=A3W/1748;
 async function renderA3(){
+  FLYER_LAYOUT=($("#a3Layout")&&$("#a3Layout").value)||"colonne";
   await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ0123456789");
   const ws=weekPair.map(i=>weeks[i]).filter(Boolean); if(!ws.length) ws.push(curWeek());
   for(const w of ws) for(const f of w.films) if(!filmState[f.key]){ const s=(await Store.get("film:"+f.key))||{}; filmState[f.key]={...s,...charOf(f)}; }
@@ -2054,6 +2059,7 @@ async function showA3(){
     +(noPost.length?`<div class="warn">⚠️ Affiche manquante : ${noPost.join(", ")}</div>`:"")+(noSyn.length?`<div class="warn">⚠️ Pas de synopsis : ${noSyn.join(", ")}</div>`:"");
   $("#btnA3Pdf").disabled=false; $("#btnA3Jpg").disabled=false;
 }
+["flyerLayout","a3Layout"].forEach(id=>{ const el=$("#"+id); try{ const v=localStorage.getItem(id); if(v) el.value=v; }catch(e){} el.onchange=()=>{ try{ localStorage.setItem(id,el.value); }catch(e){} }; });
 $("#btnA3").onclick=async()=>{ if(weeks.length && !await requirePosters(fortnightFilms(),"Génération de l'affiche A3")) return; showA3().catch(e=>{ console.error(e); $("#a3Progress").textContent="Erreur : "+e.message; }); };
 $("#btnA3Pdf").onclick=async()=>{ if(!lastA3) return; if(!window.jspdf){ $("#a3Progress").textContent="PDF indisponible (bibliothèque non chargée)."; return; }
   const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a3",compress:true});
