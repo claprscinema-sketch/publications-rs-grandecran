@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 19h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 16/11/2026 20h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1950,7 +1950,13 @@ async function rowFit(pt, w, s, syn, H, GAP, cols=1){
   if(ok && inGrid && await flyerToujours(tmp,pt.reps,0,0,cw,s,false)>ph+0.5) ok=false;
   return {ok, ph, th};
 }
-const CG2=56;   // écart entre les 2 colonnes (option 3)
+const CG2=56;
+// Texte agrandi film par film pour occuper toute la hauteur de sa ligne (synopsis complet si la place le permet)
+async function growText(f, cw, s, syn, ph){
+  const tmp=canvas(10,10).getContext("2d"), fits=async(sc,sy)=>await flyerBlock(tmp,f,0,0,cw,sc,sy,false)<=ph+0.5;
+  if(syn<SYN_MAX && await fits(s,SYN_MAX)) syn=SYN_MAX;
+  return {s, syn};   // même taille de police pour tous les films du document
+}   // écart entre les 2 colonnes (option 3)
 async function rowsDraw(ctx, pt, x, y, w, s, syn, GAP, H, cols=1){
   const r=await rowFit(pt,w,s,syn,H,GAP,cols), inGrid=cols>1&&pt.reps.length>0, n=pt.news.length, items=n+(inGrid?1:0), rows=Math.ceil(items/cols), cw=cols>1?(w-CG2)/cols:w;
   const used=rows*r.ph+GAP*Math.max(0,rows-1)+(r.th?(n?GAP:0)+r.th:0), gaps=Math.max(0,rows-1)+(r.th&&n?1:0);
@@ -1958,7 +1964,7 @@ async function rowsDraw(ctx, pt, x, y, w, s, syn, GAP, H, cols=1){
   ROW_PH=r.ph;
   for(let i=0;i<items;i+=cols){
     for(let j=0;j<cols && i+j<items;j++){ const side=FLYER_LAYOUT==="alternance"&&(i+j)%2===1?"right":"left";
-      if(i+j<n) await flyerBlock(ctx,pt.news[i+j],x+j*(cw+CG2),yy,cw,s,syn,true,side);
+      if(i+j<n){ const fit=await growText(pt.news[i+j],cw,s,syn,r.ph); await flyerBlock(ctx,pt.news[i+j],x+j*(cw+CG2),yy,cw,fit.s,fit.syn,true,side); }
       else { ROW_PH=0; await flyerToujours(ctx,pt.reps,x+j*(cw+CG2),yy,cw,s,true,r.ph); ROW_PH=r.ph; } }
     if(cols>1){ ctx.save(); ctx.strokeStyle="rgba(0,0,0,.14)"; ctx.lineWidth=2; const lx=x+cw+CG2/2; ctx.beginPath(); ctx.moveTo(lx,yy); ctx.lineTo(lx,yy+r.ph); ctx.stroke(); ctx.restore(); }
     yy+=r.ph+GAP+extra; }
@@ -2047,6 +2053,7 @@ async function renderFlyer(){
     // auto : 1 film par ligne en alternance, ou 2 films par ligne
     best.style = FLYER_LAYOUT==="auto" ? (best.cols>1?"deux":"alternance") : FLYER_LAYOUT;
     plans.push(best); }
+  { const sMin=Math.min(...plans.map(p=>p.s)); plans.forEach(p=>p.s=sMin); }   // police identique sur les deux faces
   const plan={s:Math.min(...plans.map(p=>p.s)), syn:Math.min(...plans.map(p=>p.syn))};
   const faces=[canvas(FW,FH),canvas(FW,FH)];
   for(const c of faces){ const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,FW,FH); await flyerPageBg(x); }
@@ -2138,12 +2145,12 @@ async function renderA3(){
       let y=headH+FM-30;
       for(let k=0;k<parts.length;k++){ const pt=parts[k], pl=stackedPlan[k];
         weekTitle(pt,FM,y,WF); y+=WH+24;
-        FLYER_LAYOUT=pl.cols>1?"deux":"alternance"; await rowsDraw(ctx,pt,FM,y,WF,pl.s,pl.syn,GAP,pl.H,pl.cols); y+=pl.H+GAP; }
+        FLYER_LAYOUT=pl.cols>1?"deux":"alternance"; await rowsDraw(ctx,pt,FM,y,WF,Math.min(...stackedPlan.map(q=>q.s)),pl.syn,GAP,pl.H,pl.cols); y+=pl.H+GAP; }
     } else for(let k=0;k<parts.length;k++){
       const pt=parts[k], x=FM+k*(CW+CG); let y=headH+FM-30;
       weekTitle(pt,x,y,CW); y+=WH+24;
       if(keepL==="auto") FLYER_LAYOUT="alternance";
-      await rowsDraw(ctx,pt,x,y,CW,plans[k].s,plans[k].syn,GAP,zone-WH-24);
+      await rowsDraw(ctx,pt,x,y,CW,sc,plans[k].syn,GAP,zone-WH-24);
     }
     FLYER_LAYOUT=keepL;
     // séparateur entre les colonnes
