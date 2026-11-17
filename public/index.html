@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 20h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 22h00</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -269,8 +269,13 @@
   <div id="flyerOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
   <style>#flyerOut figure{margin:0;text-align:center}#flyerOut img{width:330px;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#flyerOut figcaption{font-size:13px;color:#666;margin-top:4px}</style>
 </section>
-<section data-tab="pba" hidden><h2>PB écran</h2>
-  <p class="todo">Onglet en préparation.</p>
+<section data-tab="pba" hidden><h2>🎞️ PB écran — pré-bandes-annonces adultes (PBA) et enfants (PBE)</h2>
+  <p class="hint">4 PB de 30 min par quinzaine (ex. 1111PBA, 1111PBE, 1811PBA, 1811PBE) : écran fixe 10 min, puis ouverture + bande-annonce + clôture pour chaque film (17 à 18 min), puis le flyer écran de la date en boucle jusqu'à 20 min. Assemblage en MP4 et DCP sur cet ordinateur (FFmpeg + DCP-o-matic).</p>
+  <div id="pbRoot"></div>
+  <style>.pbBlock{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fff}.pbBlock h3{margin:0 0 6px}
+  .pbModels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.pbModel{display:flex;flex-direction:column;gap:4px;border:1px solid #eee;border-radius:8px;padding:8px}
+  .pbJobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}.pbJob{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.pbJob h4{margin:0 0 4px}
+  .pbJob ol{margin:4px 0 8px;padding-left:22px}.pbJob li{margin:3px 0;font-size:14px}.pbJob li.pbOff{opacity:.45}.pbJob li button{padding:1px 6px}</style>
 </section>
 <section data-tab="flyerspb" hidden>
   <h2>🎞️ Flyers écran — vidéos MP4 3996×2160</h2>
@@ -286,13 +291,6 @@
   <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
   <div id="pbProgress" class="hint"></div>
   <div id="pbOut"></div>
-  <hr style="margin:26px 0;border:0;border-top:1px solid var(--line)">
-  <h3>🖥️ Fond seul « Semaine du … » (image PNG)</h3>
-  <p class="hint">Image de fond (base commune « Image de fond écran », sinon celle du flyer) à 35 %, dates de la semaine en haut à droite, logo du cinéma en bas à gauche. Une image par semaine de l'Excel.</p>
-  <div class="row"><button class="primary" id="btnFond">Composer les fonds écran</button></div>
-  <div id="fondProgress" class="hint"></div>
-  <div id="fondOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
-  <style>#fondOut figure{margin:0;text-align:center}#fondOut img{width:560px;max-width:100%;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#fondOut figcaption{font-size:13px;margin-top:6px}</style>
 </section>
 <section data-tab="cartons" hidden><h2>Cartons écran — vidéos MP4 3996 × 2160 px</h2>
   <p class="hint">Une vidéo par film de la semaine choisie (onglet Base de données) : affiche à gauche, titre, vignettes (Reprise, Sortie nationale, Avant-première et Entrée gratuite clignotent ; chacune fait 30 % de la largeur de l'affiche), puis les séances qui s'écrivent comme à la machine et sont complètes 3 secondes avant la fin. Durée : 7 s (1 ou 2 séances), 8 s (3 ou 4), 9 s (5 et plus). Vidéos muettes, H.264. <b>À faire avec Chrome ou Edge</b> ; compter de 20 s à 1 min par carton.</p>
@@ -330,6 +328,7 @@ const DEFAULTS = {
   flyerAddress:"4 passage Lino Ventura — La Pommeraye, 49620 Mauges-sur-Loire", phone:"", web:"cinemagrandecran.org",
   hashtags:"#cinema #artetessai #lapommeraye #maugessurloire #anjou #cinemagrandecran",
   tCarousel:"09:30", tFilms:"10:00", synLen:"250",
+  pbVol:"20", pbFadeIn:"1.0", pbFadeOut:"1.0", pbRes:"4K", pbFps:"30", pbType:"TLR",
   dcpRes:"4K", dcpFps:"30", dcpChannels:"6", dcpTypeCarton:"POL", dcpTypeFlyer:"ADV", dcpMode:"separes",
   cAdult:"#80923E", cReduit:"#2D3B4D", cJeune:"#FBD30F"
 };
@@ -2754,6 +2753,7 @@ async function showTab(t){
   if(t==="ecrans") renderEcranList();
   if(t==="flyers") renderCompact("#flyerFilms");
   if(t==="cartons") renderCompact("#cartonFilms");
+  if(t==="pba") renderPB();
   if(t==="base") renderInfoList();
   try{ localStorage.setItem("onglet",t); }catch(e){}
 }
@@ -3206,6 +3206,269 @@ async function dcpPack(packName, items, px=""){
   await saveFile(`Pack_DCP_${dcpSafe(packName)}.zip`, await z.generateAsync({type:"blob", compression:"STORE", platform:"UNIX"}));
 }
 
+/* ========================== PB écran : pré-bandes-annonces adultes (PBA) et enfants (PBE) ========================== */
+// Chaque PB dure 30 min : A) écran fixe 10 min (avec sa musique)  B) 17-18 min de « ouverture + bande-annonce + clôture » par film
+// (musique sur les ouvertures / clôtures, continue quand clôture et ouverture s'enchaînent)  C) flyer écran de la date en boucle jusqu'à 20 min (B + C).
+// Les 4 PB d'une quinzaine : jjmmPBA / jjmmPBE pour la semaine qui précède la quinzaine et pour la 1re semaine de la quinzaine.
+// L'assemblage (30 min en 4K) est fait sur l'ordinateur par FFmpeg puis DCP-o-matic, à partir d'un dossier de travail préparé par l'outil.
+const PB_SLOTS_DEF={open:{x:136,y:938,w:838,h:1143,b:6}, close:{x:1283,y:153,w:1334,h:1808,b:0}};   // emplacement de l'affiche dans les vidéos modèles (3916×2116)
+let PB_B_MIN=17*60, PB_B_MAX=18*60, PB_TOTAL_B_C=20*60, PB_A=10*60;
+let pbDirH=null, pbJobs={};
+const pbS=k=>settings[k]??DEFAULTS[k];
+const fsOK=()=>"showDirectoryPicker" in window;
+async function pbDirGet(ask){
+  if(!pbDirH){ const h=await Store.get("pbDirHandle"); if(h) pbDirH=h; }
+  if(!pbDirH) return null;
+  let p=await pbDirH.queryPermission({mode:"readwrite"});
+  if(p!=="granted" && ask) p=await pbDirH.requestPermission({mode:"readwrite"});
+  return p==="granted"?pbDirH:null;
+}
+async function pbSub(dir, parts, create=true){ let d=dir; for(const p of parts) d=await d.getDirectoryHandle(p,{create}); return d; }
+async function pbWrite(dir, path, data){ const parts=path.split("/"), name=parts.pop(), d=await pbSub(dir,parts);
+  const fh=await d.getFileHandle(name,{create:true}), w=await fh.createWritable();
+  if(data instanceof Blob){ await data.stream().pipeTo(w); } else { await w.write(data); await w.close(); } }
+async function pbGetFile(dir, path){ try{ const parts=path.split("/"), name=parts.pop(), d=await pbSub(dir,parts,false); return await (await d.getFileHandle(name)).getFile(); }catch(e){ return null; } }
+const pbSafe=s=>norm(String(s)).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,50)||"film";
+const jjmm=d=>`${pad(d.getDate())}${pad(d.getMonth()+1)}`;
+// dates des 4 PB : semaine qui précède la quinzaine de l'Excel, puis 1re semaine de la quinzaine
+function pbDates(){ const w0=(typeof weeks!=="undefined"&&weeks&&weekPair)?weeks[weekPair[0]]:null;
+  const d2=w0?new Date(w0.start):addDays(weekStartOf(new Date()),7), d1=addDays(d2,-7); return [d1,d2]; }
+// écrans du flyer écran d'une date : de cette semaine jusqu'à la fin de la quinzaine (3 écrans la semaine d'avant, 2 la 1re semaine)
+function pbFlyerWeeks(d){ const end=addDays(pbDates()[0],14), ws=[]; for(let x=new Date(d); x<=end; x=addDays(x,7)){ const w=histWeek(x); if(w&&w.films.length) ws.push(w); } return ws; }
+const videoInfoCache=new Map();
+function videoInfo(file){ const k=file.name+"|"+file.size+"|"+file.lastModified; if(videoInfoCache.has(k)) return Promise.resolve(videoInfoCache.get(k));
+  return new Promise(res=>{ const v=document.createElement("video"), u=URL.createObjectURL(file); let done=false;
+    const end=r=>{ if(done) return; done=true; URL.revokeObjectURL(u); if(r) videoInfoCache.set(k,r); res(r); };
+    v.preload="metadata"; v.muted=true; v.onloadedmetadata=()=>end({w:v.videoWidth, h:v.videoHeight, d:v.duration}); v.onerror=()=>end(null); setTimeout(()=>end(null),15000); v.src=u; }); }
+function pbJobList(){ return pbDates().flatMap(d=>["PBA","PBE"].map(k=>({id:jjmm(d)+k, date:d, kind:k}))); }
+async function pbJobsLoad(){ pbJobs=(await Store.get("pbJobs"))||{}; }
+function pbJobsSave(){ Store.set("pbJobs",pbJobs); }
+// choix des films pour tomber entre 17 et 18 min (ordre de la liste = priorité)
+function pbSelect(films, tOpen, tClose){
+  const n=films.length, blk=films.map(f=>tOpen+(f.dur||0)+tClose); let best=null, near=null;
+  if(n>16) films=films.slice(0,16);
+  for(let m=1;m<(1<<Math.min(n,16));m++){ let tot=0, w=0;
+    for(let i=0;i<Math.min(n,16);i++) if(m&(1<<i)){ tot+=blk[i]; w+=Math.pow(2,16-i); }
+    if(tot>=PB_B_MIN && tot<=PB_B_MAX){ if(!best||w>best.w) best={m,tot,w}; }
+    else if(tot<=PB_B_MAX && (!near||tot>near.tot)) near={m,tot,w}; }
+  const pick=best||near; if(!pick) return {sel:[], tot:0, ok:false};
+  return {sel:films.map((f,i)=>({...f, on:!!(pick.m&(1<<i))})), tot:pick.tot, ok:!!best};
+}
+// boucle du flyer écran : écrans de 7 à 10 s, nombre de tours pour finir pile à 20 min
+function pbLoop(rest, N){ if(N<1||rest<=0) return {k:0,d:0}; const k=Math.ceil(rest/(N*10)), d=rest/(k*N); return {k, d, ok:d>=7&&d<=10}; }
+async function pbPosterPNG(src, slot){
+  const im=await loadImg(src), c=canvas(slot.w+2*slot.b, slot.h+2*slot.b), x=c.getContext("2d");
+  if(slot.b){ x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); }
+  if(im){ x.save(); x.beginPath(); x.rect(slot.b,slot.b,slot.w,slot.h); x.clip(); cover(x,im,slot.b,slot.b,slot.w,slot.h); x.restore(); }
+  return await new Promise(r=>c.toBlob(r,"image/png"));
+}
+
+/* ---- interface ---- */
+const PB_MODELS=[["ouverture","Vidéo d'ouverture (1)","video/*"],["cloture","Vidéo de clôture (2)","video/*"],["ecran10_PBA","Écran fixe 10 min (3) — PBA","video/*"],["ecran10_PBE","Écran fixe 10 min — PBE (si vide : celui des PBA)","video/*"],["musique","Musique des ouvertures / clôtures","audio/*"]];
+async function pbModelFile(dir, k){ for(const ext of ["mp4","mov","mp3","wav","m4a","aac","ogg","flac"]){ const f=await pbGetFile(dir,`modeles/${k}.${ext}`); if(f) return {f, path:`modeles/${k}.${ext}`}; } return null; }
+async function renderPB(){
+  const root=$("#pbRoot"); if(!root) return;
+  if(!fsOK()){ root.innerHTML='<p class="warn">Cet onglet a besoin de Chrome ou Edge (accès à un dossier de travail sur l\'ordinateur).</p>'; return; }
+  await pbJobsLoad();
+  const dir=await pbDirGet(false), h=await Store.get("pbDirHandle");
+  const jobs=pbJobList(); let known=[], tO=5, tC=6;
+  let html=`<div class="pbBlock"><h3>1. Dossier de travail sur cet ordinateur</h3>
+    <p class="hint">Les modèles, les bandes-annonces et les fichiers d'assemblage y sont rangés. À choisir une fois (par ex. Documents/PB_Grand_Ecran).</p>
+    <div class="row" style="gap:10px;align-items:center"><button class="small" data-pbdir>📁 ${h?"Changer de dossier":"Choisir le dossier"}</button>
+    ${h&&!dir?'<button class="small primary" data-pbreco>🔓 Autoriser l\'accès au dossier « '+esc(h.name)+' »</button>':""}
+    <span class="hint" style="margin:0">${dir?"✅ Dossier : <b>"+esc(dir.name)+"</b>":"Aucun dossier accessible."}</span></div></div>`;
+  if(dir){
+    html+=`<div class="pbBlock"><h3>2. Modèles et musique</h3><div class="pbModels">`;
+    for(const [k,l,acc] of PB_MODELS){ const m=await pbModelFile(dir,k); let info="";
+      if(m){ if(acc==="video/*"){ const v=await videoInfo(m.f); info=v?`${v.w}×${v.h} · ${v.d.toFixed(1)} s`:""; } else info=(m.f.size/1e6).toFixed(1)+" Mo"; }
+      html+=`<div class="pbModel"><b>${l}</b><span class="hint" style="margin:0">${m?"✅ "+esc(m.f.name)+" · "+info:"⚠️ à déposer"}</span><button class="small" data-pbmodel="${k}" data-acc="${acc}">${m?"Remplacer":"Choisir le fichier"}</button></div>`; }
+    html+=`</div><div class="row" style="gap:16px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <label>Volume de la musique (0–100) <input type="number" min="0" max="100" step="1" data-pbset="pbVol" value="${esc(pbS("pbVol"))}" style="width:70px"></label>
+      <label>Fondu d'entrée (s) <input type="number" min="0" max="10" step="0.1" data-pbset="pbFadeIn" value="${esc(pbS("pbFadeIn"))}" style="width:70px"></label>
+      <label>Fondu de sortie (s) <input type="number" min="0" max="10" step="0.1" data-pbset="pbFadeOut" value="${esc(pbS("pbFadeOut"))}" style="width:70px"></label>
+      <span class="hint" style="margin:0">Volume 20 = réglage « 20 » de Canva (20 % du niveau d'origine). La musique joue sur les ouvertures et clôtures, jamais sur les bandes-annonces.</span></div></div>`;
+    // 3. films de chaque PB
+    html+=`<div class="pbBlock"><h3>3. Films de chaque PB</h3><p class="hint">Ajoute les films dans l'ordre de priorité, avec leur bande-annonce : l'outil retient ceux qui font tomber les bandes-annonces entre 17 et 18 min.</p><div class="pbJobs">`;
+    const m1=await pbModelFile(dir,"ouverture"), m3=await pbModelFile(dir,"cloture");
+    tO=m1?((await videoInfo(m1.f))||{d:5}).d:5; tC=m3?((await videoInfo(m3.f))||{d:6}).d:6;
+    known=[...new Map(Object.values(weekHist).map(deserWeek).concat(weeks).flatMap(w=>w.films).map(f=>[f.key,f])).values()].sort((a,b)=>titleOf(a).localeCompare(titleOf(b)));
+    for(const j of jobs){ const L=pbJobs[j.id]||[], S=pbSelect(L,tO,tC);
+      const flyerN=pbFlyerWeeks(j.date).length, lp=pbLoop(PB_TOTAL_B_C-S.tot, flyerN);
+      html+=`<div class="pbJob" data-job="${j.id}"><h4>${j.id} <span class="hint" style="margin:0">${j.kind==="PBA"?"adultes":"enfants"} · semaine du ${pad(j.date.getDate())}/${pad(j.date.getMonth()+1)}</span></h4>
+        <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ bande-annonce manquante"}${f.on===false?" · non retenu":""}</span>
+          <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-ba="${i}">🎞 BA</button><button class="small" data-aff="${i}" title="affiche">${(filmState[f.key]&&filmState[f.key].poster)||f.poster?"🖼":"🖼 ⚠️"}</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
+        <div class="row" style="gap:6px"><select data-add><option value="">＋ Ajouter un film de l'Excel…</option>${known.map(f=>`<option value="${esc(f.key)}">${esc(titleOf(f))}</option>`).join("")}</select>
+          <button class="small" data-addother>＋ Autre film</button></div>
+        <div class="hint" style="margin:6px 0 0">${S.tot?`Bandes-annonces : <b>${fmtMS(S.tot)}</b> ${S.ok?"✅":"⚠️ hors de 17–18 min"} · flyer écran : ${flyerN} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s) = ${fmtMS(PB_TOTAL_B_C-S.tot)} · total 30:00`:"Aucun film."}${flyerN?"":" ⚠️ pas de flyer écran pour cette date (ajoute l'Excel correspondant dans Flyers écran)"}</div></div>`; }
+    html+=`</div></div>`;
+    html+=`<div class="pbBlock"><h3>4. Fabrication</h3><div class="row" style="gap:14px;align-items:center;flex-wrap:wrap">
+      <label>Format <select data-pbset="pbRes"><option value="4K"${pbS("pbRes")==="4K"?" selected":""}>4K (3996×2160)</option><option value="2K"${pbS("pbRes")==="2K"?" selected":""}>2K (1998×1080)</option></select></label>
+      <label>Images/s <select data-pbset="pbFps"><option value="30"${pbS("pbFps")==="30"?" selected":""}>30</option><option value="60"${pbS("pbFps")==="60"?" selected":""}>60</option></select></label>
+      <label>Type DCP <select data-pbset="pbType">${DCP_TYPES.map(([v,t])=>`<option value="${v}"${pbS("pbType")===v?" selected":""}>${t}</option>`).join("")}</select></label>
+      <button class="primary" data-pbgo>🎬 Préparer les ${jobs.length} PB (MP4 + DCP)</button></div>
+      <div class="hint" data-pbprog></div></div>`;
+  }
+  root.innerHTML=html;
+  const q=s=>root.querySelector(s);
+  q("[data-pbdir]").onclick=async()=>{ try{ const d=await window.showDirectoryPicker({id:"pbecran",mode:"readwrite"}); pbDirH=d; await Store.set("pbDirHandle",d); renderPB(); }catch(e){} };
+  if(q("[data-pbreco]")) q("[data-pbreco]").onclick=async()=>{ await pbDirGet(true); renderPB(); };
+  if(!dir) return;
+  root.querySelectorAll("[data-pbmodel]").forEach(b=>b.onclick=()=>{ const inp=document.createElement("input"); inp.type="file"; inp.accept=b.dataset.acc;
+    inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; b.disabled=true; b.textContent="Copie…";
+      const ext=(f.name.split(".").pop()||"mp4").toLowerCase(); for(const e of ["mp4","mov","mp3","wav","m4a","aac","ogg","flac"]){ try{ await (await pbSub(dir,["modeles"])).removeEntry(`${b.dataset.pbmodel}.${e}`); }catch(_){} }
+      await pbWrite(dir,`modeles/${b.dataset.pbmodel}.${ext}`,f); renderPB(); }; inp.click(); });
+  root.querySelectorAll("[data-pbset]").forEach(i=>i.onchange=async()=>{ settings[i.dataset.pbset]=String(i.value);
+    const own={}; for(const k of Object.keys(DEFAULTS)) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k]; await Store.set("settingsCommuns",own); shareSettings(); renderPB(); });
+  root.querySelectorAll(".pbJob").forEach(box=>{ const id=box.dataset.job, L=pbJobs[id]=pbJobs[id]||[];
+    const save=()=>{ pbJobsSave(); renderPB(); };
+    box.querySelector("[data-add]").onchange=e=>{ const f=known.find(x=>x.key===e.target.value); if(!f) return; L.push({title:titleOf(f), key:f.key}); save(); };
+    box.querySelector("[data-addother]").onclick=()=>{ const t=prompt("Titre du film :"); if(!t) return; L.push({title:t.trim(), key:"autre-"+pbSafe(t)}); save(); };
+    box.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; if(i>0){ [L[i-1],L[i]]=[L[i],L[i-1]]; save(); } });
+    box.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.down; if(i<L.length-1){ [L[i+1],L[i]]=[L[i],L[i+1]]; save(); } });
+    box.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.rm,1); save(); });
+    box.querySelectorAll("[data-ba]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.ba, inp=document.createElement("input"); inp.type="file"; inp.accept="video/*";
+      inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; b.textContent="Copie…"; b.disabled=true;
+        const v=await videoInfo(f), name=`${pbSafe(L[i].title)}.${(f.name.split(".").pop()||"mp4").toLowerCase()}`;
+        await pbWrite(dir,`bandes-annonces/${name}`,f); L[i].ba=name; L[i].dur=v?v.d:0;
+        save(); }; inp.click(); });
+    box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.aff, ip=document.createElement("input"); ip.type="file"; ip.accept="image/*";
+      ip.onchange=async()=>{ if(ip.files[0]){ L[i].poster=await shrink(await readFile(ip.files[0]),2400); save(); } }; ip.click(); });
+  });
+  q("[data-pbgo]").onclick=()=>pbBuild(dir, root.querySelector("[data-pbprog]"), tO, tC);
+}
+const fmtMS=s=>`${Math.floor(s/60)}:${pad(Math.round(s%60))}`;
+
+/* ---- préparation du dossier d'assemblage ---- */
+async function pbBuild(dir, prog, tO, tC){
+  const btn=$("#pbRoot [data-pbgo]"); btn.disabled=true;
+  try{
+    const res=pbS("pbRes"), fps=Number(pbS("pbFps"))||30, W=res==="2K"?1998:3996, H=res==="2K"?1080:2160, tag=res+fps;
+    const q=x=>Math.round(x*fps)/fps;                                                      // durées calées sur l'image
+    const tOq=q(tO), tCq=q(tC);
+    const music=await pbModelFile(dir,"musique"), open=await pbModelFile(dir,"ouverture"), close=await pbModelFile(dir,"cloture");
+    if(!open||!close) throw new Error("dépose d'abord les vidéos d'ouverture et de clôture (étape 2)");
+    const vol=Math.max(0,Math.min(100,Number(pbS("pbVol"))||0))/100, FI=Number(pbS("pbFadeIn"))||0, FO=Number(pbS("pbFadeOut"))||0;
+    const qn=pbDates()[1], folder=`quinzaine_${jjmm(qn)}`;
+    const VF=`scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps=${fps},format=yuv420p,tpad=stop_mode=clone:stop_duration=3`;
+    const ENC=`-c:v libx264 -preset fast -crf ${res==="2K"?17:18} -pix_fmt yuv420p -g ${fps*2} -c:a pcm_s16le -ar 48000 -ac 2`;
+    const steps=[], made=new Set();    // commandes FFmpeg (cache partagé entre les PB)
+    const step=(out, cmd)=>{ if(made.has(out)) return; made.add(out); steps.push({out, cmd}); };
+    const jobsOut=[];
+    for(const j of pbJobList()){
+      const L=(pbJobs[j.id]||[]).filter(f=>f.ba && f.dur); const S=pbSelect(L,tOq,tCq), sel=S.sel.filter(f=>f.on);
+      if(!sel.length){ jobsOut.push({id:j.id, skip:"aucun film avec bande-annonce"}); continue; }
+      const ws=pbFlyerWeeks(j.date);
+      let B=0; const parts=[], musicSegs=[];
+      // A : écran fixe 10 min
+      const ecr=await pbModelFile(dir,"ecran10_"+j.kind)||await pbModelFile(dir,"ecran10_PBA");
+      if(!ecr) throw new Error("dépose l'écran fixe de 10 min (étape 2)");
+      const aOut=`../cache/ecran10_${j.kind}_${tag}.mov`;
+      step(aOut, `-i "../${ecr.path}" -map 0:v:0 -map 0:a:0 -vf "${VF}" -af "apad" -t ${PB_A} ${ENC}`);
+      parts.push(aOut); let t=PB_A;
+      // B : ouverture + bande-annonce + clôture
+      for(let i=0;i<sel.length;i++){ const f=sel[i]; if(!(filmState[f.key]&&filmState[f.key].poster)){ const st=(await Store.get("film:"+f.key))||{}; if(st.poster) filmState[f.key]={...(filmState[f.key]||{}),...st}; }
+        const src=f.poster||(filmState[f.key]&&filmState[f.key].poster); if(!src) throw new Error(`affiche manquante pour « ${f.title} » (${j.id}) : bouton 🖼`);
+        const id=`${j.id}_${pad(i+1)}_${pbSafe(f.title)}`;
+        await pbWrite(dir,`${folder}/affiches/${id}_o.png`, await pbPosterPNG(src,PB_SLOTS_DEF.open));
+        await pbWrite(dir,`${folder}/affiches/${id}_c.png`, await pbPosterPNG(src,PB_SLOTS_DEF.close));
+        const so=PB_SLOTS_DEF.open, sc=PB_SLOTS_DEF.close, dBA=q(f.dur);
+        const oOut=`../cache/o_${id}_${tag}.mov`, cOut=`../cache/c_${id}_${tag}.mov`, bOut=`../cache/ba_${pbSafe(f.ba)}_${tag}.mov`;
+        step(oOut, `-i "../${open.path}" -i "affiches/${id}_o.png" -f lavfi -i anullsrc=r=48000:cl=stereo -filter_complex "[0:v][1:v]overlay=${so.x-so.b}:${so.y-so.b},${VF}[v]" -map "[v]" -map 2:a -t ${tOq} ${ENC}`);
+        step(bOut, `-i "../bandes-annonces/${f.ba}" -map 0:v:0 -map 0:a:0 -vf "${VF}" -af "aresample=48000,apad" -t ${dBA} ${ENC}`);
+        step(cOut, `-i "../${close.path}" -i "affiches/${id}_c.png" -f lavfi -i anullsrc=r=48000:cl=stereo -filter_complex "[0:v][1:v]overlay=${sc.x-sc.b}:${sc.y-sc.b},${VF}[v]" -map "[v]" -map 2:a -t ${tCq} ${ENC}`);
+        // musique : 1re ouverture seule, puis chaque « clôture + ouverture suivante », puis la dernière clôture
+        if(i===0) musicSegs.push([t, tOq]); else musicSegs[musicSegs.length-1][1]+=tOq;
+        parts.push(oOut, bOut, cOut); t+=tOq+dBA; musicSegs.push([t, tCq]); t+=tCq; B+=tOq+dBA+tCq; }
+      // C : flyer écran de la date, en boucle jusqu'à 20 min
+      const lp=pbLoop(PB_TOTAL_B_C-B, ws.length), flyerParts=[];
+      if(ws.length && lp.k){
+        const d=q(lp.d), mode=$("#pbMode")?$("#pbMode").value:"clignote";
+        for(let k=0;k<ws.length;k++){ prog.textContent=`${j.id} : flyer écran ${k+1}/${ws.length}…`;
+          const P=await preparePB(ws[k]), r=await encodeFrames((c,tt)=>drawPBFrame(c,P,tt,mode), d, fps, p=>prog.textContent=`${j.id} : flyer écran ${k+1}/${ws.length}… ${Math.round(p*100)} %`);
+          const fn=`flyers/${j.id}_${k+1}.mp4`; await pbWrite(dir,`${folder}/${fn}`,r.blob);
+          const fo=`../cache/fl_${j.id}_${k+1}_${tag}.mov`;
+          step(fo, `-i "${fn}" -f lavfi -i anullsrc=r=48000:cl=stereo -map 0:v -map 1:a -vf "${VF}" -t ${d} ${ENC}`); flyerParts.push(fo); }
+        for(let r=0;r<lp.k;r++) parts.push(...flyerParts);
+      }
+      // liste d'assemblage + mixage de la musique
+      await pbWrite(dir,`${folder}/liste_${j.id}.txt`, parts.map(p=>`file '${p}'`).join("\n")+"\n");
+      let fc=null;
+      if(music && vol>0 && musicSegs.length){
+        let off=0; const lines=[`[1:a]aresample=48000,aformat=channel_layouts=stereo,asplit=${musicSegs.length}${musicSegs.map((_,i)=>`[s${i}]`).join("")}`];
+        musicSegs.forEach(([st,len],i)=>{ const fi=Math.min(FI,len/2), fo=Math.min(FO,len/2);
+          lines.push(`[s${i}]atrim=start=${off.toFixed(3)}:duration=${len.toFixed(3)},asetpts=PTS-STARTPTS,volume=${vol.toFixed(3)},afade=t=in:st=0:d=${fi.toFixed(1)},afade=t=out:st=${(len-fo).toFixed(3)}:d=${fo.toFixed(1)},adelay=${Math.round(st*1000)}:all=1[m${i}]`); off+=len; });
+        lines.push(`[0:a]${musicSegs.map((_,i)=>`[m${i}]`).join("")}amix=inputs=${musicSegs.length+1}:duration=first:normalize=0[aout]`);
+        fc=lines.join(";"); await pbWrite(dir,`${folder}/musique_${j.id}.txt`, lines.join(";\n")+"\n"); }
+      jobsOut.push({id:j.id, fc, music:music&&music.path, B, lp, n:sel.length});
+    }
+    // scripts
+    const ok=jobsOut.filter(x=>!x.skip);
+    if(!ok.length) throw new Error("aucun PB à fabriquer : ajoute des films avec leur bande-annonce");
+    const S=pbScripts(steps, ok, {res, fps, type:pbS("pbType"), ch:pbS("dcpChannels")||"6"});
+    await pbWrite(dir,`${folder}/Fabriquer_les_PB_Windows.bat`, S.bat);
+    await pbWrite(dir,`${folder}/Fabriquer_les_PB_Mac.command`, S.sh);
+    await pbWrite(dir,`${folder}/anti_veille.ps1`, ANTI_VEILLE_PS1);
+    await pbWrite(dir,`${folder}/LISEZMOI.txt`, S.lis);
+    prog.innerHTML=`✓ Dossier <b>${esc(dir.name)}/${folder}</b> prêt : ${ok.map(x=>`${x.id} (${x.n} films, BA ${fmtMS(x.B)})`).join(" · ")}.`
+      +(jobsOut.some(x=>x.skip)?`<div class="warn">Non préparés : ${jobsOut.filter(x=>x.skip).map(x=>x.id+" — "+x.skip).join(" · ")}</div>`:"")
+      +`<div class="hint">Double-clique sur <b>Fabriquer_les_PB_Windows.bat</b> (ou <b>Fabriquer_les_PB_Mac.command</b> : clic droit > Ouvrir) dans ce dossier. Compte plusieurs heures : à lancer le soir.</div>`;
+  }catch(e){ console.error(e); prog.textContent="Erreur : "+e.message; }
+  btn.disabled=false;
+}
+function pbScripts(steps, jobs, o){
+  const dcpOpt=`-c ${o.type} --container-ratio 185 ${o.res==="2K"?"--twok":"--fourk"} --standard SMPTE --no-use-isdcf-name -f ${o.fps} -a ${o.ch}`;
+  const finalCmd=j=>`-f concat -safe 0 -i "liste_${j.id}.txt"${j.fc?` -stream_loop -1 -i "../${j.music}" -filter_complex "${j.fc}" -map 0:v -map "[aout]"`:" -map 0:v -map 0:a"} -c:v copy -c:a aac -b:a 320k -ar 48000 -movflags +faststart -t ${PB_A+PB_TOTAL_B_C} `;
+  // Windows
+  const b=["@echo off","chcp 65001 >nul","setlocal enabledelayedexpansion",'cd /d "%~dp0"',
+    "echo ================================================================","echo   Fabrication des PB : "+jobs.map(j=>j.id).join(" "),"echo ================================================================",
+    'if not exist "..\\cache" mkdir "..\\cache"','if not exist "DCP" mkdir "DCP"','if not exist "travail" mkdir "travail"',
+    'echo en cours> "en_cours.txt"','start "" /min powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0anti_veille.ps1" "%~dp0en_cours.txt"',
+    'set "FF="','if exist "..\\outils\\ffmpeg.exe" set "FF=..\\outils\\ffmpeg.exe"',
+    'if defined FF goto :ffok','echo Telechargement de FFmpeg (une seule fois)...','if not exist "..\\outils" mkdir "..\\outils"',
+    'curl -L -o "..\\outils\\ff.zip" "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"','tar -xf "..\\outils\\ff.zip" -C "..\\outils"',
+    'for /r "..\\outils" %%F in (ffmpeg.exe) do if exist "%%F" if not exist "..\\outils\\ffmpeg.exe" copy /y "%%F" "..\\outils\\ffmpeg.exe" >nul',
+    'if exist "..\\outils\\ffmpeg.exe" set "FF=..\\outils\\ffmpeg.exe"','if not defined FF ( echo FFmpeg introuvable : verifie la connexion Internet. & goto :fin )',':ffok',
+    'set "BIN="','for %%P in ("%ProgramFiles%\\DCP-o-matic 2\\bin" "%ProgramW6432%\\DCP-o-matic 2\\bin" "%ProgramFiles(x86)%\\DCP-o-matic 2\\bin") do if exist "%%~P\\dcpomatic2_cli.exe" set "BIN=%%~P"',
+    'if not defined BIN for /f "delims=" %%F in (\'where /r "%ProgramFiles%" dcpomatic2_cli.exe 2^>nul\') do set "BIN=%%~dpF"',
+    'if defined BIN if "%BIN:~-1%"=="\\" set "BIN=%BIN:~0,-1%"',
+    `echo [1/3] Preparation des sequences (${steps.length} morceaux, deja faits = ignores)`];
+  steps.forEach((s,i)=>{ const out=s.out.replace(/\//g,"\\"), tmp=out.replace(/\.mov$/,".tmp.mov");
+    b.push(`if not exist "${out}" ( echo   ${i+1}/${steps.length} ${s.out.split("/").pop()} & "%FF%" -hide_banner -loglevel error -y ${s.cmd} "${tmp}" && move /y "${tmp}" "${out}" >nul )`); });
+  b.push("echo [2/3] Assemblage des PB de 30 minutes");
+  jobs.forEach(j=>b.push(`echo   ${j.id}.mp4`, `"%FF%" -hide_banner -loglevel error -y ${finalCmd(j)}"${j.id}.mp4"`, `if errorlevel 1 ( echo Echec de l'assemblage de ${j.id} & goto :fin )`));
+  b.push('if not defined BIN ( echo DCP-o-matic 2 introuvable : les MP4 sont prets, mais pas les DCP. Installe-le depuis https://dcpomatic.com puis relance. & goto :fin )',"echo [3/3] Fabrication des DCP");
+  jobs.forEach(j=>b.push(`echo   ${j.id}`, `if exist "travail\\${j.id}" rmdir /s /q "travail\\${j.id}"`,
+    `"%BIN%\\dcpomatic2_create.exe" -o "travail\\${j.id}" -n "${j.id}" ${dcpOpt} "${j.id}.mp4"`, `"%BIN%\\dcpomatic2_cli.exe" "travail\\${j.id}"`,
+    `for /d %%D in ("travail\\${j.id}\\*") do ( if exist "%%D\\ASSETMAP.xml" xcopy /e /i /y /q "%%D" "DCP\\%%~nxD" >nul & if exist "%%D\\ASSETMAP" xcopy /e /i /y /q "%%D" "DCP\\%%~nxD" >nul )`));
+  b.push("echo.","echo Termine : MP4 dans ce dossier, DCP dans le dossier DCP.",":fin",'del "en_cours.txt" 2>nul',"pause");
+  // Mac
+  const m=["#!/bin/bash",'cd "$(dirname "$0")"','caffeinate -i -w $$ &',`echo "=== Fabrication des PB : ${jobs.map(j=>j.id).join(" ")} ==="`,
+    "mkdir -p ../cache DCP travail",'FF=""; [ -x ../outils/ffmpeg ] && FF=../outils/ffmpeg',
+    'if [ -z "$FF" ]; then echo "Téléchargement de FFmpeg (une seule fois)…"; mkdir -p ../outils; curl -L "https://evermeet.cx/ffmpeg/getrelease/zip" -o ../outils/ff.zip && unzip -o -q ../outils/ff.zip -d ../outils && chmod +x ../outils/ffmpeg && xattr -d com.apple.quarantine ../outils/ffmpeg 2>/dev/null; FF=../outils/ffmpeg; fi',
+    'CLI=$(find /Applications "$HOME/Applications" -maxdepth 6 -name dcpomatic2_cli -type f 2>/dev/null | head -1)','CREATE=$(find /Applications "$HOME/Applications" -maxdepth 6 -name dcpomatic2_create -type f 2>/dev/null | head -1)',
+    `echo "[1/3] Préparation des séquences (${steps.length} morceaux)"`];
+  steps.forEach((s,i)=>{ const tmp=s.out.replace(/\.mov$/,".tmp.mov");
+    m.push(`[ -f "${s.out}" ] || { echo "  ${i+1}/${steps.length} ${s.out.split("/").pop()}"; "$FF" -hide_banner -loglevel error -y ${s.cmd.replace(/\$/g,"\\$")} "${tmp}" && mv -f "${tmp}" "${s.out}"; }`); });
+  m.push('echo "[2/3] Assemblage des PB de 30 minutes"');
+  jobs.forEach(j=>m.push(`echo "  ${j.id}.mp4"; "$FF" -hide_banner -loglevel error -y ${finalCmd(j)}"${j.id}.mp4" || { echo "Échec de l'assemblage de ${j.id}"; read -p "Entrée pour fermer"; exit 1; }`));
+  m.push('if [ -z "$CLI" ] || [ -z "$CREATE" ]; then echo "DCP-o-matic 2 introuvable : les MP4 sont prêts, mais pas les DCP."; read -p "Entrée pour fermer"; exit 0; fi','echo "[3/3] Fabrication des DCP"');
+  jobs.forEach(j=>m.push(`rm -rf "travail/${j.id}"; "$CREATE" -o "travail/${j.id}" -n "${j.id}" ${dcpOpt} "${j.id}.mp4" && "$CLI" "travail/${j.id}"`,
+    `for d in "travail/${j.id}"/*/; do d="\${d%/}"; if [ -f "$d/ASSETMAP.xml" ] || [ -f "$d/ASSETMAP" ]; then cp -R "$d" "DCP/"; fi; done`));
+  m.push('echo "Terminé : MP4 dans ce dossier, DCP dans le dossier DCP."','read -p "Entrée pour fermer"');
+  const lis=`PB ÉCRAN — ${jobs.map(j=>j.id).join(", ")}
+Chaque PB (30 min) : écran fixe 10 min, puis ouverture + bande-annonce + clôture pour chaque film (17 à 18 min, musique sur les ouvertures/clôtures),
+puis le flyer écran de la date en boucle jusqu'à 20 min.
+Format : ${o.res==="2K"?"2K 1998×1080":"4K 3996×2160"}, ${o.fps} images/s. DCP : type ${o.type}, SMPTE, non chiffré, nommés comme les MP4.
+
+1. Double-cliquer sur « Fabriquer_les_PB_Windows.bat » (Mac : clic droit sur « Fabriquer_les_PB_Mac.command » > Ouvrir).
+2. La 1re fois, FFmpeg (gratuit) est téléchargé automatiquement dans le dossier « outils ». DCP-o-matic 2 doit être installé.
+3. Attendre la fin (plusieurs heures en 4K) ; l'ordinateur ne se met pas en veille. Les morceaux déjà préparés sont gardés dans « cache » :
+   une relance ne refait que ce qui manque.
+4. Résultat : ${jobs.map(j=>j.id+".mp4").join(", ")} dans ce dossier, et les DCP dans le dossier « DCP ».
+`;
+  return {bat:b.join("\r\n")+"\r\n", sh:m.join("\n")+"\n", lis};
+}
+
 /* ========================== Publication automatique Facebook + Instagram ========================== */
 const META={ok:false, status:null, queue:[]};
 async function metaApi(method, path, body, type){
@@ -3274,7 +3537,7 @@ async function metaSchedule(list){
   prog.textContent=`✓ ${n} publication(s) programmée(s).`+(skipped?` ${skipped} déjà publiée(s), laissée(s) telle(s) quelle(s).`:"");
   await metaRefresh();
 }
-document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnFond") renderFondEcran().catch(err=>{ $("#fondProgress").textContent="Erreur : "+err.message; }); });
+document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnFond" && $("#fondOut")) renderFondEcran().catch(err=>{ $("#fondProgress").textContent="Erreur : "+err.message; }); });
 document.addEventListener("click",async e=>{ if(e.target && e.target.id==="btnMetaAll"){ const b=e.target; if(!outputs.length) return;
   if(!confirm(`Programmer les ${outputs.length} publications du planning sur ${[$("#metaFb").checked&&"Facebook",$("#metaIg").checked&&"Instagram"].filter(Boolean).join(" et ")} ?`)) return;
   b.disabled=true; try{ await metaSchedule(outputs); }catch(err){ alert("Programmation impossible : "+err.message); $("#metaProg").textContent=""; } b.disabled=false; } });
