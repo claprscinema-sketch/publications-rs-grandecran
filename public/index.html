@@ -124,10 +124,11 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 20h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 21h10</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
+<div id="dlBar" style="display:none"></div>
 <nav class="tabs" id="tabs">
   <button data-tab="base" class="on">🗄 Base de données</button>
   <button data-tab="reseaux">📱 Réseaux sociaux</button>
@@ -289,7 +290,7 @@
 </section>
 <section data-tab="flyerspb" hidden>
   <h2>🎞️ Flyers écran — vidéos MP4 3996×2160</h2>
-  <p class="hint">Deux dossiers à partir de la semaine en cours : le 1er avec la semaine en cours et les deux suivantes, le 2e avec les deux suivantes. Chaque écran : fond, dates de la semaine en haut à droite, logo en bas à gauche, tous les films avec leurs séances et leurs vignettes. Sortie nationale, Avant-première, Entrée gratuite et « Toujours à l'affiche » (reprise) clignotent ; VO et Documentaire restent fixes.</p>
+  <p class="hint">Deux dossiers pour la quinzaine de l'Excel : le 1er commence par l'écran de la semaine qui précède (le dernier écran de la quinzaine précédente, gardé en stock sur cet ordinateur), puis les deux semaines de la quinzaine ; le 2e contient les deux semaines. Le dernier écran est à son tour mis en stock pour la quinzaine suivante. Chaque écran : fond, dates de la semaine en haut à droite, logo en bas, tous les films avec leurs séances et leurs vignettes.</p>
   <div class="hint" id="pbHist" style="margin:0 0 8px"></div>
   <div class="row" style="gap:14px;align-items:center">
     <div class="drop" id="dropOldXlsx" style="min-height:0;padding:10px 14px;flex:0 0 auto">➕ Ajouter un ancien Excel (semaines passées)</div>
@@ -409,7 +410,23 @@ const Store = {
   }
 };
 function note(t){ const p=$("#progress"); if(p) p.textContent=t; }
+// message bref visible quel que soit l'onglet
+function toast(t){ const d=document.createElement("div"); d.textContent=t; d.style.cssText="position:fixed;left:14px;bottom:14px;z-index:9001;background:#262626;color:#fff;padding:9px 14px;border-radius:8px;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.3);max-width:60vw";
+  document.body.append(d); setTimeout(()=>d.remove(),4500); }
+// Destination des téléchargements, réglable pour chaque onglet : Téléchargements du navigateur, un dossier choisi, ou demander à chaque fois
+const DL_LABEL={browser:"le dossier Téléchargements du navigateur", ask:"demander à chaque fois", dir:"dossier"};
+async function dlMode(tab){ return (await Store.get("dlMode:"+tab))||"browser"; }
+async function dlDir(tab, ask){ const h=await Store.get("dlDir:"+tab); if(!h) return null;
+  try{ let p=await h.queryPermission({mode:"readwrite"}); if(p!=="granted" && ask) p=await h.requestPermission({mode:"readwrite"}); return p==="granted"?h:null; }catch(e){ return null; } }
 async function saveFile(name, blob){
+  const tab=typeof currentTab!=="undefined"?currentTab:"";
+  if(!Store.dl && "showDirectoryPicker" in window){
+    const mode=await dlMode(tab);
+    try{
+      if(mode==="dir"){ const d=await dlDir(tab,true); if(d){ const fh=await d.getFileHandle(name,{create:true}), w=await fh.createWritable(); await w.write(blob); await w.close(); toast(`✓ ${name} enregistré dans « ${d.name} »`); return; } }
+      if(mode==="ask"){ const fh=await window.showSaveFilePicker({suggestedName:name, id:"dl"+tab}); const w=await fh.createWritable(); await w.write(blob); await w.close(); toast(`✓ ${name} enregistré`); return; }
+    }catch(e){ if(e && e.name==="AbortError") return; console.warn(e); }
+  }
   if(Store.dl){
     try{ await Store.dl.save({filename:name, data:blob}); }
     catch(e){ if(e && e.code!=="declined") note("Téléchargement impossible : "+(e.message||e.code)); }
@@ -2510,7 +2527,7 @@ async function encodeCarton(f, seances, fps, mode, onProg){
     drawCartonFrame(ctx,P,i/fps,mode);
     const vf=new VideoFrame(c,{timestamp:Math.round(i*1e6/fps), duration:Math.round(1e6/fps)});
     enc.encode(vf,{keyFrame:i%(fps*2)===0}); vf.close();
-    while(enc.encodeQueueSize>6) await new Promise(r=>setTimeout(r,5));
+    await encWait(enc);
     if(i%10===0) onProg&&onProg(i/N);
   }
   await enc.flush(); enc.close(); if(err) throw err;
@@ -2518,7 +2535,7 @@ async function encodeCarton(f, seances, fps, mode, onProg){
   return {blob:new Blob([muxer.target.buffer],{type:"video/mp4"}), T:P.T, poster:(()=>{ drawCartonFrame(ctx,P,P.T-0.5,mode); const t=canvas(640,346); t.getContext("2d").drawImage(c,0,0,640,346); return t.toDataURL("image/jpeg",.8); })()};
 }
 let cartonResults=[];
-$("#btnCartons").onclick=async()=>{
+async function generateCartonsRun(){
   const pr=$("#cartonProgress"), out=$("#cartonOut"), btn=$("#btnCartons");
   const ws=weekPair.map(i=>weeks[i]).filter(Boolean); if(!ws.length){ pr.textContent="Dépose d'abord l'Excel (onglet Base de données)."; return; }
   if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
@@ -2556,7 +2573,8 @@ $("#btnCartons").onclick=async()=>{
     $("#btnCartonsZip").disabled=false; $("#btnCartonsDcp").disabled=false;
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   CARTON_WEEK=null; btn.disabled=false;
-};
+}
+$("#btnCartons").onclick=()=>bgTask("cartons","Cartons écran","cartons","#cartonProgress",generateCartonsRun);
 $("#btnCartonsDcp").onclick=async()=>{ if(!cartonResults.length) return; const b=$("#btnCartonsDcp"); b.disabled=true;
   const w0=weeks[weekPair[0]]; try{ await dcpPack(`Cartons_quinzaine_${w0?isoD(w0.start):""}`, cartonResults); }catch(e){ alert("Pack DCP impossible : "+e.message); } b.disabled=false; };
 $("#btnCartonsZip").onclick=async()=>{ if(!cartonResults.length) return; const z=new JSZip();
@@ -2755,6 +2773,17 @@ async function unlockPB(){
   try{ localStorage.setItem("codePB",c); }catch(e){}
   pbOk=true; pbMark(); return true;
 }
+async function renderDlBar(t){
+  const bar=$("#dlBar"); if(!bar) return; if(!("showDirectoryPicker" in window) || Store.dl){ bar.style.display="none"; return; }
+  const nav=$("#tabs"); if(nav.nextElementSibling!==bar) nav.after(bar);
+  const mode=await dlMode(t), h=await Store.get("dlDir:"+t);
+  bar.style.cssText="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 22px;background:#f1ece2;border-bottom:1px solid #ddd;font-size:13px";
+  bar.innerHTML=`⬇ Téléchargements de cet onglet : <select data-dlm><option value="browser"${mode==="browser"?" selected":""}>dossier Téléchargements</option><option value="dir"${mode==="dir"?" selected":""}>${h?"dossier « "+esc(h.name)+" »":"un dossier à choisir…"}</option><option value="ask"${mode==="ask"?" selected":""}>demander à chaque fois</option></select>
+    ${mode==="dir"?`<button class="small" data-dlc>📁 ${h?"Changer de dossier":"Choisir le dossier"}</button>`:""}`;
+  const pick=async()=>{ try{ const d=await window.showDirectoryPicker({id:"dl"+t, mode:"readwrite"}); await Store.set("dlDir:"+t,d); await Store.set("dlMode:"+t,"dir"); }catch(e){} renderDlBar(t); };
+  bar.querySelector("[data-dlm]").onchange=async e=>{ const v=e.target.value; if(v==="dir" && !h) return pick(); await Store.set("dlMode:"+t,v); renderDlBar(t); };
+  const c=bar.querySelector("[data-dlc]"); if(c) c.onclick=pick;
+}
 async function showTab(t){
   if(PB_TABS.includes(t) && !await unlockPB()) return;
   currentTab=t;
@@ -2769,6 +2798,7 @@ async function showTab(t){
   if(t==="flyers") renderCompact("#flyerFilms");
   if(t==="cartons") renderCompact("#cartonFilms");
   if(t==="pba") renderPB();
+  renderDlBar(t);
   if(t==="pbhall") renderHall();
   if(t==="base") renderInfoList();
   try{ localStorage.setItem("onglet",t); }catch(e){}
@@ -2994,22 +3024,29 @@ async function encodeFrames(draw, T, fps, onProg){
   enc.configure(cfg);
   for(let i=0;i<N;i++){ if(err) throw err; draw(ctx,i/fps);
     const vf=new VideoFrame(c,{timestamp:Math.round(i*1e6/fps), duration:Math.round(1e6/fps)}); enc.encode(vf,{keyFrame:i%(fps*2)===0}); vf.close();
-    while(enc.encodeQueueSize>6) await new Promise(r=>setTimeout(r,5));
+    await encWait(enc);
     if(i%10===0) onProg&&onProg(i/N); }
   await enc.flush(); enc.close(); if(err) throw err; muxer.finalize();
   draw(ctx,0); const th=canvas(800,432); th.getContext("2d").drawImage(c,0,0,800,432);
   return {blob:new Blob([muxer.target.buffer],{type:"video/mp4"}), poster:th.toDataURL("image/jpeg",.8)};
 }
 let pbResults=[];
+// Écran « en stock » : le dernier écran d'une quinzaine (2e semaine) est gardé sur cet ordinateur ; il sert de 1er écran
+// à la quinzaine suivante (semaine qui précède sa 1re semaine). Clé : date ISO de la semaine.
+const flyerStockHas={};
+async function flyerStockGet(iso){ const v=await Store.get("flyerStock:"+iso); flyerStockHas[iso]=!!(v&&v.blob); return v&&v.blob?v:null; }
+async function flyerStockSet(iso, o){ await Store.set("flyerStock:"+iso, o); flyerStockHas[iso]=true; }
+function flyerQ(){ const q1=pbDates()[1]; return {prev:addDays(q1,-7), q1, q2:addDays(q1,7)}; }
 async function generatePB(){
   const pr=$("#pbProgress"), out=$("#pbOut"), btn=$("#btnPB");
   if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
-  const cur=weekStartOf(new Date());
-  const dossiers=[0,7].map(o=>{ const d0=addDays(cur,o), ws=[], miss=[];
-    for(let k=o;k<=14;k+=7){ const ds=addDays(cur,k), w=histWeek(ds); w&&w.films.length?ws.push(w):miss.push(ds); }
-    return {start:d0, ws, miss}; });
-  const all=[]; dossiers.forEach(d=>d.ws.forEach(w=>{ if(!all.some(x=>isoD(x.start)===isoD(w.start))) all.push(w); }));
-  if(!all.length){ pr.textContent="Aucune semaine en cours ou à venir dans l'historique : dépose l'Excel (onglet Base de données)."; return; }
+  // dossier 1 : écran en stock (semaine qui précède la quinzaine) + les 2 semaines de la quinzaine ; dossier 2 : les 2 semaines
+  const {prev,q1,q2}=flyerQ(), stock=await flyerStockGet(isoD(prev));
+  const dossiers=[[prev,[prev,q1,q2]],[q1,[q1,q2]]].map(([d0,days])=>{ const slots=[], miss=[];
+    for(const ds of days){ if(+ds===+prev){ slots.push({date:ds, stock:true}); continue; } const w=histWeek(ds); if(w&&w.films.length) slots.push({date:ds, w}); else miss.push(ds); }
+    return {start:d0, slots, miss}; });
+  const all=[histWeek(q1),histWeek(q2)].filter(w=>w&&w.films.length);
+  if(!all.length){ pr.textContent="Aucune semaine de la quinzaine dans l'historique : dépose l'Excel (onglet Base de données)."; return; }
   if(!await requirePosters(all.flatMap(w=>w.films),"Génération des flyers écran")) return;
   const fps=Number($("#pbFps").value)||30, mode=$("#pbMode").value, T=Number($("#pbDur").value)||10;
   btn.disabled=true; out.innerHTML=""; pbResults=[];
@@ -3021,30 +3058,40 @@ async function generatePB(){
       const P=await preparePB(w);
       done[isoD(w.start)]=await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran ${n}/${total} : semaine du ${shortDate(w.start)}… ${Math.round(p*100)} %`);
     }
-    for(const d of dossiers){ if(!d.ws.length) continue;
-      const tag=`${pad(d.start.getDate())}-${pad(d.start.getMonth()+1)}`, files=d.ws.map((w,i)=>({name:`${i+1}_semaine_du_${pad(w.start.getDate())}-${pad(w.start.getMonth()+1)}.mp4`, ...done[isoD(w.start)]}));
+    // le dernier écran de la quinzaine part en stock pour la quinzaine suivante
+    if(done[isoD(q2)]) await flyerStockSet(isoD(q2), {...done[isoD(q2)], fps, T, mode, made:new Date().toISOString()});
+    if(stock) done[isoD(prev)]={blob:stock.blob, poster:stock.poster};
+    for(const d of dossiers){
+      const ddmm=x=>`${pad(x.getDate())}-${pad(x.getMonth()+1)}`, tag=ddmm(d.start);
+      const files=d.slots.map((sl,i)=>({name:`${i+1}_semaine_du_${ddmm(sl.date)}.mp4`, date:sl.date, stock:!!sl.stock, ...(done[isoD(sl.date)]||{})}));
       pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
-      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.length} écran(s) à la suite</h3>
-        ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant ci-dessus.</div>`:""}
+      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}</h3>
+        ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant (onglet Base de données).</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
         <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
       const grid=box.querySelector(".films");
-      files.forEach((f,fi)=>{ f.iso=isoD(d.ws[fi].start); const el=document.createElement("div"); el.className="cfilm";
-        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" poster="${f.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b><button class="small">⬇ MP4</button>`;
-        el.querySelector("button").onclick=()=>saveFile(f.name,f.blob);
-        grid.appendChild(el); });
-      box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, files, "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
+      const drawCard=(f,el)=>{ el.className="cfilm";
+        if(!f.blob){ el.style.cssText="border:2px dashed #c9b37a;background:#fbf7ec;display:flex;flex-direction:column;gap:6px;justify-content:center;min-height:180px;padding:10px;border-radius:8px";
+          el.innerHTML=`<b>${esc(f.name)}</b><span class="hint" style="margin:0">Case en attente : c'est le dernier écran de la quinzaine précédente. Il se remplira tout seul quand cette quinzaine aura été générée ici ; tu peux aussi déposer son MP4.</span><button class="small">📂 Déposer le MP4…</button>`;
+          el.querySelector("button").onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.accept="video/mp4,video/*";
+            ip.onchange=async()=>{ const fl=ip.files[0]; if(!fl) return; const o={blob:fl, poster:"", fps, T, mode, made:new Date().toISOString()}; await flyerStockSet(isoD(f.date),o); f.blob=fl; f.poster=""; el.innerHTML=""; el.removeAttribute("style"); drawCard(f,el); }; ip.click(); };
+          return; }
+        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" ${f.poster?`poster="${f.poster}"`:""} controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b>${f.stock?'<span class="hint" style="margin:0">📦 repris du stock (quinzaine précédente)</span>':""}<button class="small">⬇ MP4</button>`;
+        el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); };
+      files.forEach(f=>{ f.iso=isoD(f.date); const el=document.createElement("div"); drawCard(f,el); grid.appendChild(el); });
+      const ready=()=>files.filter(f=>f.blob);
+      box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, ready(), "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
-        files.forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
+        ready().forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
         await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
       out.appendChild(box);
     }
-    pr.textContent=`✓ ${pbResults.length} dossier(s) prêt(s) (${fps} images/s, ${T} s par écran).`;
+    pr.textContent=`✓ ${pbResults.length} dossier(s) prêt(s) (${fps} images/s, ${T} s par écran). L'écran du ${pad(q2.getDate())}/${pad(q2.getMonth()+1)} est mis en stock pour la quinzaine suivante.`+(stock?"":` Case du ${pad(prev.getDate())}/${pad(prev.getMonth()+1)} en attente (pas encore d'écran en stock).`);
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 }
-document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") generatePB(); });
+document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") bgTask("flyerspb","Flyers écran","flyerspb","#pbProgress",generatePB); });
 
 /* ========================== Éditeur de carton (retouches dans l'outil) ========================== */
 // Fond : glisser pour déplacer, curseur pour zoomer. Affiche, rectangle des séances, vignettes, logo et ajouts : glisser pour déplacer.
@@ -3251,7 +3298,10 @@ const jjmm=d=>`${pad(d.getDate())}${pad(d.getMonth()+1)}`;
 function pbDates(){ const w0=(typeof weeks!=="undefined"&&weeks&&weekPair)?weeks[weekPair[0]]:null;
   const d2=w0?new Date(w0.start):addDays(weekStartOf(new Date()),7), d1=addDays(d2,-7); return [d1,d2]; }
 // écrans du flyer écran d'une date : de cette semaine jusqu'à la fin de la quinzaine (3 écrans la semaine d'avant, 2 la 1re semaine)
-function pbFlyerWeeks(d){ const end=addDays(pbDates()[0],14), ws=[]; for(let x=new Date(d); x<=end; x=addDays(x,7)){ const w=histWeek(x); if(w&&w.films.length) ws.push(w); } return ws; }
+// écrans de la fin d'un PB : de la semaine d jusqu'à la fin de la quinzaine ; la semaine qui précède la quinzaine vient du stock
+function pbFlyerWeeks(d){ const {prev,q2}=flyerQ(), ws=[]; for(let x=new Date(d); x<=q2; x=addDays(x,7)){
+    if(+x===+prev){ if(flyerStockHas[isoD(x)]) ws.push({start:new Date(x), stock:true, films:[]}); continue; }
+    const w=histWeek(x); if(w&&w.films.length) ws.push(w); } return ws; }
 const videoInfoCache=new Map();
 function videoInfo(file){ const k=file.name+"|"+file.size+"|"+file.lastModified; if(videoInfoCache.has(k)) return Promise.resolve(videoInfoCache.get(k));
   return new Promise(res=>{ const v=document.createElement("video"), u=URL.createObjectURL(file); let done=false;
@@ -3348,6 +3398,39 @@ async function pbPickPoster(f, src, save, L){
     c.onclick=()=>{ all(x=>{ x.poster=r; x.posterPick=true; delete x.posterData; }); close(); save(); }; g.append(c); }
 }
 async function pbFileAt(dir, rel){ return pbGetFile(dir, rel); }
+/* ---- Tâches en arrière-plan : elles continuent quand on change d'onglet ou de fenêtre ; suivi dans un panneau commun ---- */
+const bgTasks={}; let bgTitle=document.title;
+function bgPanel(){ let p=$("#bgPanel"); if(!p){ p=document.createElement("div"); p.id="bgPanel";
+    p.style.cssText="position:fixed;right:14px;bottom:14px;z-index:9000;display:flex;flex-direction:column;gap:6px;max-width:420px;font-size:13px"; document.body.append(p); } return p; }
+function bgRender(){ const p=bgPanel(); p.innerHTML="";
+  for(const [k,t] of Object.entries(bgTasks)){ const d=document.createElement("div");
+    d.style.cssText=`background:${t.state==="err"?"#fdecea":t.state==="ok"?"#e9f6ec":"#fff"};border:1px solid #ccc;border-left:5px solid ${t.state==="err"?"#c62828":t.state==="ok"?"#2e7d32":"#e0b44c"};border-radius:8px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.15)`;
+    d.innerHTML=`<div style="display:flex;gap:8px;align-items:center"><b style="flex:1">${t.state==="run"?"⏳":t.state==="ok"?"✓":"⚠️"} ${esc(t.label)}</b><button class="small" data-go>Voir</button>${t.state!=="run"?'<button class="small" data-x>✕</button>':""}</div>
+      <div class="hint" style="margin:4px 0 0;max-height:60px;overflow:hidden">${esc(t.msg||"")}</div>`;
+    d.querySelector("[data-go]").onclick=()=>showTab(t.tab); const x=d.querySelector("[data-x]"); if(x) x.onclick=()=>{ delete bgTasks[k]; bgRender(); };
+    p.append(d); }
+  const run=Object.values(bgTasks).filter(t=>t.state==="run"), pc=run.map(t=>(t.msg||"").match(/(\d+)\s*%/)).filter(Boolean).map(m=>m[1]);
+  document.title=run.length?`⏳ ${pc.length?pc[0]+" % · ":""}${run[0].label} — ${bgTitle}`:bgTitle;
+}
+const bgTick=()=>new Promise(r=>{ const ch=new MessageChannel(); ch.port1.onmessage=()=>r(); ch.port2.postMessage(0); });
+// attente de l'encodeur sans minuterie (les minuteries sont ralenties quand la fenêtre est cachée)
+async function encWait(enc){ while(enc.encodeQueueSize>6){ if("ondequeue" in enc) await Promise.race([new Promise(r=>enc.addEventListener("dequeue",r,{once:true})), new Promise(r=>setTimeout(r,250))]); else await bgTick(); } }
+async function bgTask(key, label, tab, progSel, fn){
+  if(bgTasks[key] && bgTasks[key].state==="run"){ toast(`« ${label} » est déjà en cours (voir le panneau en bas à droite).`); return; }
+  const t=bgTasks[key]={label, tab, state:"run", msg:"démarrage…"}; bgRender();
+  try{ if("Notification" in window && Notification.permission==="default") Notification.requestPermission(); }catch(e){}
+  let el=typeof progSel==="string"?$(progSel):progSel, mo=null;
+  const watch=e=>{ if(mo) mo.disconnect(); if(!e) return; mo=new MutationObserver(()=>{ t.msg=e.textContent.trim().slice(0,220); bgRender(); }); mo.observe(e,{childList:true,subtree:true,characterData:true}); };
+  watch(el); t.rewatch=watch;
+  let wake=null; try{ wake=await navigator.wakeLock.request("screen"); }catch(e){}
+  const work=async()=>{ try{ await fn(); const m=(t.el||el)?((t.el||el).textContent||"").trim():""; t.state=/^Erreur|⚠️ Erreur/.test(m)?"err":"ok"; t.msg=m.slice(0,220)||"terminé"; }
+    catch(e){ t.state="err"; t.msg="Erreur : "+e.message; } };
+  if(navigator.locks) await navigator.locks.request("tache-"+key, work); else await work();   // un verrou empêche le navigateur de geler la page cachée
+  if(mo) mo.disconnect(); try{ wake&&wake.release(); }catch(e){}
+  bgRender();
+  if(document.hidden){ try{ if(Notification.permission==="granted") new Notification("Publications Grand Écran", {body:`${t.state==="ok"?"✓":"⚠️"} ${label} : ${t.msg}`}); }catch(e){} }
+}
+const bgRunning=k=>bgTasks[k] && bgTasks[k].state==="run";
 // vidéos fabriquées par le script, dans le dossier de travail : aperçu et téléchargement depuis l'application
 async function readyBlock(dir, folder, expected, title){
   let d=null; try{ d=await pbSub(dir,[folder],false); }catch(e){}
@@ -3366,7 +3449,7 @@ async function readyBlock(dir, folder, expected, title){
 function readyWire(root, dir, rerender){
   const box=root.querySelector("[data-ready]"); if(!box) return; const folder=box.dataset.ready;
   const get=async n=>{ const d=await pbSub(dir,[folder],false); return await (await d.getFileHandle(n)).getFile(); };
-  const dl=async n=>{ const f=await get(n), u=URL.createObjectURL(f), a=document.createElement("a"); a.href=u; a.download=n; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),60000); };
+  const dl=async n=>{ const f=await get(n); await saveFile(n,f); };
   box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=()=>dl(b.dataset.rdl));
   const all=box.querySelector("[data-rall]"); if(all) all.onclick=async()=>{ for(const b of box.querySelectorAll("[data-rdl]")){ await dl(b.dataset.rdl); await new Promise(r=>setTimeout(r,800)); } };
   box.querySelector("[data-rref]").onclick=rerender;
@@ -3378,7 +3461,7 @@ function readyWire(root, dir, rerender){
 async function renderPB(){
   const root=$("#pbRoot"); if(!root) return;
   if(!fsOK()){ root.innerHTML='<p class="warn">Cet onglet a besoin de Chrome ou Edge (accès à des dossiers de l\'ordinateur).</p>'; return; }
-  pbJobs=(await Store.get("pbLists"))||{}; hallKid=(await Store.get("hallKid"))||{};
+  pbJobs=(await Store.get("pbLists"))||{}; await flyerStockGet(isoD(flyerQ().prev)); hallKid=(await Store.get("hallKid"))||{};
   const dir=await pbDirGet(false), h=await Store.get("pbDirHandle"), dirE=await pbDirEGet(false), hE=await Store.get("pbDirHandleE");
   const jobs=pbJobList(); let tO=5, tC=6;
   const dirRow=(lab,hint,hh,d,k)=>`<div class="row" style="gap:10px;align-items:center;margin:6px 0"><b style="min-width:150px">${lab}</b><button class="small" data-pbdir="${k}">📁 ${hh?"Changer":"Choisir le dossier"}</button>
@@ -3407,7 +3490,7 @@ async function renderPB(){
       const free=pool.filter(p=>!L.some(f=>f.rel===p.rel)), mine=jobs.filter(x=>x.kind===kind), nb=r=>L.filter(f=>f.rel===r).length;
       const short=L.length && S.tot<PB_B_MIN && L.every(f=>f.dur);
       const fin=mine.map(x=>{ if(kind==="PBE" && !hasKidFilm(histWeek(x.date))) return `<b>${x.id}</b> : pas de film enfants au programme de la semaine → pas de PBE`;
-        const n=pbFlyerWeeks(x.date).length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n); return `<b>${x.id}</b> : flyer écran ${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
+        const fw=pbFlyerWeeks(x.date), n=fw.length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n), pv=flyerQ().prev; return `<b>${x.id}</b> : flyer écran ${+x.date===+pv&&!fw.some(w=>w.stock)?`(écran du ${pad(pv.getDate())}/${pad(pv.getMonth()+1)} pas encore en stock) `:""}${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
       html+=`<div class="pbJob" data-job="${kind}"><h4>${mine.map(x=>x.id).join(" et ")} <span class="hint" style="margin:0">${kind==="PBA"?"adultes":"enfants"}</span></h4>
         <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ durée illisible"}${f.posterData?" · affiche choisie à la main":f.posterPick?` · 🖼 ${esc(f.poster.split("/").pop())} (choisie)`:f.poster?` · <span title="${esc(f.poster)}">🖼 ${esc(f.poster.split("/").pop())}</span>`:" · ⚠️ pas d'affiche"}${nb(f.rel)>1?` · ${nb(f.rel)}×`:""}${f.on===false?" · non retenu":""}</span>
           <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-dup="${i}" title="passer ce film une 2e fois">⧉</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
@@ -3457,7 +3540,8 @@ async function renderPB(){
     box.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.rm,1); save(); });
     box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>pbPickPoster(L[+b.dataset.aff], src, save, L));
   });
-  q("[data-pbgo]").onclick=()=>pbBuild(dir, root.querySelector("[data-pbprog]"), tO, tC);
+  q("[data-pbgo]").onclick=()=>{ const pr=root.querySelector("[data-pbprog]"); bgTask("pba","PB écran","pba",pr,()=>pbBuild(dir, pr, tO, tC)); };
+  if(bgRunning("pba")){ q("[data-pbgo]").disabled=true; root.querySelector("[data-pbprog]").textContent="⏳ Préparation en cours : "+(bgTasks.pba.msg||""); bgTasks.pba.rewatch(root.querySelector("[data-pbprog]")); }
   readyWire(root, dir, renderPB);
 }
 const fmtMS=s=>`${Math.floor(s/60)}:${pad(Math.round(s%60))}`;
@@ -3516,7 +3600,8 @@ async function pbBuild(dir, prog, tO, tC){
       if(ws.length && lp.k){
         const d=q(lp.d), mode=$("#pbMode")?$("#pbMode").value:"clignote";
         for(let k=0;k<ws.length;k++){ prog.textContent=`${j.id} : flyer écran ${k+1}/${ws.length}…`;
-          const P=await preparePB(ws[k]), r=await encodeFrames((c,tt)=>drawPBFrame(c,P,tt,mode), d, fps, p=>prog.textContent=`${j.id} : flyer écran ${k+1}/${ws.length}… ${Math.round(p*100)} %`);
+          let r; if(ws[k].stock){ const st=await flyerStockGet(isoD(ws[k].start)); r={blob:st.blob}; }      // écran en stock (10 s) : coupé à la bonne durée par FFmpeg
+          else { const P=await preparePB(ws[k]); r=await encodeFrames((c,tt)=>drawPBFrame(c,P,tt,mode), d, fps, p=>prog.textContent=`${j.id} : flyer écran ${k+1}/${ws.length}… ${Math.round(p*100)} %`); }
           const fn=`flyers/${j.id}_${k+1}.mp4`; await pbWrite(dir,`${folder}/${fn}`,r.blob);
           const fo=`../cache/fl_${j.id}_${k+1}_${tag}.mov`;
           step(fo, `-i "${fn}" -f lavfi -i anullsrc=r=48000:cl=stereo -map 0:v -map 1:a -vf "${VF}" -t ${d} ${ENC}`); flyerParts.push(fo); }
@@ -3780,7 +3865,8 @@ async function renderHall(relink){
         ip.onchange=async()=>{ if(ip.files[0]){ f.posterData=await shrink(await readFile(ip.files[0]),2400); save(); } }; ip.click(); return; }
       pbPickPoster(f, f.src, save); });
   });
-  q("[data-hgo]").onclick=()=>hallBuild(dir, q("[data-hprog]"), tO, tC);
+  q("[data-hgo]").onclick=()=>{ const pr=q("[data-hprog]"); bgTask("pbhall","PB Hall","pbhall",pr,()=>hallBuild(dir, pr, tO, tC)); };
+  if(bgRunning("pbhall")){ q("[data-hgo]").disabled=true; q("[data-hprog]").textContent="⏳ Préparation en cours : "+(bgTasks.pbhall.msg||""); bgTasks.pbhall.rewatch(q("[data-hprog]")); }
   readyWire(root, dir, ()=>renderHall());
 }
 async function hallBuild(dir, prog, tO, tC){
@@ -4083,6 +4169,7 @@ window.addEventListener("drop",e=>{ e.preventDefault(); note("Dépose le fichier
   $("#cloudState").textContent="…";
   await Store.init();
   $("#cloudState").textContent = "🔒 Base commune intégrée";
+  renderDlBar(typeof currentTab!=="undefined"&&currentTab?currentTab:"base");
   try{ const t=localStorage.getItem("onglet"); if(t && document.querySelector(`#tabs [data-tab="${t}"]`) && (!PB_TABS.includes(t)||pbOk)) showTab(t); }catch(e){}
   await initSettings(); const d=await Store.get("details"); if(d) details=d;
   const sm=await Store.get("synMax"); if(sm) synMax=Number(sm)||350;
