@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 14h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 14h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2330,7 +2330,7 @@ async function cartonBackground(b, img, hideRight){
 }
 // Préparation d'un carton (modèle Canva) : fond fixe pré-dessiné + éléments animés
 async function prepareCarton(f, seances){
-  const st={...(filmState[f.key]||{}), ...flags(f)};
+  const cw=curWeek(), st={...(filmState[f.key]||{}), ...(cw?pbFlags(f,cw):flags(f))};
   if(!st.palette && st.poster) st.palette=await posterPalette(st.poster);
   const color=st.ecran||(st.palette||[])[0]||st.color||"#262a3b";
   const poster=await loadImg(st.poster), still=await loadImg(st.still)||poster;
@@ -2358,7 +2358,7 @@ async function prepareCarton(f, seances){
   b.fillStyle=color; b.fillRect(BX,BY,BW,BH);
   // vignettes : clignotantes au-dessus de l'angle supérieur droit de l'affiche (20 % de sa largeur) ; VO / Documentaire fixes, coin inférieur droit
   const VW=PW*.2, tags=[];
-  if(st.reprise){ const im=stampToujours(VW); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }
+  if(st.reprise){ const im=stampToujours(VW*2); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }   // tampon « Toujours à l'affiche » : taille doublée
   for(const k of ["sn","avp","gratuit","vo","doc"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
     const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
     tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
@@ -2715,7 +2715,10 @@ async function renderFondEcran(){
 /* ========================== Écrans PB : programme de la semaine en vidéo (3996×2160) ========================== */
 const PB_BLINK=["reprise","sn","avp","gratuit"];   // clignotent ; VO et Documentaire restent fixes
 const pbJour=d=>`${JOURS[d.getDay()]} ${d.getDate()} - ${d.getHours()}h${d.getMinutes()?pad(d.getMinutes()):""}`;
-function pbFlags(f, w){ const cw=curWeek(); return (cw && isoD(cw.start)===isoD(w.start)) ? flags(cw.films.find(x=>x.key===f.key)||f) : charOf(f); }
+// « Toujours à l'affiche » : film en reprise, ou déjà programmé la semaine précédente (historique des Excel)
+function wasShownBefore(key, start){ const prev=weekHist[isoD(addDays(start,-7))]; return !!(prev && prev.films.some(x=>x.key===key)); }
+function pbFlags(f, w){ const cw=curWeek(); const fl=(cw && isoD(cw.start)===isoD(w.start)) ? flags(cw.films.find(x=>x.key===f.key)||f) : charOf(f);
+  return {...fl, reprise: fl.reprise || wasShownBefore(f.key, w.start)}; }
 // tampon vert « Toujours à l'affiche » (films en reprise), dessiné comme sur le modèle
 function stampToujours(w){
   const h=Math.round(w*.42), c=canvas(Math.round(w*1.1),Math.round(h*1.6)), x=c.getContext("2d");
