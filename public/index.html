@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 13h15</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 14h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -128,7 +128,7 @@
   <button data-tab="reseaux">📱 Réseaux sociaux</button>
   <button data-tab="ecrans">🖥 Écrans dynamiques</button>
   <button data-tab="flyers">📄 Flyers</button>
-  <button data-tab="cartons">🎬 Cartons écran</button>
+  <button data-tab="cartons" data-pb>🔒 🎬 Cartons écran</button>
   <button data-tab="pba" data-pb>🔒 PB écran</button>
   <button data-tab="flyerspb" data-pb>🔒 Flyers écran</button>
 </nav>
@@ -337,6 +337,7 @@ const ASSETS = [
   {k:"docLogo",  label:"Logo Documentaire",        hint:"actuellement « Mois du doc »", def:DEFAULT_DOC, char:true},
   {k:"gratuitLogo",label:"Logo Entrée gratuite",   hint:"PNG transparent de préférence", char:true},
   {k:"fondEcran", label:"Image de fond écran (3996×2160)", hint:"photo seule, sans texte ni logo ; si vide : image de fond du flyer", flyer:true, size:4096},
+  {k:"fontTexte", label:"Police des textes (Coco Gothic)", hint:"cartons et réseaux sociaux ; dépose le fichier .ttf / .otf de Coco Gothic", flyer:true, font:true, family:"Ecran"},
   {k:"fontTitre", label:"Police du titre écran", hint:"Broadway Engraved par défaut ; pour la changer, dépose un fichier .ttf / .otf / .woff", flyer:true, font:true, def:TITLE_FONT_DEFAULT},
   {k:"flyerBg",   label:"Image de fond du flyer",   hint:"une seule image sur toute la feuille, transparence 60 % ; visible dans les bandeaux haut et bas", flyer:true},
   {k:"afcaeLogo", label:"Logo AFCAE (Art et Essai)", hint:"logo officiel", flyer:true},
@@ -951,24 +952,31 @@ async function initSettings(){
 }
 function refreshVisuals(){ if(currentTab==="ecrans") renderEcranList(); }
 // police du titre écran déposée dans la base commune (prioritaire sur Broadway installée / police approchante)
+const fontLoaded={};
+async function loadFontAsset(k, family){
+  const src=assets[k]; if(!src || fontLoaded[k]===src) return;
+  try{ const ff=new FontFace(family,`url(${src})`); await ff.load(); [...document.fonts].filter(f=>f.family.replace(/"/g,"")===family&&f!==ff).forEach(f=>document.fonts.delete(f)); document.fonts.add(ff); fontLoaded[k]=src; }
+  catch(e){ console.warn("police illisible",k,e); }
+}
+async function applyFonts(){ await loadFontAsset("fontTexte","Ecran"); await applyTitleFont(); }
 let titleFontLoaded=null;
 async function applyTitleFont(){
   const src=assets.fontTitre; if(!src || titleFontLoaded===src) return;
   try{ const ff=new FontFace("TitreSemaine",`url(${src})`); await ff.load(); [...document.fonts].filter(f=>f.family.replace(/"/g,"")==="TitreSemaine"&&f!==ff).forEach(f=>document.fonts.delete(f)); document.fonts.add(ff); titleFontLoaded=src; document.querySelectorAll(".asset .thumb").forEach(t=>{ if(/TitreSemaine/.test(t.style.font)) t.style.font=t.style.font; }); }
   catch(e){ console.warn("police du titre illisible",e); }
 }
-function renderAssets(){ applyTitleFont();
+function renderAssets(){ applyFonts();
   const box0=$("#assets"), box1=$("#flyerAssets"); box0.innerHTML=""; if(box1) box1.innerHTML="";
   for(const a of ASSETS){ const box=a.flyer?box1:box0; if(!box) continue;
     const d=document.createElement("div"); d.className="asset";
     const orig=COMMON_IMAGES[a.k]||a.def||null;
     d.innerHTML=`<label>${a.label}</label><span class="hint" style="margin:0">${a.hint}</span>
-      ${a.font?`<div class="thumb drop-ok" style="display:flex;align-items:center;justify-content:center;font:42px TitreSemaine;color:#bf221a">${assets[a.k]?"Semaine du 24":"cliquer ou glisser le fichier de police ici"}</div>`:`<div class="thumb drop-ok" style="${assets[a.k]?`background-image:url('${assets[a.k]}')`:""}">${assets[a.k]?"":"cliquer ou glisser l'image ici"}</div>`}
+      ${a.font?`<div class="thumb drop-ok" style="display:flex;align-items:center;justify-content:center;font:${a.family?"34px Ecran":"42px TitreSemaine"};color:${a.family?"#262a3b":"#bf221a"}">${assets[a.k]?(a.family?"jeudi 19 - 20h30":"Semaine du 24"):"cliquer ou glisser le fichier de police ici"}</div>`:`<div class="thumb drop-ok" style="${assets[a.k]?`background-image:url('${assets[a.k]}')`:""}">${assets[a.k]?"":"cliquer ou glisser l'image ici"}</div>`}
       ${assets[a.k]&&assets[a.k]!==orig?'<button class="small" data-rm>Retirer</button> ':""}${orig&&assets[a.k]!==orig?`<button class="small" data-reset>${a.font?"Police d'origine":"Image d'origine"}</button>`:""}`;
     {
-      makeDrop(d.querySelector(".thumb"),a.font?".ttf,.otf,.woff,.woff2,font/*":"image/*",async file=>{ assets[a.k]=a.font?await readFile(file):await shrink(await readFile(file),a.size||(a.k==="flyerBg"?3508:2400)); if(a.font) await applyTitleFont(); await Store.set("asset:"+a.k,assets[a.k]); renderAssets(); refreshVisuals(); shareAsset(a.k,assets[a.k]); });
-      const rm=d.querySelector("[data-rm]"); if(rm) rm.onclick=async()=>{ assets[a.k]=orig; await Store.del("asset:"+a.k); if(a.font) await applyTitleFont(); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
-      const rs=d.querySelector("[data-reset]"); if(rs) rs.onclick=async()=>{ assets[a.k]=COMMON_IMAGES[a.k]||a.def||null; await Store.del("asset:"+a.k); if(a.font) await applyTitleFont(); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
+      makeDrop(d.querySelector(".thumb"),a.font?".ttf,.otf,.woff,.woff2,font/*":"image/*",async file=>{ assets[a.k]=a.font?await readFile(file):await shrink(await readFile(file),a.size||(a.k==="flyerBg"?3508:2400)); if(a.font) await applyFonts(); await Store.set("asset:"+a.k,assets[a.k]); renderAssets(); refreshVisuals(); shareAsset(a.k,assets[a.k]); });
+      const rm=d.querySelector("[data-rm]"); if(rm) rm.onclick=async()=>{ assets[a.k]=orig; await Store.del("asset:"+a.k); if(a.font) await applyFonts(); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
+      const rs=d.querySelector("[data-reset]"); if(rs) rs.onclick=async()=>{ assets[a.k]=COMMON_IMAGES[a.k]||a.def||null; await Store.del("asset:"+a.k); if(a.font) await applyFonts(); renderAssets(); refreshVisuals(); shareAsset(a.k,null); };
     }
     box.appendChild(d);
   }
@@ -2289,77 +2297,93 @@ function loadMuxer(){
 }
 function cartonSupported(){ return typeof window.VideoEncoder==="function" && typeof window.VideoFrame==="function"; }
 
-// Préparation d'un carton : fond fixe pré-dessiné + éléments animés
+// ---- Cadrage intelligent de l'image de fond : repère les zones importantes (visages / peau, détails, couleurs)
+async function subjectOf(img){
+  // visages détectés par le navigateur (si disponible) : priorité
+  try{ if("FaceDetector" in window){ const fd=new FaceDetector({fastMode:true}); const faces=await fd.detect(img);
+    if(faces.length){ let fx=0, fy=0, fw=0; faces.forEach(f=>{ const a=f.boundingBox.width*f.boundingBox.height; fw+=a; fx+=a*(f.boundingBox.x+f.boundingBox.width/2); fy+=a*(f.boundingBox.y+f.boundingBox.height/2); });
+      return {cx:fx/fw/img.width, cy:fy/fw/img.height, faces:true}; } } }catch(e){}
+  const W0=160, H0=Math.max(3,Math.round(W0*img.height/img.width)), c=canvas(W0,H0), x=c.getContext("2d");
+  x.drawImage(img,0,0,W0,H0); const d=x.getImageData(0,0,W0,H0).data;
+  const L=new Float32Array(W0*H0); for(let i=0;i<W0*H0;i++) L[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];
+  let sw=0, sx=0, sy=0;
+  for(let y=1;y<H0-1;y++) for(let xx=1;xx<W0-1;xx++){ const i=y*W0+xx, r=d[i*4], g=d[i*4+1], b=d[i*4+2];
+    const grad=Math.abs(L[i+1]-L[i-1])+Math.abs(L[i+W0]-L[i-W0]);
+    const mx=Math.max(r,g,b), mn=Math.min(r,g,b), sat=mx?(mx-mn)/mx:0;
+    const skin=(r>95&&g>40&&b>20&&r>g&&r>b&&r-g>15&&mx-mn>15&&r-b>25)?1:0;   // tons chair : visages, personnages
+    const w=grad/60+sat*.6+skin*3; sw+=w; sx+=w*xx; sy+=w*y; }
+  if(!sw) return {cx:.5, cy:.4};
+  return {cx:sx/sw/W0, cy:sy/sw/H0};
+}
+// Fond : image du film cadrée pour que le sujet tombe dans la partie visible (à droite de l'affiche) ; retournée si le sujet serait caché
+async function cartonBackground(b, img, hideRight){
+  const sub=await subjectOf(img);
+  let flip=false, cx=sub.cx;
+  if(cx<.45){ flip=true; cx=1-cx; }                       // sujet à gauche, donc derrière l'affiche : on retourne l'image
+  const s0=Math.max(CW_/img.width, CH_/img.height), s=s0*1.08, iw=img.width*s, ih=img.height*s;
+  const targetX=hideRight+(CW_-hideRight)*.5, targetY=CH_*.42;   // sujet au centre de la partie visible, un peu au-dessus du milieu
+  let ox=targetX-cx*iw, oy=targetY-sub.cy*ih;
+  ox=Math.min(0,Math.max(CW_-iw,ox)); oy=Math.min(0,Math.max(CH_-ih,oy));
+  b.save(); if(flip){ b.translate(CW_,0); b.scale(-1,1); ox=CW_-ox-iw; }
+  b.drawImage(img,ox,oy,iw,ih); b.restore();
+  return {flip, sub};
+}
+// Préparation d'un carton (modèle Canva) : fond fixe pré-dessiné + éléments animés
 async function prepareCarton(f, seances){
-  const st={...(filmState[f.key]||{}), ...flags(f)}, color=st.ecran||st.color||(st.palette||[])[0]||"#6E264C";
+  const st={...(filmState[f.key]||{}), ...flags(f)};
+  if(!st.palette && st.poster) st.palette=await posterPalette(st.poster);
+  const color=st.ecran||(st.palette||[])[0]||st.color||"#262a3b";
   const poster=await loadImg(st.poster), still=await loadImg(st.still)||poster;
+  await applyFonts(); try{ await document.fonts.load('106px "Ecran"',"jeudi 19 - 20h30"); }catch(e){}
   const bg=canvas(CW_,CH_), b=bg.getContext("2d");
-  b.fillStyle="#111"; b.fillRect(0,0,CW_,CH_);
-  if(still){ b.filter="blur(40px)"; cover(b,still,-120,-120,CW_+240,CH_+240); b.filter="none"; }
-  b.fillStyle="rgba(0,0,0,.58)"; b.fillRect(0,0,CW_,CH_);
-  // affiche : largeur fixe identique pour tous les cartons
-  const PW=1150, ratio=poster?poster.height/poster.width:1.42, PH=Math.min(PW*ratio, CH_-260), PWr=PH/ratio;
-  const px=260+(PW-PWr)/2, py=(CH_-PH)/2;
-  if(poster){ shadowOn(b,60,.6,20); b.drawImage(poster,px,py,PWr,PH); shadowOff(b); }
-  else { b.fillStyle="#444"; b.fillRect(px,py,PWr,PH); }
-  // zone de droite
-  const X0=260+PW+190, X1=CW_-220, ZW=X1-X0;
+  // affiche : proportions exactes du fichier, liseré blanc de 8 px autour (sans rogner l'affiche)
+  const BORD=8, PB=2082, PX=151; let PH=1694, PW=poster?PH*poster.width/poster.height:PH/1.42;
+  if(PW>1400){ PW=1400; PH=PW*poster.height/poster.width; }
+  const px=PX, py=PB-PH;
+  // fond : image du film à 60 % sur blanc (transparence 60 dans Canva), cadrée et retournée si besoin
+  b.fillStyle="#fff"; b.fillRect(0,0,CW_,CH_);
+  let bgInfo=null;
+  if(still){ b.save(); b.globalAlpha=.6; bgInfo=await cartonBackground(b,still,px+PW+BORD); b.restore(); }
+  b.fillStyle="#fff"; b.fillRect(px-BORD,py-BORD,PW+2*BORD,PH+2*BORD);
+  if(poster) b.drawImage(poster,px,py,PW,PH); else { b.fillStyle="#555"; b.fillRect(px,py,PW,PH); }
   // logo du cinéma en bas à droite
-  const logo=assets.logo?await loadTrimmed(assets.logo):null; let logoTop=CH_-120;
-  if(logo){ const [lw,lh]=contain(logo,620,280); b.drawImage(logo,X1-lw,CH_-120-lh,lw,lh); logoTop=CH_-120-lh; }
-  // titre
-  const title=titleOf(f).toUpperCase();
-  let ts=230; b.font=`${ts}px ${FONT}`; let tl=wrapLines(b,title,ZW);
-  while((tl.length>2 || Math.max(...tl.map(l=>b.measureText(l).width))>ZW) && ts>110){ ts-=6; b.font=`${ts}px ${FONT}`; tl=wrapLines(b,title,ZW); }
-  tl=tl.slice(0,2);
-  // vignettes : 30 % de la largeur de l'affiche
-  const VW=Math.round(PW*.30), vgap=60;
-  const tags=[]; for(const [k,,a] of CHARS){ if(st[k]){ const im=assets[a]?await loadCharLogo(assets[a]):null; tags.push({k,im,label:CHARS.find(c=>c[0]===k)[1]}); } }
-  const vh=tags.map(t=>t.im?Math.min(VW*t.im.height/t.im.width, VW*1.1):VW*.32), VH=tags.length?Math.max(...vh):0;
-  const vw=tags.map((t,i)=>t.im?vh[i]*t.im.width/t.im.height:VW);   // proportions d'origine des logos
-  // séances (texte « machine à écrire »)
-  const lines=seances.map(ecranLine);
-  let ss=150; const BW=ZW, maxBoxH=logoTop-80;  // hauteur bornée plus bas
-  const measure=s=>{ b.font=`${s}px "Ecran"`; return Math.max(...lines.map(t=>b.measureText(t+"▌").width)); };
-  // mise en page verticale centrée dans la zone [140, logoTop-60]
-  const layout=s=>{ const lh=s*1.18, boxH=lines.length*lh+s*0.9; const h=tl.length*ts*1.02+(tags.length?50+VH:0)+70+boxH; return {lh,boxH,h}; };
-  while(ss>60 && (measure(ss)>BW-140 || layout(ss).h>logoTop-60-140)) ss-=4;
-  const L=layout(ss), top=140+Math.max(0,(logoTop-60-140-L.h)/2);
-  b.fillStyle="#fff"; b.textAlign="left"; b.textBaseline="top"; b.font=`${ts}px ${FONT}`;
-  shadowOn(b,30,.5,8); tl.forEach((l,i)=>b.fillText(l,X0,top+i*ts*1.02)); shadowOff(b);
-  const vy=top+tl.length*ts*1.02+50, boxY=vy+(tags.length?VH+70:20);
-  // cadre blanc des séances (fixe)
-  b.fillStyle="#fff"; shadowOn(b,40,.45,12); rr(b,X0,boxY,BW,L.boxH,40); b.fill(); shadowOff(b);
-  return {bg, tags, VW, VH, vh, vw, vgap, X0, vy, boxY, BW, boxH:L.boxH, lh:L.lh, ss, lines, color, T:cartonDuration(seances.length)};
+  const logo=assets.logo?await loadTrimmed(assets.logo):null; let LX=CW_-150;
+  if(logo){ const [lw,lh]=contain(logo,675,360); LX=3839-lw; b.drawImage(logo,LX,2125-lh,lw,lh); }
+  // rectangle des séances : couleur dominante de l'affiche, taille ajustée au texte, bas aligné sur l'affiche
+  const lines=seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""));
+  const BX=px+PW+BORD+226, maxW=LX-80-BX;
+  let ss=106; const measure=()=>{ b.font=`${ss}px "Ecran"`; return Math.max(...lines.map(t=>b.measureText(t).width)); };
+  while(ss>40 && (measure()+ss*2.4>maxW || lines.length*ss*1.36+ss*.9>PH)) ss-=2;
+  const lh=ss*1.36, padX=ss*1.2, padY=ss*.45, BW=measure()+2*padX, BH=lines.length*lh+2*padY, BY=PB-BH;
+  b.fillStyle=color; b.fillRect(BX,BY,BW,BH);
+  // vignettes : clignotantes au-dessus de l'angle supérieur droit de l'affiche (20 % de sa largeur) ; VO / Documentaire fixes, coin inférieur droit
+  const VW=PW*.2, tags=[];
+  if(st.reprise){ const im=stampToujours(VW); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }
+  for(const k of ["sn","avp","gratuit","vo","doc"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
+    const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
+    tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
+  const ax=px+PW, ay=py;
+  const blinkers=tags.filter(t=>t.blink), fixed=tags.filter(t=>!t.blink);
+  let yy=ay; blinkers.forEach(t=>{ t.cx=ax; t.cy=yy-t.h*.5+t.h*.25; yy-=t.h*1.05; });      // empilées au-dessus du coin
+  fixed.forEach((t,i)=>{ t.cx=ax; t.cy=PB-t.h*.5-i*(t.h*1.15); });
+  fixed.forEach(t=>pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}));
+  return {bg, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(seances.length), flip:!!(bgInfo&&bgInfo.flip)};
 }
 function drawCartonFrame(ctx, P, t, mode){
   ctx.drawImage(P.bg,0,0);
-  // vignettes
-  let x=P.X0;
-  P.tags.forEach((tg,i)=>{
-    const w=P.vw[i], h=P.vh[i], y=P.vy+(P.VH-h)/2, blink=BLINK_KEYS.includes(tg.k);
-    let a=1, s=1;
-    if(blink){ if(mode==="clignote"){ a=((t*2)%1)<.65?1:0; } else { const ph=(Math.sin(2*Math.PI*1.5*t-Math.PI/2)+1)/2; a=.45+.55*ph; s=1+.07*ph; } }
-    ctx.save(); ctx.globalAlpha=a; ctx.translate(x+w/2,y+h/2); ctx.scale(s,s);
-    if(tg.im) ctx.drawImage(tg.im,-w/2,-h/2,w,h);
-    else { ctx.fillStyle=P.color; rr(ctx,-w/2,-h/2,w,h,h/2); ctx.fill(); ctx.fillStyle="#fff"; ctx.font=`${Math.round(h*.42)}px ${FONT}`; ctx.textAlign="center"; ctx.textBaseline="middle"; fitText(ctx,tg.label.toUpperCase(),w-30,Math.round(h*.45)); ctx.fillText(tg.label.toUpperCase(),0,4); }
-    ctx.restore(); x+=w+P.vgap;
-  });
+  // vignettes clignotantes : zoom / dézoom
+  const ph=(Math.sin(2*Math.PI*1.2*t-Math.PI/2)+1)/2;
+  for(const v of P.blinkers){
+    const sc=mode==="clignote"?1:.88+.24*ph, a=mode==="clignote"?(((t*2)%1)<.65?1:0):.8+.2*ph;
+    ctx.save(); ctx.globalAlpha=a; ctx.translate(v.cx,v.cy); ctx.scale(sc,sc);
+    pbDrawVignette(ctx,{im:v.im, x:-v.w/2, y:-v.h/2, w:v.w, h:v.h, label:v.label, col:P.color}); ctx.restore(); }
   // séances tapées à la machine : texte complet 3 s avant la fin
-  const total=P.lines.reduce((n,l)=>n+l.length,0), t0=0.8, t1=P.T-3;
-  let shown=Math.floor(total*Math.max(0,Math.min(1,(t-t0)/(t1-t0))));
-  ctx.font=`${P.ss}px "Ecran"`; ctx.fillStyle=P.color; ctx.textAlign="left"; ctx.textBaseline="middle";
-  const y0=P.boxY+P.boxH/2-(P.lines.length-1)*P.lh/2;
-  let caret=null;
-  P.lines.forEach((l,i)=>{ const full=ctx.measureText(l).width, lx=P.X0+(P.BW-full)/2;
+  const total=P.lines.reduce((n,l)=>n+l.length,0), t1=P.T-3;
+  let shown=Math.floor(total*Math.max(0,Math.min(1,t/t1)))+3;
+  ctx.font=`${P.ss}px "Ecran"`; ctx.fillStyle="#fff"; ctx.textAlign="left"; ctx.textBaseline="middle";
+  P.lines.forEach((l,i)=>{ const full=ctx.measureText(l).width, lx=P.BX+(P.BW-full)/2;
     const part=l.slice(0,Math.max(0,Math.min(l.length,shown))); shown-=l.length;
-    if(part) ctx.fillText(part,lx,y0+i*P.lh);
-    if(part.length<l.length && caret===null) caret={x:lx+ctx.measureText(part).width, y:y0+i*P.lh};
-  });
-  if(!caret){ const i=P.lines.length-1, l=P.lines[i]; caret={x:P.X0+(P.BW+ctx.measureText(l).width)/2, y:y0+i*P.lh}; }
-  if(((t*2.2)%1)<.6 || t<t1){ ctx.fillRect(caret.x+8,caret.y-P.ss*.42,Math.max(6,P.ss*.07),P.ss*.84); }
-  // fondu d'ouverture
-  if(t<.4){ ctx.fillStyle=`rgba(0,0,0,${1-t/.4})`; ctx.fillRect(0,0,CW_,CH_); }
+    if(part) ctx.fillText(part,lx,P.BY+P.padY+P.lh*(i+.5)); });
 }
 async function encodeCarton(f, seances, fps, mode, onProg){
   await loadMuxer();
@@ -2565,20 +2589,45 @@ async function sharedInit(){
 // ---- onglets
 let currentTab="base";
 // Onglets PB : code demandé une seule fois, vérifié par le site, puis mémorisé sur cet appareil
-const PB_TABS=["pba","flyerspb"];
+const PB_TABS=["cartons","pba","flyerspb"];
 let pbOk=(()=>{ try{ return !!localStorage.getItem("codePB"); }catch(e){ return false; } })();
 function pbMark(){ document.querySelectorAll("#tabs [data-pb]").forEach(b=>b.textContent=b.textContent.replace(/^🔒 /,pbOk?"":"🔒 ")); }
+// fenêtre de saisie du code (dans la page : pas de boîte de dialogue du navigateur, qui peut être bloquée)
+function askCode(msg){
+  return new Promise(res=>{
+    const ov=document.createElement("div");
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:center;justify-content:center";
+    ov.innerHTML=`<form style="background:#fff;border-radius:12px;padding:22px 24px;min-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.4)">
+      <h3 style="margin:0 0 10px">🔒 Code d'accès</h3><p class="hint" style="margin:0 0 10px">${msg}</p>
+      <input type="password" autocomplete="current-password" style="width:100%;font-size:18px;padding:8px 10px;box-sizing:border-box" autofocus>
+      <div class="pbErr" style="color:#b71c1c;font-size:14px;min-height:20px;margin-top:6px"></div>
+      <div class="row" style="justify-content:flex-end;gap:10px;margin-top:6px"><button type="button" data-x>Annuler</button><button class="primary" type="submit">Valider</button></div></form>`;
+    document.body.appendChild(ov);
+    const f=ov.querySelector("form"), inp=f.querySelector("input"), err=f.querySelector(".pbErr");
+    setTimeout(()=>inp.focus(),30);
+    f.querySelector("[data-x]").onclick=()=>{ ov.remove(); res(null); };
+    f.onsubmit=async e=>{ e.preventDefault(); const c=inp.value.trim(); if(!c) return; err.textContent="Vérification…";
+      const r=await checkPB(c); if(r===true){ ov.remove(); res(c); } else { err.textContent=r; inp.select(); } };
+  });
+}
+// true si le code est bon, sinon le message à afficher
+async function checkPB(c){
+  try{
+    let r=await fetch("/api/base/check-pb",{headers:{"x-code":c},cache:"no-store"});
+    if(r.status===404){ // ancienne version de la fonction du site : on vérifie avec le code d'équipe
+      r=await fetch("/api/base/file/pb-acces.txt",{method:"PUT",headers:{"x-code":c,"content-type":"text/plain"},body:"ok",cache:"no-store"}); }
+    if(r.ok) return true;
+    if(r.status===401) return "Code incorrect.";
+    return "Vérification impossible pour le moment (erreur "+r.status+").";
+  }catch(e){ return "Vérification impossible : "+e.message; }
+}
 async function unlockPB(){
   if(pbOk) return true;
   if(!/^https?:$/.test(location.protocol)){ pbOk=true; pbMark(); return true; }   // fichier ouvert en local : pas de serveur pour vérifier
-  for(;;){
-    const c=prompt("Code d'accès aux onglets PB écran et Flyers écran :"); if(!c) return false;
-    try{ const r=await fetch("/api/base/check-pb",{headers:{"x-code":c.trim()},cache:"no-store"});
-      if(r.ok){ try{ localStorage.setItem("codePB",c.trim()); }catch(e){} pbOk=true; pbMark(); return true; }
-      if(r.status!==401){ alert("Vérification impossible pour le moment ("+r.status+")."); return false; }
-    }catch(e){ alert("Vérification impossible : "+e.message); return false; }
-    alert("Code incorrect.");
-  }
+  const c=await askCode("Pour les onglets Cartons écran, PB écran et Flyers écran (demandé une seule fois sur cet appareil).");
+  if(!c) return false;
+  try{ localStorage.setItem("codePB",c); }catch(e){}
+  pbOk=true; pbMark(); return true;
 }
 async function showTab(t){
   if(PB_TABS.includes(t) && !await unlockPB()) return;
