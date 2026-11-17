@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 21h10</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 22h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -3431,32 +3431,52 @@ async function bgTask(key, label, tab, progSel, fn){
   if(document.hidden){ try{ if(Notification.permission==="granted") new Notification("Publications Grand Écran", {body:`${t.state==="ok"?"✓":"⚠️"} ${label} : ${t.msg}`}); }catch(e){} }
 }
 const bgRunning=k=>bgTasks[k] && bgTasks[k].state==="run";
-// vidéos fabriquées par le script, dans le dossier de travail : aperçu et téléchargement depuis l'application
-async function readyBlock(dir, folder, expected, title){
-  let d=null; try{ d=await pbSub(dir,[folder],false); }catch(e){}
-  const found=[]; if(d) for await(const [n,h] of d.entries()) if(h.kind==="file" && /\.mp4$/i.test(n)){ const f=await h.getFile(); found.push(f); }
-  const byName=new Map(found.map(f=>[f.name,f])), names=[...expected.map(e=>e+".mp4"), ...found.map(f=>f.name).filter(n=>!expected.includes(n.replace(/\.mp4$/i,"")))];
+// Vidéos fabriquées par le script : aperçu et téléchargement en MP4, en bas des onglets PB écran et PB Hall.
+// Source : le dossier de la quinzaine dans le dossier de travail, ou un autre dossier choisi (vidéos faites sur un autre ordinateur, clé…).
+async function readyAlt(key, ask){ const h=await Store.get("readyDir:"+key); if(!h) return null;
+  try{ let p=await h.queryPermission({mode:"read"}); if(p!=="granted" && ask) p=await h.requestPermission({mode:"read"}); return p==="granted"?h:null; }catch(e){ return null; } }
+async function readySrc(o){ const alt=await readyAlt(o.key,false); if(alt) return {d:alt, alt:true};
+  if(!o.base) return {d:null}; try{ return {d:await pbSub(o.base,[o.folder],false)}; }catch(e){ return {d:null}; } }
+async function readyHTML(o){
+  const {d,alt}=await readySrc(o), altH=await Store.get("readyDir:"+o.key);
+  const found=[]; if(d) for await(const [n,h] of d.entries()) if(h.kind==="file" && /\.mp4$/i.test(n) && !/\.tmp\./.test(n)) found.push(await h.getFile());
+  const byName=new Map(found.map(f=>[f.name,f])), names=[...o.expected.map(e=>e+".mp4"), ...found.map(f=>f.name).filter(n=>!o.expected.includes(n.replace(/\.mp4$/i,"")))];
   let dcp=0; if(d){ try{ const dd=await d.getDirectoryHandle("DCP"); for await(const [n,h] of dd.entries()) if(h.kind==="directory") dcp++; }catch(e){} }
   const sz=b=>b>1e9?(b/1e9).toFixed(2)+" Go":(b/1e6).toFixed(0)+" Mo";
-  return `<div class="pbBlock" data-ready="${esc(folder)}"><h3>${title}</h3>
-    ${found.length?"":`<p class="hint">Aucune vidéo pour l'instant : lance le script de fabrication (étape précédente), puis clique sur « Actualiser ».</p>`}
+  return `<div class="pbBlock" data-ready="${esc(o.key)}" style="border:2px solid #e0b44c;background:#fffaf0"><h3>⬇ Télécharger les vidéos (MP4) · ▶ Aperçu</h3>
+    <p class="hint" style="margin:0 0 8px">${d?`Vidéos lues dans « ${esc(alt?d.name:(o.base.name+"/"+o.folder))} ».`:altH&&!alt?"":"Dossier des vidéos pas encore accessible."} Une vidéo apparaît ici dès que le script de fabrication l'a terminée (la liste se met à jour toute seule).</p>
     <div style="display:flex;flex-direction:column;gap:6px">${names.map(n=>{ const f=byName.get(n);
-      return `<div class="row" style="gap:10px;align-items:center"><b style="min-width:230px">${esc(n)}</b>${f?`<span class="hint" style="margin:0">${sz(f.size)} · ${new Date(f.lastModified).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"})}</span>
-        <button class="small" data-rplay="${esc(n)}">▶ Aperçu</button><button class="small primary" data-rdl="${esc(n)}">⬇ Télécharger</button>`:'<span class="hint" style="margin:0">pas encore fabriquée</span>'}</div>`; }).join("")}</div>
-    <div class="row" style="gap:8px;margin-top:8px">${found.length>1?'<button class="small" data-rall>⬇ Tout télécharger</button>':""}<button class="small" data-rref>🔄 Actualiser</button>
-    ${dcp?`<span class="hint" style="margin:0">${dcp} DCP dans le dossier « ${esc(dir.name)}/${esc(folder)}/DCP » (à copier tel quel sur la clé ou le disque du projecteur).</span>`:""}</div></div>`;
+      return `<div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><b style="min-width:240px">🎬 ${esc(n)}</b>
+        <button class="small" data-rplay="${esc(n)}" ${f?"":"disabled"}>▶ Aperçu</button><button class="small primary" data-rdl="${esc(n)}" ${f?"":"disabled"}>⬇ Télécharger</button>
+        <span class="hint" style="margin:0">${f?`${sz(f.size)} · ${new Date(f.lastModified).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"})}`:"pas encore fabriquée"}</span></div>`; }).join("")}</div>
+    <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">${found.length>1?'<button class="primary" data-rall>⬇ Tout télécharger</button>':""}<button class="small" data-rref>🔄 Actualiser</button>
+      ${altH&&!alt?`<button class="small primary" data-rreco>🔓 Autoriser « ${esc(altH.name)} »</button>`:""}
+      <button class="small" data-ralt>📂 ${altH?"Changer de dossier":"Vidéos dans un autre dossier…"}</button>${altH?'<button class="small" data-rwork>↺ Dossier de travail</button>':""}
+      ${dcp?`<span class="hint" style="margin:0">${dcp} DCP dans le sous-dossier « DCP » (à copier tel quel sur le disque du projecteur).</span>`:""}</div></div>`;
 }
-function readyWire(root, dir, rerender){
-  const box=root.querySelector("[data-ready]"); if(!box) return; const folder=box.dataset.ready;
-  const get=async n=>{ const d=await pbSub(dir,[folder],false); return await (await d.getFileHandle(n)).getFile(); };
-  const dl=async n=>{ const f=await get(n); await saveFile(n,f); };
-  box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=()=>dl(b.dataset.rdl));
-  const all=box.querySelector("[data-rall]"); if(all) all.onclick=async()=>{ for(const b of box.querySelectorAll("[data-rdl]")){ await dl(b.dataset.rdl); await new Promise(r=>setTimeout(r,800)); } };
-  box.querySelector("[data-rref]").onclick=rerender;
-  box.querySelectorAll("[data-rplay]").forEach(b=>b.onclick=async()=>{ const f=await get(b.dataset.rplay), u=URL.createObjectURL(f);
-    const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px";
-    ov.innerHTML=`<video src="${u}" controls autoplay style="max-width:92vw;max-height:80vh;background:#000"></video><button class="small">Fermer</button>`;
-    const close=()=>{ ov.querySelector("video").pause(); URL.revokeObjectURL(u); ov.remove(); }; ov.querySelector("button").onclick=close; ov.onclick=e=>{ if(e.target===ov) close(); }; document.body.append(ov); });
+const readyTimers={};
+async function readyMount(root, o){
+  const host=root.querySelector(`[data-readyhost="${o.key}"]`); if(!host) return;
+  const draw=async()=>{ host.innerHTML=await readyHTML(o); wire(); };
+  const getF=async n=>{ const {d}=await readySrc(o); return await (await d.getFileHandle(n)).getFile(); };
+  const wire=()=>{ const box=host.firstElementChild; if(!box) return;
+    box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=async()=>saveFile(b.dataset.rdl, await getF(b.dataset.rdl)));
+    const all=box.querySelector("[data-rall]"); if(all) all.onclick=async()=>{ for(const b of box.querySelectorAll("[data-rdl]:not([disabled])")){ await saveFile(b.dataset.rdl, await getF(b.dataset.rdl)); await new Promise(r=>setTimeout(r,800)); } };
+    box.querySelector("[data-rref]").onclick=draw;
+    const rr=box.querySelector("[data-rreco]"); if(rr) rr.onclick=async()=>{ await readyAlt(o.key,true); draw(); };
+    box.querySelector("[data-ralt]").onclick=async()=>{ try{ const h=await window.showDirectoryPicker({id:"videos"+o.key, mode:"read"}); await Store.set("readyDir:"+o.key,h); }catch(e){} draw(); };
+    const wk=box.querySelector("[data-rwork]"); if(wk) wk.onclick=async()=>{ await Store.del("readyDir:"+o.key); draw(); };
+    box.querySelectorAll("[data-rplay]").forEach(b=>b.onclick=async()=>{ const f=await getF(b.dataset.rplay), u=URL.createObjectURL(f);
+      const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px";
+      ov.innerHTML=`<div style="color:#fff;font-weight:600">${esc(b.dataset.rplay)}</div><video src="${u}" controls autoplay style="max-width:92vw;max-height:78vh;background:#000"></video>
+        <div class="row" style="gap:8px"><button class="small primary" data-d>⬇ Télécharger</button><button class="small" data-c>Fermer</button></div>`;
+      const close=()=>{ ov.querySelector("video").pause(); URL.revokeObjectURL(u); ov.remove(); };
+      ov.querySelector("[data-c]").onclick=close; ov.querySelector("[data-d]").onclick=()=>saveFile(b.dataset.rplay,f); ov.onclick=e=>{ if(e.target===ov) close(); }; document.body.append(ov); }); };
+  await draw();
+  // mise à jour automatique tant qu'il manque des vidéos et que l'onglet est affiché
+  clearInterval(readyTimers[o.key]);
+  readyTimers[o.key]=setInterval(()=>{ if(document.hidden || currentTab!==o.tab || !host.isConnected){ if(!host.isConnected) clearInterval(readyTimers[o.key]); return; }
+    if(host.querySelector("[data-rdl][disabled]") && !document.querySelector("video:not([muted])[src^='blob:']")) draw(); }, 20000);
 }
 async function renderPB(){
   const root=$("#pbRoot"); if(!root) return;
@@ -3505,9 +3525,10 @@ async function renderPB(){
       <label>Type DCP <select data-pbset="pbType">${DCP_TYPES.map(([v,t])=>`<option value="${v}"${pbS("pbType")===v?" selected":""}>${t}</option>`).join("")}</select></label>
       <button class="primary" data-pbgo>🎬 Préparer les ${jobs.filter(j=>j.kind!=="PBE"||hasKidFilm(histWeek(j.date))).length} PB (MP4 + DCP)</button></div>
       <div class="hint" data-pbprog></div></div>`;
-    html+=await readyBlock(dir, `quinzaine_${jjmm(pbDates()[1])}`, jobs.filter(j=>j.kind!=="PBE"||hasKidFilm(histWeek(j.date))).map(j=>j.id), "5. Vidéos prêtes");
+
   }
-  root.innerHTML=html;
+  root.innerHTML=html+'<div data-readyhost="pba"></div>';
+  readyMount(root,{key:"pba", tab:"pba", base:dir, folder:`quinzaine_${jjmm(pbDates()[1])}`, expected:jobs.filter(j=>j.kind!=="PBE"||hasKidFilm(histWeek(j.date))).map(j=>j.id)});
   const q=s=>root.querySelector(s);
   root.querySelectorAll("[data-pbdir]").forEach(b=>b.onclick=async()=>{ const k=b.dataset.pbdir; try{ const d=await window.showDirectoryPicker({id:"pbecran"+k, mode:k==="A"?"readwrite":"read"});
     if(k==="A"){ pbDirH=d; await Store.set("pbDirHandle",d); } else { pbDirE=d; await Store.set("pbDirHandleE",d); } delete pbScanCache[k]; renderPB(); }catch(e){} });
@@ -3542,7 +3563,7 @@ async function renderPB(){
   });
   q("[data-pbgo]").onclick=()=>{ const pr=root.querySelector("[data-pbprog]"); bgTask("pba","PB écran","pba",pr,()=>pbBuild(dir, pr, tO, tC)); };
   if(bgRunning("pba")){ q("[data-pbgo]").disabled=true; root.querySelector("[data-pbprog]").textContent="⏳ Préparation en cours : "+(bgTasks.pba.msg||""); bgTasks.pba.rewatch(root.querySelector("[data-pbprog]")); }
-  readyWire(root, dir, renderPB);
+
 }
 const fmtMS=s=>`${Math.floor(s/60)}:${pad(Math.round(s%60))}`;
 
@@ -3832,9 +3853,10 @@ async function renderHall(relink){
         <div class="hint" style="margin:6px 0 0">${tot?`Durée : <b>${fmtMS(tot)}</b> (${(L||[]).filter(f=>f.dur).length} films)`:hallWeek(j)?"":"⚠️ semaine absente de l'historique : dépose l'Excel de la quinzaine"}</div></div>`; }
     html+=`</div></div><div class="pbBlock"><h3>4. Fabrication</h3><p class="hint">MP4 1280×720 (720p), 30 images/s, son AAC. Les vidéos sont assemblées sur l'ordinateur par FFmpeg, comme pour PB écran.</p>
       <button class="primary" data-hgo>🎬 Préparer les ${jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))).length} vidéos du hall</button><div class="hint" data-hprog></div></div>`;
-    html+=await readyBlock(dir, `hall_${jjmm(pbDates()[1])}`, jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))).map(j=>j.out), "5. Vidéos prêtes");
+
   }
-  root.innerHTML=html;
+  root.innerHTML=html+'<div data-readyhost="pbhall"></div>';
+  readyMount(root,{key:"pbhall", tab:"pbhall", base:dir, folder:`hall_${jjmm(pbDates()[1])}`, expected:jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))).map(j=>j.out)});
   const q=s=>root.querySelector(s);
   root.querySelectorAll("[data-wreco]").forEach(b=>b.onclick=async()=>{ await weekDirGet(b.dataset.wreco,true); delete pbScanCache["S"+b.dataset.wreco]; hallRelink(); });
   root.querySelectorAll("[data-wdir]").forEach(b=>b.onclick=async()=>{ try{ const h=await window.showDirectoryPicker({id:"semaine"+b.dataset.wi, mode:"read"}); await Store.set("weekDir:"+b.dataset.wdir,h); delete pbScanCache["S"+b.dataset.wdir]; hallRelink(); }catch(e){} });
@@ -3867,7 +3889,7 @@ async function renderHall(relink){
   });
   q("[data-hgo]").onclick=()=>{ const pr=q("[data-hprog]"); bgTask("pbhall","PB Hall","pbhall",pr,()=>hallBuild(dir, pr, tO, tC)); };
   if(bgRunning("pbhall")){ q("[data-hgo]").disabled=true; q("[data-hprog]").textContent="⏳ Préparation en cours : "+(bgTasks.pbhall.msg||""); bgTasks.pbhall.rewatch(q("[data-hprog]")); }
-  readyWire(root, dir, ()=>renderHall());
+
 }
 async function hallBuild(dir, prog, tO, tC){
   const btn=$("#hallRoot [data-hgo]"); btn.disabled=true;
