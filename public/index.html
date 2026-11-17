@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 14h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 15h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2354,19 +2354,25 @@ async function prepareCarton(f, seances){
   const BX=px+PW+BORD+226, maxW=LX-80-BX;
   let ss=106; const measure=()=>{ b.font=`${ss}px "Ecran"`; return Math.max(...lines.map(t=>b.measureText(t).width)); };
   while(ss>40 && (measure()+ss*2.4>maxW || lines.length*ss*1.36+ss*.9>PH)) ss-=2;
-  const lh=ss*1.36, padX=ss*1.2, padY=ss*.45, BW=measure()+2*padX, BH=lines.length*lh+2*padY, BY=PB-BH;
-  b.fillStyle=color; b.fillRect(BX,BY,BW,BH);
-  // vignettes : clignotantes au-dessus de l'angle supérieur droit de l'affiche (20 % de sa largeur) ; VO / Documentaire fixes, coin inférieur droit
-  const VW=PW*.2, tags=[];
-  if(st.reprise){ const im=stampToujours(VW*2); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }   // tampon « Toujours à l'affiche » : taille doublée
-  for(const k of ["sn","avp","gratuit","vo","doc"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
+  // vignettes : toutes de même largeur, 30 % de celle de l'affiche
+  const VW=PW*.3, tags=[];
+  if(st.reprise){ const im=stampToujours(VW/1.1); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }
+  for(const k of ["sn","avp","gratuit","doc","vo"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
     const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
     tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
-  const ax=px+PW, ay=py;
-  const blinkers=tags.filter(t=>t.blink), fixed=tags.filter(t=>!t.blink);
-  let yy=ay; blinkers.forEach(t=>{ t.cx=ax; t.cy=yy-t.h*.5+t.h*.25; yy-=t.h*1.05; });      // empilées au-dessus du coin
-  fixed.forEach((t,i)=>{ t.cx=ax; t.cy=PB-t.h*.5-i*(t.h*1.15); });
-  fixed.forEach(t=>pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}));
+  const vo=tags.find(t=>t.k==="vo"), top=tags.filter(t=>t.k!=="vo");
+  // rectangle des séances : couleur dominante de l'affiche, taille ajustée au texte ;
+  // avec la VO : la vignette est calée sur le bas de l'affiche, centrée sous le rectangle qu'elle chevauche sans cacher le texte
+  const lh=ss*1.36, padX=ss*1.2, padY=ss*.45, BW=measure()+2*padX;
+  const over=vo?vo.h*.3:0, padB=vo?Math.max(padY, over+ss*.3):padY;
+  const BH=lines.length*lh+padY+padB, BY=(vo?PB-vo.h+over:PB)-BH;
+  b.fillStyle=color; b.fillRect(BX,BY,BW,BH);
+  if(vo) pbDrawVignette(b,{im:vo.im, x:BX+BW/2-vo.w/2, y:PB-vo.h, w:vo.w, h:vo.h, label:vo.label, col:color});
+  // en haut à droite de l'affiche, côte à côte à partir du coin : Toujours à l'affiche, Sortie nationale, Avant-première, Entrée gratuite (clignotantes) et Documentaire (fixe)
+  const ax=px+PW;
+  top.forEach((t,i)=>{ t.cx=ax-i*VW*1.06; t.cy=Math.max(t.h/2+30, py-t.h*.25); });   // côte à côte vers la gauche, à cheval sur le bord haut
+  top.filter(t=>!t.blink).forEach(t=>pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}));
+  const blinkers=top.filter(t=>t.blink);
   return {bg, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(seances.length), flip:!!(bgInfo&&bgInfo.flip)};
 }
 function drawCartonFrame(ctx, P, t, mode){
