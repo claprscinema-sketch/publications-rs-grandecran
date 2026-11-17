@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 18h45</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 20h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -207,7 +207,6 @@
   <p class="hint">Tout est prêt. <b>Le plus simple</b> : « 📤 Programmer tout le planning » ci-dessous, le site publie lui-même sur Facebook et Instagram aux heures indiquées. Sinon, clique sur <b>« Réseaux sociaux »</b> pour tout télécharger (visuels numérotés + planning + légendes) et programme chaque ligne dans Meta Business Suite.</p>
   <div class="row" style="margin-bottom:12px">
     <button class="primary" id="btnZip">⬇ Réseaux sociaux</button>
-    <button class="primary" id="btnCanva" style="background:#00a3b4">⬇ Fichiers pour Canva (PDF au bon format)</button>
     <button class="primary" id="btnNews" style="background:#1a1a1a">⬇ Newsletter (HTML)</button>
     <button class="primary" id="btnNewsCourt" style="background:#555">⬇ Newsletter courte</button>
   </div>
@@ -302,14 +301,14 @@
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="cartonFps"><option value="30">30</option><option value="60">60</option></select></label>
     <label style="font-size:14px;font-weight:600">Son de vieille machine à écrire <select id="cartonSon"><option value="-18" selected>volume bas (conseillé en salle)</option><option value="-24">très bas</option><option value="-12">moyen</option><option value="off">sans son</option></select></label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="cartonMode"><option value="pulse">pulsation</option><option value="clignote">clignotement</option></select></label>
-    <button class="primary" id="btnCartons" style="background:#6e264c">🎬 Générer les cartons (MP4)</button>
+    <button class="primary" id="btnCartons" style="background:#6e264c">🎬 Générer les cartons de la quinzaine (MP4)</button>
     <button id="btnCartonsZip" disabled>⬇ Tous les cartons (ZIP)</button>
     <button id="btnCartonsDcp" disabled style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>
   </div>
   <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
 
   <div id="cartonProgress" class="hint"></div>
-  <div id="cartonOut" class="compact" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-top:10px"></div>
+  <div id="cartonOut" style="margin-top:10px"></div>
 </section>
 
 </main>
@@ -1158,7 +1157,7 @@ makeDrop($("#dropOldXlsx"),".xlsx,.xls,.xlsm",async file=>{
   try{ const ws=parseWorkbook(await readFile(file,"buf")); if(!ws.length){ alert("Aucune semaine trouvée dans ce fichier."); return; }
     histMerge(ws,true,false); $("#pbProgress").textContent=`✓ ${ws.length} semaine(s) ajoutée(s) à l'historique (${file.name}).`; }
   catch(e){ alert("Lecture impossible : "+e.message); } });
-setTimeout(histLoad,0);
+setTimeout(histLoad,0); setTimeout(editsLoad,0);
 
 function curWeek(){ return weeks[Number($("#weekSel").value)||0]; }
 
@@ -2208,20 +2207,6 @@ async function showFlyer(){
   $("#flyerProgress").innerHTML=(odd?`<div class="warn">Option 3 : ${odd>1?"les deux semaines ont":"une semaine a"} un nombre impair de cases (ou moins de 4), ${odd>1?"elles sont présentées":"elle est présentée"} en option 1 (un film par ligne).</div>`:"")+`✓ Flyer prêt${plan.syn<SYN_MAX?" — semaine chargée : certains synopsis raccourcis (phrases entières) pour rester lisible":""}.`
     +(noPost.length?`<div class="warn">⚠️ Affiche manquante : ${noPost.join(", ")}</div>`:"")+(noSyn.length?`<div class="warn">⚠️ Pas de synopsis : ${noSyn.join(", ")}</div>`:"");
   $("#btnFlyerPdf").disabled=false; $("#btnFlyerJpg").disabled=false;
-  const cvBox=document.createElement("div"); cvBox.style.cssText="flex:1 1 100%"; box.appendChild(cvBox);
-  canvaButtons(cvBox,{exportFn:async()=>saveFile(`flyer_A5_quinzaine_${isoD(lastFlyer.weeks[0].start)}.pdf`, await flyerPDF(lastFlyer.faces)),
-    accept:"image/png,image/jpeg,.png,.jpg,.jpeg,.zip", multiple:true,
-    help:"Dans Canva : Créer un design > Importer ce PDF (recto + verso), modifie-le, puis Télécharger en PNG ou JPG (toutes les pages) et reviens ici « Remettre la version modifiée ».",
-    onImport:async fs=>{ let imgs=[];
-      for(const f of fs){ if(/\.zip$/i.test(f.name)){ const z=await JSZip.loadAsync(f); const ent=Object.values(z.files).filter(e=>!e.dir && /\.(png|jpe?g)$/i.test(e.name)).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
-          for(const e of ent) imgs.push(new Blob([await e.async("arraybuffer")],{type:/png$/i.test(e.name)?"image/png":"image/jpeg"})); }
-        else imgs.push(f); }
-      if(!imgs.length) throw new Error("aucune image PNG ou JPG trouvée");
-      imgs=imgs.slice(0,2);
-      for(let i=0;i<imgs.length;i++){ const im=await loadImg(await readFile(imgs[i])); const c=canvas(lastFlyer.faces[i].width,lastFlyer.faces[i].height);
-        const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); const [w,h]=contain(im,c.width,c.height); x.drawImage(im,(c.width-w)/2,(c.height-h)/2,w,h); lastFlyer.faces[i]=c; }
-      box.querySelectorAll("img").forEach((im,i)=>{ if(lastFlyer.faces[i]){ const t=canvas(437,620); t.getContext("2d").drawImage(lastFlyer.faces[i],0,0,437,620); im.src=t.toDataURL("image/jpeg",.85); } });
-      return `✏️ Version Canva en place (${imgs.length===2?"recto + verso":"recto seul"}) : les boutons PDF et Images téléchargent maintenant la version modifiée.`; }});
 }
 const fortnightFilms=()=>weekPair.map(i=>weeks[i]).filter(Boolean).flatMap(w=>w.films);
 $("#btnFlyer").onclick=async()=>{ if(weeks.length && !await requirePosters(fortnightFilms(),"Génération du flyer")) return; showFlyer().catch(e=>{ console.error(e); $("#flyerProgress").textContent="Erreur : "+e.message; }); };
@@ -2364,54 +2349,73 @@ async function cartonBackground(b, img, covers){
   return best;
 }
 // Préparation d'un carton (modèle Canva) : fond fixe pré-dessiné + éléments animés
-async function prepareCarton(f, seances){
-  const cw=curWeek(), st={...(filmState[f.key]||{}), ...(cw?pbFlags(f,cw):flags(f))};
+// Retouches des cartons (éditeur intégré) : position du fond, de l'affiche, du rectangle, des vignettes, du logo, texte des séances, ajouts
+let cartonEdits={}, CARTON_WEEK=null;
+const editKey=(f)=>{ const w=CARTON_WEEK||curWeek(); return `${w?isoD(w.start):""}|${f.key}`; };
+const cartonBase=(f,w)=>`${pad(w.start.getDate())}${pad(w.start.getMonth()+1)}${norm(titleOf(f)).replace(/[^a-z0-9]/g,"")}`;   // ex. 1811karma
+async function editsLoad(){
+  cartonEdits={...((await Store.get("cartonEdits"))||{})};
+  if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/carton-edits.json",{cache:"no-store"}); if(r.ok) Object.assign(cartonEdits, await r.json()); }catch(e){} }
+}
+function editsSave(){ Store.set("cartonEdits",cartonEdits); if(SHARED && !sharedLoading) api("PUT","file/carton-edits.json",JSON.stringify(cartonEdits),"application/json").catch(e=>console.warn(e)); }
+async function prepareCarton(f, seances, E0){
+  const E=E0||cartonEdits[editKey(f)]||{}, D=(o)=>o||{dx:0,dy:0};
+  const cw=CARTON_WEEK||curWeek(), st={...(filmState[f.key]||{}), ...(cw?pbFlags(f,cw):flags(f))};
   if(!st.palette && st.poster) st.palette=await posterPalette(st.poster);
-  const color=st.ecran||(st.palette||[])[0]||st.color||"#262a3b";
+  const color=E.color||st.ecran||(st.palette||[])[0]||st.color||"#262a3b";
   const poster=await loadImg(st.poster), still=await loadImg(st.still)||poster;
   await applyFonts(); try{ await document.fonts.load('106px "Ecran"',"jeudi 19 - 20h30"); }catch(e){}
-  const bg=canvas(CW_,CH_), b=bg.getContext("2d");
+  const bg=canvas(CW_,CH_), b=bg.getContext("2d"), rects={tags:{},extras:[]};
   // affiche : proportions exactes du fichier, liseré blanc de 8 px autour (sans rogner l'affiche)
-  const BORD=8, PB=2082, PX=151; let PH=1694, PW=poster?PH*poster.width/poster.height:PH/1.42;
+  const BORD=8; let PH=1694, PW=poster?PH*poster.width/poster.height:PH/1.42;
   if(PW>1400){ PW=1400; PH=PW*poster.height/poster.width; }
-  const px=PX, py=PB-PH;
-  // premier plan dessiné d'abord (calque transparent) ; le fond est cadré ensuite pour ne pas être caché par ces éléments
+  const pd=D(E.poster), px=151+pd.dx, PB=2082+pd.dy, py=PB-PH;
   b.fillStyle="#fff"; b.fillRect(px-BORD,py-BORD,PW+2*BORD,PH+2*BORD);
   if(poster) b.drawImage(poster,px,py,PW,PH); else { b.fillStyle="#555"; b.fillRect(px,py,PW,PH); }
+  rects.poster={x:px-BORD,y:py-BORD,w:PW+2*BORD,h:PH+2*BORD};
   // logo du cinéma en bas à droite
   const logo=assets.logo?await loadTrimmed(assets.logo):null; let LX=CW_-150;
-  let logoR=null; if(logo){ const [lw,lh]=contain(logo,675,360); LX=3839-lw; b.drawImage(logo,LX,2125-lh,lw,lh); logoR={x:LX,y:2125-lh,w:lw,h:lh}; }
-  // rectangle des séances : couleur dominante de l'affiche, taille ajustée au texte, bas aligné sur l'affiche
-  const lines=seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""));
-  const BX=px+PW+BORD+226, maxW=LX-80-BX;
+  if(logo){ const [lw,lh]=contain(logo,675,360), ld=D(E.logo); LX=3839-lw; rects.logo={x:LX+ld.dx,y:2125-lh+ld.dy,w:lw,h:lh}; }
+  // texte des séances (corrigeable dans l'éditeur)
+  const lines=(E.lines&&E.lines.length)?E.lines:seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""));
+  const BX0=151+PW+BORD+226, maxW=LX-80-BX0;
   let ss=106; const measure=()=>{ b.font=`${ss}px "Ecran"`; return Math.max(...lines.map(t=>b.measureText(t).width)); };
   while(ss>40 && (measure()+ss*2.4>maxW || lines.length*ss*1.36+ss*.9>PH)) ss-=2;
   // vignettes : toutes de même largeur, 30 % de celle de l'affiche
   const VW=PW*.3, tags=[];
-  if(st.reprise){ const im=stampToujours(VW/1.1); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true}); }
+  if(st.reprise){ const im=stampToujours(VW/1.1); tags.push({k:"reprise", im, w:im.width, h:im.height, blink:true, label:"Toujours à l'affiche"}); }
   for(const k of ["sn","avp","gratuit","doc","vo"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
     const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
     tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
   const vo=tags.find(t=>t.k==="vo"), top=tags.filter(t=>t.k!=="vo");
-  // rectangle des séances : couleur dominante de l'affiche, taille ajustée au texte ;
-  // avec la VO : la vignette est calée sur le bas de l'affiche, centrée sous le rectangle qu'elle chevauche sans cacher le texte
+  // rectangle des séances (déplaçable) ; la VO est calée sous le rectangle, qu'elle chevauche sans cacher le texte
   const lh=ss*1.36, padX=ss*1.2, padY=ss*.45, BW=measure()+2*padX;
   const over=vo?vo.h*.3:0, padB=vo?Math.max(padY, over+ss*.3):padY;
-  const BH=lines.length*lh+padY+padB, BY=(vo?PB-vo.h+over:PB)-BH;
-  b.fillStyle=color; b.fillRect(BX,BY,BW,BH);
-  if(vo) pbDrawVignette(b,{im:vo.im, x:BX+BW/2-vo.w/2, y:PB-vo.h, w:vo.w, h:vo.h, label:vo.label, col:color});
-  // en haut à droite de l'affiche, côte à côte à partir du coin : Toujours à l'affiche, Sortie nationale, Avant-première, Entrée gratuite (clignotantes) et Documentaire (fixe)
-  const ax=px+PW;
-  top.forEach((t,i)=>{ t.cx=ax-i*VW*1.06; t.cy=Math.max(t.h/2+30, py-t.h*.25); });   // côte à côte vers la gauche, à cheval sur le bord haut
-  top.filter(t=>!t.blink).forEach(t=>pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}));
+  const bd=D(E.box), BH=lines.length*lh+padY+padB, BX=BX0+bd.dx, BY=(vo?2082-vo.h+over:2082)-BH+bd.dy;
+  b.fillStyle=color; b.fillRect(BX,BY,BW,BH); rects.box={x:BX,y:BY,w:BW,h:BH};
+  if(vo){ const vd=D((E.tags||{}).vo); vo.cx=BX+BW/2+vd.dx; vo.cy=BY+BH-over+vo.h/2+vd.dy; }
+  // en haut à droite de l'affiche, côte à côte : Toujours à l'affiche, Sortie nationale, Avant-première, Entrée gratuite (clignotantes), Documentaire (fixe)
+  top.forEach((t,i)=>{ const td=D((E.tags||{})[t.k]); t.cx=px+PW-i*VW*1.06+td.dx; t.cy=Math.max(t.h/2+30, py-t.h*.25)+td.dy; });
+  for(const t of tags){ rects.tags[t.k]={x:t.cx-t.w/2,y:t.cy-t.h/2,w:t.w,h:t.h}; if(!t.blink) pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}); }
+  if(logo){ const r=rects.logo; b.drawImage(logo,r.x,r.y,r.w,r.h); }
+  // ajouts libres (texte, image)
+  for(const [i,x] of (E.extras||[]).entries()){
+    if(x.type==="text"){ b.font=`${x.size||110}px ${x.font||'"Ecran"'}`; b.fillStyle=x.color||"#fff"; b.textAlign="left"; b.textBaseline="top";
+      const ls=String(x.text||"").split("\n"), w=Math.max(1,...ls.map(l=>b.measureText(l).width)), h=ls.length*(x.size||110)*1.2;
+      if(x.bgColor){ b.fillStyle=x.bgColor; b.fillRect(x.x-30,x.y-20,w+60,h+30); b.fillStyle=x.color||"#fff"; }
+      ls.forEach((l,k)=>b.fillText(l,x.x,x.y+k*(x.size||110)*1.2)); rects.extras[i]={x:x.x,y:x.y,w,h}; }
+    else if(x.type==="img"){ const im=await loadImg(x.src); if(im){ const h=x.w*im.height/im.width; b.drawImage(im,x.x,x.y,x.w,h); rects.extras[i]={x:x.x,y:x.y,w:x.w,h}; } } }
   const blinkers=top.filter(t=>t.blink);
-  // fond : image du film à 60 % sur blanc (transparence 60 dans Canva), jamais retournée, cadrée hors des éléments du premier plan
-  const covers=[{x:px-BORD,y:py-BORD,w:PW+2*BORD,h:PH+2*BORD},{x:BX,y:BY,w:BW,h:BH}, ...(logoR?[logoR]:[]),
-    ...(vo?[{x:BX+BW/2-vo.w/2,y:PB-vo.h,w:vo.w,h:vo.h}]:[]), ...top.map(t=>({x:t.cx-t.w/2,y:t.cy-t.h/2,w:t.w,h:t.h}))];
+  // fond : image du film à 60 % sur blanc, jamais retournée ; cadrage automatique hors des éléments du premier plan, ou celui choisi dans l'éditeur
+  const covers=[rects.poster, rects.box, ...(rects.logo?[rects.logo]:[]), ...Object.values(rects.tags)];
   const F=canvas(CW_,CH_), fx=F.getContext("2d"); fx.fillStyle="#fff"; fx.fillRect(0,0,CW_,CH_);
-  if(still){ fx.save(); fx.globalAlpha=.6; await cartonBackground(fx,still,covers); fx.restore(); }
+  let bgGeom=null;
+  if(still){ fx.save(); fx.globalAlpha=.6;
+    if(E.bg){ bgGeom={...E.bg}; fx.drawImage(still,E.bg.ox,E.bg.oy,E.bg.iw,E.bg.ih); }
+    else { const g=await cartonBackground(fx,still,covers); bgGeom={ox:g.ox,oy:g.oy,iw:g.iw,ih:g.ih}; }
+    fx.restore(); }
   fx.drawImage(bg,0,0);
-  return {bg:F, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(seances.length)};
+  return {bg:F, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(lines.length), rects, bgGeom, still, defaultLines:seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""))};
 }
 function drawCartonFrame(ctx, P, t, mode){
   ctx.drawImage(P.bg,0,0);
@@ -2502,36 +2506,48 @@ async function encodeCarton(f, seances, fps, mode, onProg){
 let cartonResults=[];
 $("#btnCartons").onclick=async()=>{
   const pr=$("#cartonProgress"), out=$("#cartonOut"), btn=$("#btnCartons");
-  const week=curWeek(); if(!week){ pr.textContent="Dépose d'abord l'Excel (onglet Base de données)."; return; }
+  const ws=weekPair.map(i=>weeks[i]).filter(Boolean); if(!ws.length){ pr.textContent="Dépose d'abord l'Excel (onglet Base de données)."; return; }
   if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
-  if(!await requirePosters(week.films,"Génération des cartons écran")) return;
+  if(!await requirePosters(ws.flatMap(w=>w.films),"Génération des cartons écran")) return;
   const fps=Number($("#cartonFps").value)||30, mode=$("#cartonMode").value;
   btn.disabled=true; out.innerHTML=""; cartonResults=[];
   await document.fonts.load(`100px "Ecran"`, "ven 20 nov - 18h30"); await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ");
-  const films=[...week.films].sort((a,b)=>a.seances[0]-b.seances[0]);
+  const total=ws.reduce((n,w)=>n+w.films.length,0); let done=0;
   try{
-    for(let k=0;k<films.length;k++){
-      const f=films[k], name=`${pad(k+1)}_${norm(titleOf(f)).replace(/ /g,"-")}.mp4`;
-      const r=await encodeCarton(f,f.seances,fps,mode,p=>pr.textContent=`Carton ${k+1}/${films.length} : ${titleOf(f)}… ${Math.round(p*100)} %`);
-      const res={name,blob:r.blob}; cartonResults.push(res);
-      const el=document.createElement("div"); el.className="cfilm";
-      el.innerHTML=`<video src="${URL.createObjectURL(r.blob)}" poster="${r.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(titleOf(f))}</b><span class="hint" style="margin:0">${r.T} s · ${f.seances.length} séance(s) · ${(r.blob.size/1e6).toFixed(1)} Mo</span><button class="small">⬇ MP4</button>`;
-      el.querySelector("button").onclick=()=>saveFile(name,res.blob);
-      canvaButtons(el,{exportFn:()=>saveFile(name,res.blob), accept:"video/mp4,video/*,.mp4,.mov",
-        onImport:fs=>importVideo(fs,b=>{ res.blob=b; },el.querySelector("video"))});
-      out.appendChild(el);
+    for(const week of ws){
+      const e=new Date(week.start); e.setDate(e.getDate()+6);
+      const h=document.createElement("h3"); h.className="wkh"; h.textContent=`Semaine du ${shortDate(week.start)} au ${shortDate(e)}`; out.appendChild(h);
+      const row=document.createElement("div"); row.className="compact"; row.style.cssText="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin-bottom:18px"; out.appendChild(row);
+      const films=[...week.films].sort((a,b)=>a.seances[0]-b.seances[0]);
+      for(const f of films){ done++;
+        const base=cartonBase(f,week), name=`${base}.mp4`;
+        CARTON_WEEK=week;
+        const r=await encodeCarton(f,f.seances,fps,mode,p=>pr.textContent=`Carton ${done}/${total} : ${titleOf(f)} (semaine du ${shortDate(week.start)})… ${Math.round(p*100)} %`);
+        const res={name, blob:r.blob, dcp:base}; cartonResults.push(res);
+        const el=document.createElement("div"); el.className="cfilm";
+        el.innerHTML=`<video src="${URL.createObjectURL(r.blob)}" poster="${r.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(titleOf(f))}</b><span class="hint" style="margin:0">${esc(name)} · ${r.T} s · ${f.seances.length} séance(s) · ${(r.blob.size/1e6).toFixed(1)} Mo</span><button class="small">⬇ ${esc(name)}</button>`;
+        el.querySelector("button").onclick=()=>saveFile(name,res.blob);
+        CARTON_WEEK=week; const eb=document.createElement("button"); eb.className="small"; eb.textContent=cartonEdits[editKey(f)]?"✏️ Retoucher (modifié)":"✏️ Retoucher"; el.appendChild(eb);
+        eb.onclick=()=>openCartonEditor(f,f.seances,async()=>{ eb.disabled=true; const vid=el.querySelector("video");
+          try{ CARTON_WEEK=week; const r2=await encodeCarton(f,f.seances,Number($("#cartonFps").value)||30,$("#cartonMode").value,p=>pr.textContent=`Regénération de « ${titleOf(f)} »… ${Math.round(p*100)} %`);
+            res.blob=r2.blob; vid.src=URL.createObjectURL(r2.blob); vid.poster=r2.poster; pr.textContent=`✓ « ${titleOf(f)} » regénéré avec tes retouches.`; }
+          catch(e){ pr.textContent="Erreur : "+e.message; }
+          CARTON_WEEK=week; eb.disabled=false; eb.textContent=cartonEdits[editKey(f)]?"✏️ Retoucher (modifié)":"✏️ Retoucher"; CARTON_WEEK=null; }, week);
+        row.appendChild(el);
+      }
     }
-    const low=[]; for(const f of films){ const im=await loadImg(filmState[f.key].poster); if(im && im.height<1640) low.push(`${titleOf(f)} (${im.width}×${im.height} px)`); }
-    pr.innerHTML=`✓ ${cartonResults.length} cartons prêts (${fps} images/s).`+(low.length?`<div class="warn">⚠️ Affiche en définition insuffisante pour un écran de 10 m (il faut au moins 1640 px de haut) : ${low.map(esc).join(", ")}. Remplace-la par une version HD.</div>`:"");
+    CARTON_WEEK=null;
+    const low=[]; for(const f of ws.flatMap(w=>w.films)){ const im=await loadImg(filmState[f.key].poster); if(im && im.height<1640 && !low.includes(titleOf(f))) low.push(`${titleOf(f)} (${im.width}×${im.height} px)`); }
+    pr.innerHTML=`✓ ${cartonResults.length} cartons prêts pour la quinzaine (${fps} images/s).`+(low.length?`<div class="warn">⚠️ Affiche en définition insuffisante pour un écran de 10 m (il faut au moins 1640 px de haut) : ${low.map(esc).join(", ")}. Remplace-la par une version HD.</div>`:"");
     $("#btnCartonsZip").disabled=false; $("#btnCartonsDcp").disabled=false;
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
-  btn.disabled=false;
+  CARTON_WEEK=null; btn.disabled=false;
 };
 $("#btnCartonsDcp").onclick=async()=>{ if(!cartonResults.length) return; const b=$("#btnCartonsDcp"); b.disabled=true;
-  try{ await dcpPack(`Cartons_${isoD(curWeek().start)}`, cartonResults); }catch(e){ alert("Pack DCP impossible : "+e.message); } b.disabled=false; };
+  const w0=weeks[weekPair[0]]; try{ await dcpPack(`Cartons_quinzaine_${w0?isoD(w0.start):""}`, cartonResults); }catch(e){ alert("Pack DCP impossible : "+e.message); } b.disabled=false; };
 $("#btnCartonsZip").onclick=async()=>{ if(!cartonResults.length) return; const z=new JSZip();
   cartonResults.forEach(r=>z.file(r.name,r.blob,{compression:"STORE"}));
-  await saveFile(`cartons_ecran_${isoD(curWeek().start)}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
+  const w0=weeks[weekPair[0]]; await saveFile(`cartons_ecran_quinzaine_${w0?isoD(w0.start):""}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
 
 
 /* ========================== Base partagée (Netlify Functions + Blobs) ========================== */
@@ -2737,7 +2753,7 @@ async function showTab(t){
   });
   if(t==="ecrans") renderEcranList();
   if(t==="flyers") renderCompact("#flyerFilms");
-  if(t==="cartons") renderCompact("#cartonFilms", curWeek());
+  if(t==="cartons") renderCompact("#cartonFilms");
   if(t==="base") renderInfoList();
   try{ localStorage.setItem("onglet",t); }catch(e){}
 }
@@ -3001,8 +3017,6 @@ async function generatePB(){
       files.forEach((f,fi)=>{ f.iso=isoD(d.ws[fi].start); const el=document.createElement("div"); el.className="cfilm";
         el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" poster="${f.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b><button class="small">⬇ MP4</button>`;
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob);
-        canvaButtons(el,{exportFn:()=>saveFile(f.name,f.blob), accept:"video/mp4,video/*,.mp4,.mov",
-          onImport:fs=>importVideo(fs,b=>{ pbResults.forEach(r=>r.files.forEach(x=>{ if(x.iso===f.iso) x.blob=b; })); },el.querySelector("video"))});   // même semaine dans les deux dossiers : remplacée partout
         grid.appendChild(el); });
       box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, files, "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
@@ -3016,30 +3030,88 @@ async function generatePB(){
 }
 document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") generatePB(); });
 
-/* ========================== Aller-retour avec Canva ========================== */
-// « Modifier avec Canva » : télécharge le document et ouvre Canva (on y importe le fichier, on le modifie, on l'exporte) ;
-// « Remettre la version modifiée » : le fichier exporté de Canva remplace celui de l'outil (téléchargements, ZIP et Pack DCP compris).
-const CANVA_URL="https://www.canva.com/";
-function canvaButtons(holder, {exportFn, accept, multiple=false, onImport, help}){
-  const w=document.createElement("div"); w.className="canvaRow"; w.style.cssText="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px";
-  w.innerHTML=`<button class="small" data-cv style="background:#00c4cc;color:#fff;border-color:#00c4cc">🎨 Modifier avec Canva</button>
-    <button class="small" data-back>⤴ Remettre la version modifiée</button><input type="file" accept="${accept}" ${multiple?"multiple":""} hidden><span class="hint cvState" style="margin:0"></span>`;
-  const inp=w.querySelector("input"), st=w.querySelector(".cvState");
-  w.querySelector("[data-cv]").onclick=async()=>{ const win=window.open(CANVA_URL,"_blank");   // ouvert tout de suite (sinon bloqué par le navigateur)
-    try{ await exportFn(); st.textContent=help||"Dans Canva : Créer un design > Importer ce fichier, modifie-le, puis Partager > Télécharger, et reviens ici « Remettre la version modifiée »."; }
-    catch(e){ st.textContent="Export impossible : "+e.message; if(win) win.close(); } };
-  w.querySelector("[data-back]").onclick=()=>inp.click();
-  inp.onchange=async()=>{ if(!inp.files.length) return; try{ st.textContent="Import…"; st.textContent=await onImport([...inp.files]); }catch(e){ st.textContent="⚠️ "+e.message; } inp.value=""; };
-  holder.appendChild(w); return w;
-}
-// vérifie une vidéo réimportée (dimensions, durée)
-function videoInfo(blob){ return new Promise(res=>{ const v=document.createElement("video"); v.preload="metadata"; v.muted=true;
-  v.onloadedmetadata=()=>res({w:v.videoWidth, h:v.videoHeight, d:v.duration}); v.onerror=()=>res(null); v.src=URL.createObjectURL(blob); }); }
-async function importVideo(files, setBlob, videoEl){
-  const f=files[0]; if(!/video|mp4|quicktime/i.test(f.type) && !/\.(mp4|mov)$/i.test(f.name)) throw new Error("choisis la vidéo MP4 exportée depuis Canva");
-  const info=await videoInfo(f); setBlob(f); if(videoEl) videoEl.src=URL.createObjectURL(f);
-  const dim=info?`${info.w}×${info.h}, ${info.d.toFixed(1)} s`:"";
-  return `✏️ Version Canva en place (${dim})`+(info&&(info.w!==3996||info.h!==2160)?` — Canva exporte au plus en ${info.w}×${info.h} : DCP-o-matic l'adaptera au format ${3996}×2160 (fines bandes possibles).`:"");
+/* ========================== Éditeur de carton (retouches dans l'outil) ========================== */
+// Fond : glisser pour déplacer, curseur pour zoomer. Affiche, rectangle des séances, vignettes, logo et ajouts : glisser pour déplacer.
+// Texte des séances corrigeable. Ajout d'un texte ou d'une image. La vidéo est ensuite regénérée avec ces réglages.
+function openCartonEditor(f, seances, onDone, week){
+  if(week) CARTON_WEEK=week;
+  const key=editKey(f), E=JSON.parse(JSON.stringify(cartonEdits[key]||{}));
+  const K=1/3, ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:14px 16px;max-width:1720px;width:100%;max-height:96vh;overflow:auto;display:flex;gap:16px;flex-wrap:wrap">
+    <div style="flex:0 0 auto"><h3 style="margin:0 0 6px">✏️ Retoucher le carton — ${esc(titleOf(f))}</h3>
+      <canvas width="1332" height="720" style="width:1332px;max-width:100%;border:1px solid #ccc;cursor:grab;touch-action:none"></canvas>
+      <div class="hint" style="margin:4px 0 0">Glisse un élément pour le déplacer (affiche, rectangle des séances, vignettes, logo, ajouts) ; glisse ailleurs pour déplacer l'image de fond.</div></div>
+    <div style="flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:10px;font-size:14px">
+      <label><b>Zoom de l'image de fond</b> <input type="range" data-zoom min="100" max="250" value="100" style="width:100%"></label>
+      <button class="small" data-autobg>↺ Cadrage automatique du fond</button>
+      <label><b>Texte des séances</b> (une ligne par séance)<textarea data-lines rows="6" style="width:100%;font-size:15px"></textarea></label>
+      <div class="row" style="gap:6px"><button class="small" data-applytxt>Appliquer le texte</button><button class="small" data-resettxt>Texte d'origine</button></div>
+      <label><b>Couleur du rectangle</b> <input type="color" data-color></label>
+      <fieldset style="border:1px solid #ddd;border-radius:8px;padding:8px"><legend><b>Ajouter</b></legend>
+        <input type="text" data-newtxt placeholder="Texte à ajouter" style="width:100%">
+        <div class="row" style="gap:6px;margin-top:6px"><label>Taille <input type="number" data-newsize value="110" min="30" max="400" style="width:70px"></label>
+          <label>Couleur <input type="color" data-newcol value="#ffffff"></label><label><input type="checkbox" data-newbg> fond</label></div>
+        <div class="row" style="gap:6px;margin-top:6px"><button class="small" data-addtxt>＋ Texte</button><button class="small" data-addimg>＋ Image</button><input type="file" accept="image/*" hidden data-imgfile></div>
+      </fieldset>
+      <div data-sel class="hint" style="margin:0"></div>
+      <div class="row" style="gap:6px"><button class="small" data-del hidden>🗑 Supprimer l'ajout sélectionné</button><label data-szw hidden>Taille <input type="range" data-sz min="20" max="400" value="100"></label></div>
+      <button class="small" data-resetall>Tout réinitialiser</button>
+      <div class="row" style="gap:8px;margin-top:auto;justify-content:flex-end"><button data-cancel>Annuler</button><button class="primary" data-ok>Valider et regénérer la vidéo</button></div>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const q=s=>ov.querySelector(s), cv=q("canvas"), cx=cv.getContext("2d");
+  let P=null, snap=null, busy=false, again=false, sel=null;
+  const render=async()=>{ if(busy){ again=true; return; } busy=true;
+    do{ again=false; if(week) CARTON_WEEK=week; P=await prepareCarton(f,seances,E); const big=canvas(CW_,CH_), bx=big.getContext("2d"); drawCartonFrame(bx,P,P.T,"pulse");
+      cx.drawImage(big,0,0,1332,720); snap=cx.getImageData(0,0,1332,720);
+      if(!E.bg && P.bgGeom) E._auto=P.bgGeom; drawSel(); }while(again);
+    busy=false;
+    q("[data-lines]").value=q("[data-lines]").value||P.lines.join("\n"); q("[data-color]").value=toHex(P.color);
+    if(P.bgGeom && P.still){ const s0=Math.max(CW_/P.still.width,CH_/P.still.height); q("[data-zoom]").value=Math.round(P.bgGeom.iw/(P.still.width*s0)*100); } };
+  const toHex=c=>{ const x=document.createElement("canvas").getContext("2d"); x.fillStyle=c; return x.fillStyle.startsWith("#")?x.fillStyle:"#262a3b"; };
+  const rectOf=s=>!s||!P?null:s.t==="tag"?P.rects.tags[s.k]:s.t==="extra"?P.rects.extras[s.i]:P.rects[s.t];
+  const drawSel=()=>{ if(snap) cx.putImageData(snap,0,0); const r=rectOf(sel); if(r){ cx.save(); cx.strokeStyle="#00a8ff"; cx.lineWidth=2; cx.setLineDash([6,4]); cx.strokeRect(r.x*K,r.y*K,r.w*K,r.h*K); cx.restore(); }
+    const ex=sel&&sel.t==="extra"; q("[data-del]").hidden=!ex; q("[data-szw]").hidden=!ex;
+    if(ex){ const x=E.extras[sel.i]; q("[data-sz]").value=x.type==="text"?x.size:Math.round(x.w/8); }
+    q("[data-sel]").textContent=sel?`Sélection : ${sel.t==="tag"?"vignette "+sel.k:sel.t==="extra"?"ajout":sel.t==="box"?"rectangle des séances":sel.t==="poster"?"affiche":sel.t==="logo"?"logo":"fond"}`:""; };
+  const hit=(X,Y)=>{ const inR=r=>r&&X>=r.x&&X<=r.x+r.w&&Y>=r.y&&Y<=r.y+r.h;
+    for(let i=(P.rects.extras||[]).length-1;i>=0;i--) if(inR(P.rects.extras[i])) return {t:"extra",i};
+    for(const k in P.rects.tags) if(inR(P.rects.tags[k])) return {t:"tag",k};
+    if(inR(P.rects.logo)) return {t:"logo"}; if(inR(P.rects.box)) return {t:"box"}; if(inR(P.rects.poster)) return {t:"poster"};
+    return {t:"bg"}; };
+  let drag=null;
+  const clampBg=g=>({...g, ox:Math.min(0,Math.max(CW_-g.iw,g.ox)), oy:Math.min(0,Math.max(CH_-g.ih,g.oy))});   // le fond couvre toujours tout l'écran
+  const pos=e=>{ const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width*CW_, (e.clientY-r.top)/r.height*CH_]; };
+  cv.onpointerdown=e=>{ if(!P) return; const [X,Y]=pos(e); sel=hit(X,Y); drag={x0:X,y0:Y,dx:0,dy:0}; cv.setPointerCapture(e.pointerId); cv.style.cursor="grabbing"; drawSel(); };
+  cv.onpointermove=e=>{ if(!drag) return; const [X,Y]=pos(e); drag.dx=X-drag.x0; drag.dy=Y-drag.y0;
+    if(snap){ cx.putImageData(snap,0,0); const r=sel.t==="bg"?{x:0,y:0,w:CW_,h:CH_}:rectOf(sel);
+      if(r){ cx.save(); cx.strokeStyle="#ff3d7f"; cx.lineWidth=3; cx.setLineDash([8,5]); cx.strokeRect((r.x+drag.dx)*K,(r.y+drag.dy)*K,r.w*K,r.h*K); cx.restore(); } } };
+  cv.onpointerup=async()=>{ if(!drag) return; const {dx,dy}=drag; drag=null; cv.style.cursor="grab"; if(Math.abs(dx)+Math.abs(dy)<4){ drawSel(); return; }
+    const add=o=>({dx:(o?o.dx:0)+dx, dy:(o?o.dy:0)+dy});
+    if(sel.t==="bg"){ const g=E.bg||E._auto||P.bgGeom; if(!g) return; E.bg=clampBg({...g, ox:g.ox+dx, oy:g.oy+dy}); }
+    else if(sel.t==="tag"){ E.tags=E.tags||{}; E.tags[sel.k]=add(E.tags[sel.k]); }
+    else if(sel.t==="extra"){ const x=E.extras[sel.i]; x.x+=dx; x.y+=dy; }
+    else E[sel.t]=add(E[sel.t]);
+    await render(); };
+  q("[data-zoom]").oninput=async e=>{ if(!P||!P.still) return; const g=E.bg||E._auto||P.bgGeom, s0=Math.max(CW_/P.still.width,CH_/P.still.height), s=s0*e.target.value/100;
+    const cxm=g.ox+g.iw/2, cym=g.oy+g.ih/2, iw=P.still.width*s, ih=P.still.height*s; E.bg=clampBg({ox:cxm-iw/2, oy:cym-ih/2, iw, ih}); await render(); };
+  q("[data-autobg]").onclick=async()=>{ delete E.bg; delete E._auto; await render(); };
+  q("[data-applytxt]").onclick=async()=>{ E.lines=q("[data-lines]").value.split("\n").map(l=>l.trim()).filter(Boolean); await render(); };
+  q("[data-resettxt]").onclick=async()=>{ delete E.lines; q("[data-lines]").value=P.defaultLines.join("\n"); await render(); };
+  q("[data-color]").onchange=async e=>{ E.color=e.target.value; await render(); };
+  q("[data-addtxt]").onclick=async()=>{ const t=q("[data-newtxt]").value.trim(); if(!t) return; E.extras=E.extras||[];
+    E.extras.push({type:"text", text:t, x:1700, y:200, size:Number(q("[data-newsize]").value)||110, color:q("[data-newcol]").value, bgColor:q("[data-newbg]").checked?P.color:null});
+    sel={t:"extra", i:E.extras.length-1}; q("[data-newtxt]").value=""; await render(); };
+  q("[data-addimg]").onclick=()=>q("[data-imgfile]").click();
+  q("[data-imgfile]").onchange=async e=>{ const fl=e.target.files[0]; if(!fl) return; E.extras=E.extras||[];
+    E.extras.push({type:"img", src:await shrink(await readFile(fl),1600), x:1700, y:300, w:800}); sel={t:"extra", i:E.extras.length-1}; e.target.value=""; await render(); };
+  q("[data-sz]").oninput=async e=>{ if(!sel||sel.t!=="extra") return; const x=E.extras[sel.i]; if(x.type==="text") x.size=Number(e.target.value); else x.w=Number(e.target.value)*8; await render(); };
+  q("[data-del]").onclick=async()=>{ if(!sel||sel.t!=="extra") return; E.extras.splice(sel.i,1); sel=null; await render(); };
+  q("[data-resetall]").onclick=async()=>{ for(const k of Object.keys(E)) delete E[k]; sel=null; q("[data-lines]").value=""; await render(); };
+  q("[data-cancel]").onclick=()=>ov.remove();
+  q("[data-ok]").onclick=async()=>{ delete E._auto; if(Object.keys(E).length) cartonEdits[key]=E; else delete cartonEdits[key]; editsSave(); ov.remove(); onDone&&onDone(); };
+  render();
 }
 
 /* ========================== DCP via DCP-o-matic ========================== */
@@ -3052,7 +3124,7 @@ function dcpOptions(px=""){ const S=k=>settings[k]||DEFAULTS[k];
   return {mode:S("dcpMode"), type:px==="pb"?S("dcpTypeFlyer"):S("dcpTypeCarton"), fps:S("dcpFps"), res:S("dcpRes"), ch:S("dcpChannels")}; }
 function dcpScripts(packName, items, o){
   const common=`-c ${o.type} --container-ratio 185 ${o.res==="2K"?"--twok":"--fourk"} --standard SMPTE --no-use-isdcf-name -f ${o.fps} -a ${o.ch}`;
-  const jobs=o.mode==="enchaine" ? [{name:dcpSafe(packName), files:items.map(i=>i.name)}] : items.map(i=>({name:dcpSafe(packName+"_"+i.name.replace(/\.mp4$/i,"")), files:[i.name]}));
+  const jobs=o.mode==="enchaine" ? [{name:dcpSafe(packName), files:items.map(i=>i.name)}] : items.map(i=>({name:i.dcp||dcpSafe(packName+"_"+i.name.replace(/\.mp4$/i,"")), files:[i.name]}));
   // ---- Windows
   const bat=["@echo off","chcp 65001 >nul","setlocal enabledelayedexpansion",'cd /d "%~dp0"',
     "echo ================================================================",
@@ -3301,7 +3373,7 @@ async function pdfOf(blobs, w, h){
   for(let i=0;i<blobs.length;i++){ if(i) doc.addPage([pw,ph],"portrait"); doc.addImage(await blobToDataURL(blobs[i]),"JPEG",0,0,pw,ph); }
   return doc.output("blob");
 }
-$("#btnCanva").onclick=async()=>{
+if($("#btnCanva")) $("#btnCanva").onclick=async()=>{
   if(!window.jspdf){ note("La création des PDF n'est pas disponible (bibliothèque non chargée). Vérifie la connexion internet."); return; }
   const zip=new JSZip(), week=curWeek(); note("Création des PDF pour Canva…");
   for(let i=0;i<outputs.length;i++){
