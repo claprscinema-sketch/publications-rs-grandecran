@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 16h00</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 17h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -3272,28 +3272,68 @@ async function pbPosterPNG(src, slot){
 const PB_MODELS=[["ecran10_PBA","Écran fixe 10 min (3) — PBA","video/*"],["ecran10_PBE","Écran fixe 10 min (3) — PBE (si vide : celui des PBA)","video/*"],["ouverture","Vidéo intro BA (1)","video/*"],["cloture","Vidéo fin BA (2)","video/*"],["musique","Musique des intros / fins BA","audio/*"]];
 async function pbModelFile(dir, k){ for(const ext of ["mp4","mov","mp3","wav","m4a","aac","ogg","flac"]){ const f=await pbGetFile(dir,`modeles/${k}.${ext}`); if(f) return {f, path:`modeles/${k}.${ext}`}; } return null; }
 // dossiers de films : PBA = dossier de travail, PBE = 2e dossier du même type
-let pbDirE=null; const pbScanCache={};
+let pbDirE=null; const pbScanCache={}, pbScanImgs={};
 async function pbDirEGet(ask){
   if(!pbDirE){ const h=await Store.get("pbDirHandleE"); if(h) pbDirE=h; }
   if(!pbDirE) return null;
   let p=await pbDirE.queryPermission({mode:"read"}); if(p!=="granted" && ask) p=await pbDirE.requestPermission({mode:"read"});
   return p==="granted"?pbDirE:null;
 }
-const PB_VID=/\.(mp4|mov|m4v|mkv|avi|webm|mxf)$/i, PB_IMG=/\.(jpe?g|png|webp)$/i, PB_SKIP=/^(modeles|cache|outils|bandes-annonces.*|quinzaine_.*|DCP|travail|\..*)$/i;
-const pbTitle=n=>n.replace(/\.[^.]+$/,"").replace(/[_]+/g," ").replace(/\s+/g," ").trim();
-// films = vidéos du dossier (et de ses sous-dossiers) ; affiche = image du même nom, ou seule image du sous-dossier du film
+const PB_VID=/\.(mp4|mov|m4v|mkv|avi|webm|mxf|mpg|mpeg|wmv)$/i, PB_IMG=/\.(jpe?g|jfif|png|webp|avif|gif|bmp)$/i, PB_SKIP=/^(modeles|cache|outils|bandes-annonces.*|quinzaine_.*|DCP|travail|\..*)$/i;
+// mots qui décrivent le fichier sans nommer le film : ignorés pour apparier vidéo et affiche
+const PB_STOP=new Set("bande bandes annonce annonces ba trailer trailers teaser teasers officielle officiel official vf vo vost vostf vostfr fr french hd uhd sd 4k 2k 1080p 720p 2160p 1080 720 2160 dcp affiche affiches aff poster posters visuel visuels film films video videos final def version mp4 mov jpg jpeg png scope flat h264 x264 web".split(" "));
+const pbWords=n=>norm(n.replace(/\.[^.]+$/,"")).replace(/[^a-z0-9]+/g," ").trim().split(" ").filter(Boolean);
+const PB_ART=new Set("le la les l de du des d un une et a au aux en the of".split(" "));
+const pbToks=n=>{ const w=pbWords(n).filter(w=>!PB_STOP.has(w)), t=w.filter(x=>!PB_ART.has(x)); return t.length?t:w; };
+const pbTitle=n=>{ const t=n.replace(/\.[^.]+$/,"").replace(/[_.]+/g," ")
+  .replace(/\b(bandes?[\s-]*annonces?|ba|trailer|vf|vost(fr)?|vo|hd|uhd|4k|2k|\d{3,4}p)\b/gi," ")
+  .replace(/[\[\(]\s*[\]\)]/g," ").replace(/\s*[-–—|]+\s*$/,"").replace(/^\s*[-–—|]+\s*/,"").replace(/\s+/g," ").trim(); return t; };
+function pbMatch(a,b){ if(!a.length||!b.length) return 0; let n=0;
+  for(const x of a) if(b.some(y=>y===x || (Math.min(x.length,y.length)>=4 && (x.startsWith(y)||y.startsWith(x))))) n++;
+  return n/Math.min(a.length,b.length); }
+// films = vidéos du dossier et de ses sous-dossiers ; affiche = l'image dont le nom (ou le sous-dossier) correspond le mieux
 async function pbScan(dir, src){
-  const out=[];
+  const vids=[], imgs=[], nvid={};
   async function walk(d, rel, depth){
-    const vids=[], imgs=[], subs=[];
-    for await(const [n,h] of d.entries()){ if(h.kind==="directory"){ if(!(depth===0&&PB_SKIP.test(n))&&depth<2&&!n.startsWith(".")) subs.push([n,h]); }
-      else if(!n.startsWith(".")){ if(PB_VID.test(n)) vids.push(n); else if(PB_IMG.test(n)) imgs.push(n); } }
-    for(const v of vids){ const base=v.replace(/\.[^.]+$/,"").toLowerCase();
-      let img=imgs.find(i=>i.replace(/\.[^.]+$/,"").toLowerCase()===base) || (vids.length===1&&depth>0?imgs.find(i=>/affiche|poster/i.test(i))||imgs[0]:null);
-      out.push({src, rel:rel+v, title:depth>0&&vids.length===1?pbTitle(rel.split("/").slice(-2,-1)[0]):pbTitle(v), poster:img?rel+img:null}); }
-    for(const [n,h] of subs) await walk(h, rel+n+"/", depth+1);
+    for await(const [n,h] of d.entries()){ if(n.startsWith(".")) continue;
+      if(h.kind==="directory"){ if(!(depth===0&&PB_SKIP.test(n)) && depth<3) await walk(h, rel+n+"/", depth+1); }
+      else if(PB_VID.test(n)){ vids.push({rel:rel+n, dir:rel, name:n}); nvid[rel]=(nvid[rel]||0)+1; }
+      else if(PB_IMG.test(n)){ const f=await h.getFile(); imgs.push({rel:rel+n, dir:rel, name:n, size:f.size}); } }
   }
-  await walk(dir,"",0); out.sort((a,b)=>a.title.localeCompare(b.title,"fr")); pbScanCache[src]=out; return out;
+  await walk(dir,"",0);
+  const folder=r=>r.split("/").slice(-2,-1)[0]||"";
+  const filmDir=d=>d && nvid[d]===1;                              // sous-dossier d'un seul film
+  const tokV=v=>{ const t=pbToks(v.name); return filmDir(v.dir)||!t.length?[...new Set([...t,...pbToks(folder(v.rel))])]:t; };
+  const tokI=i=>{ const t=pbToks(i.name); return filmDir(i.dir)||!t.length?[...new Set([...t,...pbToks(folder(i.rel))])]:t; };
+  const out=vids.map(v=>{ const tv=tokV(v); let best=null;
+    for(const i of imgs){ let s=pbMatch(tv,tokI(i)); if(s<.5) continue;
+      if(i.dir===v.dir) s+=.3; if(/affiche|poster/i.test(i.name)) s+=.1; s+=Math.min(i.size,2e7)/1e9;
+      if(!best||s>best.s) best={s,i}; }
+    if(!best && filmDir(v.dir)){ const loc=imgs.filter(i=>i.dir===v.dir).sort((a,b)=>(/affiche|poster/i.test(b.name)-/affiche|poster/i.test(a.name))||b.size-a.size); if(loc[0]) best={i:loc[0]}; }
+    let title=pbTitle(v.name); if(!pbToks(v.name).length || filmDir(v.dir)&&pbToks(folder(v.rel)).length&&pbMatch(pbToks(v.name),pbToks(folder(v.rel)))<.5) title=folder(v.rel)||title;
+    return {src, rel:v.rel, title:title||pbTitle(v.name)||v.name, poster:best?best.i.rel:null}; });
+  out.sort((a,b)=>a.title.localeCompare(b.title,"fr")); pbScanCache[src]=out; pbScanImgs[src]=imgs.map(i=>i.rel); return out;
+}
+// choix de l'affiche parmi les images du dossier (les plus ressemblantes au titre en premier)
+async function pbPickPoster(f, src, save, L){
+  const all=fn=>(L||[f]).filter(x=>x.rel===f.rel).forEach(fn);   // le même film doublé garde la même affiche
+  const d=src==="A"?await pbDirGet(true):await pbDirEGet(true); if(!d) return;
+  const t=pbToks(f.title), list=(pbScanImgs[src]||[]).map(r=>({r, s:pbMatch(t,pbToks(r.split("/").pop()))+(r===f.poster?2:0)})).sort((a,b)=>b.s-a.s||a.r.localeCompare(b.r,"fr"));
+  const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center";
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:14px 16px;width:min(1100px,94vw);max-height:90vh;overflow:auto">
+    <h3 style="margin:0 0 6px">Affiche de « ${esc(f.title)} »</h3><p class="hint" style="margin:0 0 10px">Clique sur l'image à utiliser (${list.length} images dans le dossier).</p>
+    <div data-g style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
+    <div class="row" style="gap:8px;margin-top:12px"><button class="small" data-other>📂 Autre image de l'ordinateur…</button>${f.posterPick||f.posterData?'<button class="small" data-auto>↺ Revenir au choix automatique</button>':""}<button class="small" data-x>Fermer</button></div></div>`;
+  document.body.append(ov); const urls=[], close=()=>{ urls.forEach(u=>URL.revokeObjectURL(u)); ov.remove(); };
+  ov.querySelector("[data-x]").onclick=close; ov.onclick=e=>{ if(e.target===ov) close(); };
+  ov.querySelector("[data-other]").onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.accept="image/*";
+    ip.onchange=async()=>{ if(ip.files[0]){ const dd=await shrink(await readFile(ip.files[0]),2400); all(x=>{ x.posterData=dd; delete x.posterPick; }); close(); save(); } }; ip.click(); };
+  const au=ov.querySelector("[data-auto]"); if(au) au.onclick=()=>{ all(x=>{ delete x.posterPick; delete x.posterData; }); delete pbScanCache[src]; close(); save(); };
+  const g=ov.querySelector("[data-g]");
+  for(const {r} of list){ const fl=await pbGetFile(d,r); if(!fl) continue; const u=URL.createObjectURL(fl); urls.push(u);
+    const c=document.createElement("button"); c.type="button"; c.style.cssText=`display:flex;flex-direction:column;gap:4px;align-items:center;padding:6px;border-radius:8px;cursor:pointer;background:#fff;border:${r===f.poster&&!f.posterData?"3px solid #c62828":"1px solid #ccc"}`;
+    c.innerHTML=`<img src="${u}" style="width:100%;height:160px;object-fit:contain;background:#f4f4f4"><span style="font-size:11px;word-break:break-all">${esc(r)}</span>`;
+    c.onclick=()=>{ all(x=>{ x.poster=r; x.posterPick=true; delete x.posterData; }); close(); save(); }; g.append(c); }
 }
 async function pbFileAt(dir, rel){ return pbGetFile(dir, rel); }
 async function renderPB(){
@@ -3324,13 +3364,16 @@ async function renderPB(){
       <span class="hint" style="margin:0">Volume 20 = réglage « 20 » de Canva (20 % du niveau d'origine). La musique joue sur les intros et fins BA, jamais sur les bandes-annonces.</span></div></div>`;
     html+=`<div class="pbBlock"><h3>3. Films des PB</h3><p class="hint">Choisis les films dans le dossier PBA ou PBE, dans l'ordre de priorité : l'outil retient ceux qui font tomber les bandes-annonces entre 17 et 18 min. Les 2 PB de la quinzaine ont les mêmes séquences ; seule la fin (flyer écran de la date) change.</p><div class="pbJobs">`;
     for(const kind of ["PBA","PBE"]){ const src=kind==="PBA"?"A":"E", pool=pbScanCache[src]||[], L=pbJobs[kind]||[], S=pbSelect(L,tO,tC), j={kind};
-      const free=pool.filter(p=>!L.some(f=>f.rel===p.rel)), mine=jobs.filter(x=>x.kind===kind);
+      L.forEach(f=>{ const p=pool.find(x=>x.rel===f.rel); if(p){ if(!f.posterPick) f.poster=p.poster; f.title=p.title; } });   // affiche et titre relus dans le dossier
+      const free=pool.filter(p=>!L.some(f=>f.rel===p.rel)), mine=jobs.filter(x=>x.kind===kind), nb=r=>L.filter(f=>f.rel===r).length;
+      const short=L.length && S.tot<PB_B_MIN && L.every(f=>f.dur);
       const fin=mine.map(x=>{ const n=pbFlyerWeeks(x.date).length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n); return `<b>${x.id}</b> : flyer écran ${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
       html+=`<div class="pbJob" data-job="${kind}"><h4>${mine.map(x=>x.id).join(" et ")} <span class="hint" style="margin:0">${kind==="PBA"?"adultes":"enfants"}</span></h4>
-        <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ durée illisible"}${f.poster||f.posterData?"":" · ⚠️ pas d'affiche"}${f.on===false?" · non retenu":""}</span>
-          <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
-        ${(src==="A"?dir:dirE)?`<div class="row" style="gap:6px"><select data-add><option value="">＋ Ajouter un film du dossier ${j.kind}…</option>${free.map(p=>`<option value="${esc(p.rel)}">${esc(p.title)}</option>`).join("")}</select>
+        <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ durée illisible"}${f.posterData?" · affiche choisie à la main":f.posterPick?` · 🖼 ${esc(f.poster.split("/").pop())} (choisie)`:f.poster?` · <span title="${esc(f.poster)}">🖼 ${esc(f.poster.split("/").pop())}</span>`:" · ⚠️ pas d'affiche"}${nb(f.rel)>1?` · ${nb(f.rel)}×`:""}${f.on===false?" · non retenu":""}</span>
+          <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-dup="${i}" title="passer ce film une 2e fois">⧉</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
+        ${(src==="A"?dir:dirE)?`<div class="row" style="gap:6px"><select data-add><option value="">＋ Ajouter un film du dossier ${j.kind}…</option>${pool.map(p=>`<option value="${esc(p.rel)}">${esc(p.title)}${nb(p.rel)?` (déjà ${nb(p.rel)}× : la reprendre)`:""}</option>`).join("")}</select>
           ${free.length?`<button class="small" data-addall>＋ Tout ajouter</button>`:""}</div>`:`<p class="warn" style="margin:4px 0">Choisis d'abord le dossier des films ${j.kind==="PBA"?"adultes":"enfants"} (étape 1).</p>`}
+        ${short?`<div class="warn" style="margin:6px 0">Trop court (${fmtMS(S.tot)} au lieu de 17 à 18 min). <button class="small primary" data-fill>⧉ Compléter en doublant des films</button> ou ajoute / reprends des films avec ⧉ ou la liste.</div>`:""}
         <div class="hint" style="margin:6px 0 0">${S.tot?`Bandes-annonces : <b>${fmtMS(S.tot)}</b> ${S.ok?"✅":"⚠️ hors de 17–18 min"} · fin : ${fmtMS(PB_TOTAL_B_C-S.tot)} · total ${fmtMS(PB_A+PB_TOTAL_B_C)}<br>${fin}`:"Aucun film."}</div></div>`; }
     html+=`</div></div>`;
     html+=`<div class="pbBlock"><h3>4. Fabrication</h3><div class="row" style="gap:14px;align-items:center;flex-wrap:wrap">
@@ -3356,13 +3399,22 @@ async function renderPB(){
   root.querySelectorAll(".pbJob").forEach(box=>{ const id=box.dataset.job, src=id==="PBA"?"A":"E", L=pbJobs[id]=pbJobs[id]||[];
     const save=()=>{ Store.set("pbLists",pbJobs); renderPB(); };
     const add=async p=>{ const d=src==="A"?dir:await pbDirEGet(true), f=d&&await pbFileAt(d,p.rel), v=f&&await videoInfo(f); L.push({...p, dur:v?v.d:0}); };
-    const sel=box.querySelector("[data-add]"); if(sel) sel.onchange=async e=>{ const p=(pbScanCache[src]||[]).find(x=>x.rel===e.target.value); if(!p) return; sel.disabled=true; await add(p); save(); };
+    const sel=box.querySelector("[data-add]"); if(sel) sel.onchange=async e=>{ const p=(pbScanCache[src]||[]).find(x=>x.rel===e.target.value); if(!p) return; sel.disabled=true; const ex=L.find(f=>f.rel===p.rel); if(ex) L.push({...ex}); else await add(p); save(); };
+    box.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>{ const f=L[+b.dataset.dup]; L.push({...f}); save(); });
+    // complète jusqu'à 17 min en reprenant les films dans l'ordre de priorité, jamais deux fois de suite le même
+    const fill=box.querySelector("[data-fill]"); if(fill) fill.onclick=()=>{ const blk=f=>tO+f.dur+tC; let tot=L.reduce((a,f)=>a+blk(f),0);
+      const uniq=[...new Map(L.map(f=>[f.rel,f])).values()];
+      while(tot<PB_B_MIN){ const cnt=r=>L.filter(f=>f.rel===r).length, last=L[L.length-1];
+        const c=uniq.filter(f=>f.rel!==last.rel && tot+blk(f)<=PB_B_MAX).sort((a,b)=>cnt(a.rel)-cnt(b.rel))[0]
+          || uniq.filter(f=>tot+blk(f)<=PB_B_MAX).sort((a,b)=>cnt(a.rel)-cnt(b.rel))[0];
+        if(!c) break; L.push({...c}); tot+=blk(c); }
+      if(tot<PB_B_MIN) alert("Impossible d'atteindre 17 min sans dépasser 18 min avec ces films : ajoute un autre film.");
+      save(); };
     const all=box.querySelector("[data-addall]"); if(all) all.onclick=async()=>{ all.disabled=true; all.textContent="Lecture…"; for(const p of (pbScanCache[src]||[])) if(!L.some(f=>f.rel===p.rel)) await add(p); save(); };
     box.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; if(i>0){ [L[i-1],L[i]]=[L[i],L[i-1]]; save(); } });
     box.querySelectorAll("[data-down]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.down; if(i<L.length-1){ [L[i+1],L[i]]=[L[i],L[i+1]]; save(); } });
     box.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.rm,1); save(); });
-    box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.aff, ip=document.createElement("input"); ip.type="file"; ip.accept="image/*";
-      ip.onchange=async()=>{ if(ip.files[0]){ L[i].posterData=await shrink(await readFile(ip.files[0]),2400); save(); } }; ip.click(); });
+    box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>pbPickPoster(L[+b.dataset.aff], src, save, L));
   });
   q("[data-pbgo]").onclick=()=>pbBuild(dir, root.querySelector("[data-pbprog]"), tO, tC);
 }
