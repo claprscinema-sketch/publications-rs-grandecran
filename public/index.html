@@ -105,6 +105,11 @@
   .tabs button{background:none;color:#bbb;border-radius:0;padding:13px 18px;font-weight:600;font-size:14px;border-bottom:3px solid transparent;white-space:nowrap}
   .tabs button:hover{color:#fff}
   .tabs button.on{color:#fff;border-bottom-color:#e74c3c}
+  /* onglets réservés (code) : couleur dorée pour les distinguer */
+  .tabs button[data-pb]{color:#e0b44c;background:rgba(224,180,76,.08)}
+  .tabs button[data-pb]:hover{color:#ffd77a;background:rgba(224,180,76,.16)}
+  .tabs button[data-pb].on{color:#ffd77a;background:rgba(224,180,76,.18);border-bottom-color:#e0b44c}
+  .tabs button[data-tab="cartons"]{margin-left:14px;border-left:1px solid #444}
   .tabs button .soon{font-size:10px;font-weight:600;color:#888;margin-left:6px;text-transform:uppercase}
   .ecrans{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
   .ecr{border:1px solid var(--line);border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:6px;font-size:12px}
@@ -119,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 19h00</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 20h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -3343,10 +3348,37 @@ async function pbPickPoster(f, src, save, L){
     c.onclick=()=>{ all(x=>{ x.poster=r; x.posterPick=true; delete x.posterData; }); close(); save(); }; g.append(c); }
 }
 async function pbFileAt(dir, rel){ return pbGetFile(dir, rel); }
+// vidéos fabriquées par le script, dans le dossier de travail : aperçu et téléchargement depuis l'application
+async function readyBlock(dir, folder, expected, title){
+  let d=null; try{ d=await pbSub(dir,[folder],false); }catch(e){}
+  const found=[]; if(d) for await(const [n,h] of d.entries()) if(h.kind==="file" && /\.mp4$/i.test(n)){ const f=await h.getFile(); found.push(f); }
+  const byName=new Map(found.map(f=>[f.name,f])), names=[...expected.map(e=>e+".mp4"), ...found.map(f=>f.name).filter(n=>!expected.includes(n.replace(/\.mp4$/i,"")))];
+  let dcp=0; if(d){ try{ const dd=await d.getDirectoryHandle("DCP"); for await(const [n,h] of dd.entries()) if(h.kind==="directory") dcp++; }catch(e){} }
+  const sz=b=>b>1e9?(b/1e9).toFixed(2)+" Go":(b/1e6).toFixed(0)+" Mo";
+  return `<div class="pbBlock" data-ready="${esc(folder)}"><h3>${title}</h3>
+    ${found.length?"":`<p class="hint">Aucune vidéo pour l'instant : lance le script de fabrication (étape précédente), puis clique sur « Actualiser ».</p>`}
+    <div style="display:flex;flex-direction:column;gap:6px">${names.map(n=>{ const f=byName.get(n);
+      return `<div class="row" style="gap:10px;align-items:center"><b style="min-width:230px">${esc(n)}</b>${f?`<span class="hint" style="margin:0">${sz(f.size)} · ${new Date(f.lastModified).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"})}</span>
+        <button class="small" data-rplay="${esc(n)}">▶ Aperçu</button><button class="small primary" data-rdl="${esc(n)}">⬇ Télécharger</button>`:'<span class="hint" style="margin:0">pas encore fabriquée</span>'}</div>`; }).join("")}</div>
+    <div class="row" style="gap:8px;margin-top:8px">${found.length>1?'<button class="small" data-rall>⬇ Tout télécharger</button>':""}<button class="small" data-rref>🔄 Actualiser</button>
+    ${dcp?`<span class="hint" style="margin:0">${dcp} DCP dans le dossier « ${esc(dir.name)}/${esc(folder)}/DCP » (à copier tel quel sur la clé ou le disque du projecteur).</span>`:""}</div></div>`;
+}
+function readyWire(root, dir, rerender){
+  const box=root.querySelector("[data-ready]"); if(!box) return; const folder=box.dataset.ready;
+  const get=async n=>{ const d=await pbSub(dir,[folder],false); return await (await d.getFileHandle(n)).getFile(); };
+  const dl=async n=>{ const f=await get(n), u=URL.createObjectURL(f), a=document.createElement("a"); a.href=u; a.download=n; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),60000); };
+  box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=()=>dl(b.dataset.rdl));
+  const all=box.querySelector("[data-rall]"); if(all) all.onclick=async()=>{ for(const b of box.querySelectorAll("[data-rdl]")){ await dl(b.dataset.rdl); await new Promise(r=>setTimeout(r,800)); } };
+  box.querySelector("[data-rref]").onclick=rerender;
+  box.querySelectorAll("[data-rplay]").forEach(b=>b.onclick=async()=>{ const f=await get(b.dataset.rplay), u=URL.createObjectURL(f);
+    const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px";
+    ov.innerHTML=`<video src="${u}" controls autoplay style="max-width:92vw;max-height:80vh;background:#000"></video><button class="small">Fermer</button>`;
+    const close=()=>{ ov.querySelector("video").pause(); URL.revokeObjectURL(u); ov.remove(); }; ov.querySelector("button").onclick=close; ov.onclick=e=>{ if(e.target===ov) close(); }; document.body.append(ov); });
+}
 async function renderPB(){
   const root=$("#pbRoot"); if(!root) return;
   if(!fsOK()){ root.innerHTML='<p class="warn">Cet onglet a besoin de Chrome ou Edge (accès à des dossiers de l\'ordinateur).</p>'; return; }
-  pbJobs=(await Store.get("pbLists"))||{};
+  pbJobs=(await Store.get("pbLists"))||{}; hallKid=(await Store.get("hallKid"))||{};
   const dir=await pbDirGet(false), h=await Store.get("pbDirHandle"), dirE=await pbDirEGet(false), hE=await Store.get("pbDirHandleE");
   const jobs=pbJobList(); let tO=5, tC=6;
   const dirRow=(lab,hint,hh,d,k)=>`<div class="row" style="gap:10px;align-items:center;margin:6px 0"><b style="min-width:150px">${lab}</b><button class="small" data-pbdir="${k}">📁 ${hh?"Changer":"Choisir le dossier"}</button>
@@ -3374,7 +3406,8 @@ async function renderPB(){
       L.forEach(f=>{ const p=pool.find(x=>x.rel===f.rel); if(p){ if(!f.posterPick) f.poster=p.poster; f.title=p.title; } });   // affiche et titre relus dans le dossier
       const free=pool.filter(p=>!L.some(f=>f.rel===p.rel)), mine=jobs.filter(x=>x.kind===kind), nb=r=>L.filter(f=>f.rel===r).length;
       const short=L.length && S.tot<PB_B_MIN && L.every(f=>f.dur);
-      const fin=mine.map(x=>{ const n=pbFlyerWeeks(x.date).length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n); return `<b>${x.id}</b> : flyer écran ${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
+      const fin=mine.map(x=>{ if(kind==="PBE" && !hasKidFilm(histWeek(x.date))) return `<b>${x.id}</b> : pas de film enfants au programme de la semaine → pas de PBE`;
+        const n=pbFlyerWeeks(x.date).length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n); return `<b>${x.id}</b> : flyer écran ${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
       html+=`<div class="pbJob" data-job="${kind}"><h4>${mine.map(x=>x.id).join(" et ")} <span class="hint" style="margin:0">${kind==="PBA"?"adultes":"enfants"}</span></h4>
         <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ durée illisible"}${f.posterData?" · affiche choisie à la main":f.posterPick?` · 🖼 ${esc(f.poster.split("/").pop())} (choisie)`:f.poster?` · <span title="${esc(f.poster)}">🖼 ${esc(f.poster.split("/").pop())}</span>`:" · ⚠️ pas d'affiche"}${nb(f.rel)>1?` · ${nb(f.rel)}×`:""}${f.on===false?" · non retenu":""}</span>
           <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-dup="${i}" title="passer ce film une 2e fois">⧉</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
@@ -3387,8 +3420,9 @@ async function renderPB(){
       <label>Format <select data-pbset="pbRes"><option value="4K"${pbS("pbRes")==="4K"?" selected":""}>4K (3996×2160)</option><option value="2K"${pbS("pbRes")==="2K"?" selected":""}>2K (1998×1080)</option></select></label>
       <label>Images/s <select data-pbset="pbFps"><option value="30"${pbS("pbFps")==="30"?" selected":""}>30</option><option value="60"${pbS("pbFps")==="60"?" selected":""}>60</option></select></label>
       <label>Type DCP <select data-pbset="pbType">${DCP_TYPES.map(([v,t])=>`<option value="${v}"${pbS("pbType")===v?" selected":""}>${t}</option>`).join("")}</select></label>
-      <button class="primary" data-pbgo>🎬 Préparer les ${jobs.length} PB (MP4 + DCP)</button></div>
+      <button class="primary" data-pbgo>🎬 Préparer les ${jobs.filter(j=>j.kind!=="PBE"||hasKidFilm(histWeek(j.date))).length} PB (MP4 + DCP)</button></div>
       <div class="hint" data-pbprog></div></div>`;
+    html+=await readyBlock(dir, `quinzaine_${jjmm(pbDates()[1])}`, jobs.filter(j=>j.kind!=="PBE"||hasKidFilm(histWeek(j.date))).map(j=>j.id), "5. Vidéos prêtes");
   }
   root.innerHTML=html;
   const q=s=>root.querySelector(s);
@@ -3424,6 +3458,7 @@ async function renderPB(){
     box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>pbPickPoster(L[+b.dataset.aff], src, save, L));
   });
   q("[data-pbgo]").onclick=()=>pbBuild(dir, root.querySelector("[data-pbprog]"), tO, tC);
+  readyWire(root, dir, renderPB);
 }
 const fmtMS=s=>`${Math.floor(s/60)}:${pad(Math.round(s%60))}`;
 
@@ -3444,6 +3479,7 @@ async function pbBuild(dir, prog, tO, tC){
     const step=(out, cmd)=>{ if(made.has(out)) return; made.add(out); steps.push({out, cmd}); };
     const jobsOut=[];
     for(const j of pbJobList()){
+      if(j.kind==="PBE" && !hasKidFilm(histWeek(j.date))){ jobsOut.push({id:j.id, skip:"pas de film enfants au programme de la semaine"}); continue; }
       const L=(pbJobs[j.kind]||[]).filter(f=>f.rel && f.dur); const S=pbSelect(L,tOq,tCq), sel=S.sel.filter(f=>f.on);
       if(!sel.length){ jobsOut.push({id:j.id, skip:"aucun film"}); continue; }
       const dSrc=j.kind==="PBA"?dir:await pbDirEGet(true); if(!dSrc) throw new Error(`dossier des films ${j.kind} inaccessible (étape 1)`);
@@ -3624,6 +3660,8 @@ function hallWeek(j){ const ws=j.weeks.map(d=>histWeek(d)).filter(w=>w&&w.films.
   const m=new Map(); for(const w of ws) for(const f of w.films){ const g=m.get(f.key); if(g) g.seances=[...g.seances,...f.seances].sort((a,b)=>a-b); else m.set(f.key,{...f, seances:[...f.seances]}); }
   return {films:[...m.values()], n:ws.length}; }
 const hallSpan=j=>{ const a=j.weeks[0], b=addDays(j.weeks[j.weeks.length-1],6); return `programme du ${pad(a.getDate())}/${pad(a.getMonth()+1)} au ${pad(b.getDate())}/${pad(b.getMonth()+1)}`; };
+// false seulement si la semaine est connue et ne compte aucun film enfants (alors pas de PB enfants à faire)
+function hasKidFilm(w){ return !w || w.films.some(f=>hallGuessKid(f)); }
 function hallGuessKid(f){
   if(f.key in hallKid) return hallKid[f.key];
   const raw=String(f.infoRaw||""), g=((FILM_DB[f.key]||{}).genres||"")+" "+((details[f.key]||{}).genres||"")+" "+((details[f.key]||{}).public||"");
@@ -3699,6 +3737,7 @@ async function renderHall(relink){
       <label style="display:block;margin-top:6px"><input type="checkbox" data-hmus ${pbS("hallMusic")==="1"?"checked":""}> Musique sur les intros et fins BA (volume et fondus de l'onglet PB écran)</label></div>`;
     html+=`<div class="pbBlock"><h3>3. Films de chaque vidéo</h3><p class="hint">Au départ : les films du programme (toute la quinzaine pour la 1re date, la 2e semaine seulement pour la 2e date), classés adultes / enfants (⇄ pour changer de liste), avec leur bande-annonce (dossiers de semaine) et leur affiche (base commune). Tu peux compléter avec des films des dossiers de sorties. Pas de durée minimum.</p><div class="pbJobs">`;
     for(const j of jobs){ const L=hallLists[j.id]; const pool=pbScanCache[j.kind]||[];
+      if(j.kind==="E" && !hasKidFilm(hallWeek(j))){ html+=`<div class="pbJob" data-hjobnone><h4>${esc(j.out)} <span class="hint" style="margin:0">${hallSpan(j)}</span></h4><p class="hint">Pas de film enfants au programme : pas de vidéo enfants à faire.</p></div>`; continue; }
       const wk=hallWeek(j), tot=(L||[]).filter(f=>f.dur).reduce((a,f)=>a+tO+f.dur+tC+(f.key&&wk&&wk.films.some(g=>g.key===f.key)?HALL_CARD:0),0);
       html+=`<div class="pbJob" data-hjob="${j.id}"><h4>${esc(j.out)} <span class="hint" style="margin:0">${hallSpan(j)}</span></h4>
         ${L?`<ol>${L.map((f,i)=>`<li><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.prog?"programme":"sortie"} · ${f.rel?(f.dur?fmtMS(f.dur):"durée illisible"):"⚠️ bande-annonce introuvable"}${f.posterData?" · affiche choisie":f.key&&!f.posterPick&&filmState[f.key]&&filmState[f.key].poster?" · 🖼 base":f.poster?" · 🖼 "+esc(f.poster.split("/").pop()):" · ⚠️ pas d'affiche"}</span>
@@ -3707,7 +3746,8 @@ async function renderHall(relink){
           <button class="small" data-refill title="reprendre les films du programme de la semaine">↺ Films du programme</button></div>
         <div class="hint" style="margin:6px 0 0">${tot?`Durée : <b>${fmtMS(tot)}</b> (${(L||[]).filter(f=>f.dur).length} films)`:hallWeek(j)?"":"⚠️ semaine absente de l'historique : dépose l'Excel de la quinzaine"}</div></div>`; }
     html+=`</div></div><div class="pbBlock"><h3>4. Fabrication</h3><p class="hint">MP4 1280×720 (720p), 30 images/s, son AAC. Les vidéos sont assemblées sur l'ordinateur par FFmpeg, comme pour PB écran.</p>
-      <button class="primary" data-hgo>🎬 Préparer les ${jobs.length} vidéos du hall</button><div class="hint" data-hprog></div></div>`;
+      <button class="primary" data-hgo>🎬 Préparer les ${jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))).length} vidéos du hall</button><div class="hint" data-hprog></div></div>`;
+    html+=await readyBlock(dir, `hall_${jjmm(pbDates()[1])}`, jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))).map(j=>j.out), "5. Vidéos prêtes");
   }
   root.innerHTML=html;
   const q=s=>root.querySelector(s);
@@ -3741,6 +3781,7 @@ async function renderHall(relink){
       pbPickPoster(f, f.src, save); });
   });
   q("[data-hgo]").onclick=()=>hallBuild(dir, q("[data-hprog]"), tO, tC);
+  readyWire(root, dir, ()=>renderHall());
 }
 async function hallBuild(dir, prog, tO, tC){
   const btn=$("#hallRoot [data-hgo]"); btn.disabled=true;
@@ -3756,6 +3797,7 @@ async function hallBuild(dir, prog, tO, tC){
     const steps=[], made=new Set(), step=(out,cmd)=>{ if(made.has(out)) return; made.add(out); steps.push({out,cmd}); };
     const jobsOut=[], so=PB_SLOTS_DEF.open, sc=PB_SLOTS_DEF.close;
     for(const j of hallJobList()){
+      if(j.kind==="E" && !hasKidFilm(hallWeek(j))){ jobsOut.push({id:j.id, out:j.out, skip:"pas de film enfants au programme"}); continue; }
       const sel=(hallLists[j.id]||[]).filter(f=>f.rel&&f.dur);
       if(!sel.length){ jobsOut.push({id:j.id, out:j.out, skip:"aucun film avec bande-annonce"}); continue; }
       const parts=[], musicSegs=[]; let t=0;
