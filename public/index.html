@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 13h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 13h15</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -129,9 +129,8 @@
   <button data-tab="ecrans">🖥 Écrans dynamiques</button>
   <button data-tab="flyers">📄 Flyers</button>
   <button data-tab="cartons">🎬 Cartons écran</button>
-  <button data-tab="pba" data-pb>🔒 PBA/PBE</button>
-  <button data-tab="flyerspb" data-pb>🔒 Flyers PB</button>
-  <button data-tab="cartonspb" data-pb>🔒 Cartons PB</button>
+  <button data-tab="pba" data-pb>🔒 PB écran</button>
+  <button data-tab="flyerspb" data-pb>🔒 Flyers écran</button>
 </nav>
 <main>
 
@@ -267,11 +266,11 @@
   <div id="flyerOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
   <style>#flyerOut figure{margin:0;text-align:center}#flyerOut img{width:330px;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#flyerOut figcaption{font-size:13px;color:#666;margin-top:4px}</style>
 </section>
-<section data-tab="pba" hidden><h2>PBA / PBE</h2>
+<section data-tab="pba" hidden><h2>PB écran</h2>
   <p class="todo">Onglet en préparation.</p>
 </section>
 <section data-tab="flyerspb" hidden>
-  <h2>🎞️ Écrans « Flyers PB » — vidéos MP4 3996×2160</h2>
+  <h2>🎞️ Flyers écran — vidéos MP4 3996×2160</h2>
   <p class="hint">Deux dossiers à partir de la semaine en cours : le 1er avec la semaine en cours et les deux suivantes, le 2e avec les deux suivantes. Chaque écran : fond, dates de la semaine en haut à droite, logo en bas à gauche, tous les films avec leurs séances et leurs vignettes. Sortie nationale, Avant-première, Entrée gratuite et « Toujours à l'affiche » (reprise) clignotent ; VO et Documentaire restent fixes.</p>
   <div class="hint" id="pbHist" style="margin:0 0 8px"></div>
   <div class="row" style="gap:14px;align-items:center">
@@ -290,9 +289,6 @@
   <div id="fondProgress" class="hint"></div>
   <div id="fondOut" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px"></div>
   <style>#fondOut figure{margin:0;text-align:center}#fondOut img{width:560px;max-width:100%;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#fondOut figcaption{font-size:13px;margin-top:6px}</style>
-</section>
-<section data-tab="cartonspb" hidden><h2>Cartons PB</h2>
-  <p class="todo">Onglet en préparation.</p>
 </section>
 <section data-tab="cartons" hidden><h2>Cartons écran — vidéos MP4 3996 × 2160 px</h2>
   <p class="hint">Une vidéo par film de la semaine choisie (onglet Base de données) : affiche à gauche, titre, vignettes (Reprise, Sortie nationale, Avant-première et Entrée gratuite clignotent ; chacune fait 30 % de la largeur de l'affiche), puis les séances qui s'écrivent comme à la machine et sont complètes 3 secondes avant la fin. Durée : 7 s (1 ou 2 séances), 8 s (3 ou 4), 9 s (5 et plus). Vidéos muettes, H.264. <b>À faire avec Chrome ou Edge</b> ; compter de 20 s à 1 min par carton.</p>
@@ -2569,14 +2565,14 @@ async function sharedInit(){
 // ---- onglets
 let currentTab="base";
 // Onglets PB : code demandé une seule fois, vérifié par le site, puis mémorisé sur cet appareil
-const PB_TABS=["pba","flyerspb","cartonspb"];
+const PB_TABS=["pba","flyerspb"];
 let pbOk=(()=>{ try{ return !!localStorage.getItem("codePB"); }catch(e){ return false; } })();
 function pbMark(){ document.querySelectorAll("#tabs [data-pb]").forEach(b=>b.textContent=b.textContent.replace(/^🔒 /,pbOk?"":"🔒 ")); }
 async function unlockPB(){
   if(pbOk) return true;
   if(!/^https?:$/.test(location.protocol)){ pbOk=true; pbMark(); return true; }   // fichier ouvert en local : pas de serveur pour vérifier
   for(;;){
-    const c=prompt("Code d'accès aux onglets PB :"); if(!c) return false;
+    const c=prompt("Code d'accès aux onglets PB écran et Flyers écran :"); if(!c) return false;
     try{ const r=await fetch("/api/base/check-pb",{headers:{"x-code":c.trim()},cache:"no-store"});
       if(r.ok){ try{ localStorage.setItem("codePB",c.trim()); }catch(e){} pbOk=true; pbMark(); return true; }
       if(r.status!==401){ alert("Vérification impossible pour le moment ("+r.status+")."); return false; }
@@ -2803,7 +2799,7 @@ async function generatePB(){
     return {start:d0, ws, miss}; });
   const all=[]; dossiers.forEach(d=>d.ws.forEach(w=>{ if(!all.some(x=>isoD(x.start)===isoD(w.start))) all.push(w); }));
   if(!all.length){ pr.textContent="Aucune semaine en cours ou à venir dans l'historique : dépose l'Excel (onglet Base de données)."; return; }
-  if(!await requirePosters(all.flatMap(w=>w.films),"Génération des écrans PB")) return;
+  if(!await requirePosters(all.flatMap(w=>w.films),"Génération des flyers écran")) return;
   const fps=Number($("#pbFps").value)||30, mode=$("#pbMode").value, T=Number($("#pbDur").value)||10;
   btn.disabled=true; out.innerHTML=""; pbResults=[];
   await document.fonts.load(`100px "Ecran"`,"mercredi 4 - 20h30"); await applyTitleFont();
@@ -2816,7 +2812,7 @@ async function generatePB(){
     }
     for(const d of dossiers){ if(!d.ws.length) continue;
       const tag=`${pad(d.start.getDate())}-${pad(d.start.getMonth()+1)}`, files=d.ws.map((w,i)=>({name:`${i+1}_semaine_du_${pad(w.start.getDate())}-${pad(w.start.getMonth()+1)}.mp4`, ...done[isoD(w.start)]}));
-      pbResults.push({name:`flyers_PB_du_${tag}`, files});
+      pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
       box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.length} écran(s) à la suite</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant ci-dessus.</div>`:""}
@@ -2828,7 +2824,7 @@ async function generatePB(){
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); grid.appendChild(el); });
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
         files.forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
-        await saveFile(`flyers_PB_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
+        await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
       out.appendChild(box);
     }
     pr.textContent=`✓ ${pbResults.length} dossier(s) prêt(s) (${fps} images/s, ${T} s par écran).`;
