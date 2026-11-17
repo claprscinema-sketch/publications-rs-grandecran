@@ -119,7 +119,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 15h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 16h10</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -169,6 +169,10 @@
     <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
     <div class="settings" id="assets"></div>
     <div class="fields" id="commonFields"></div>
+  </details>
+  <details id="dcpSet" style="margin-top:12px"><summary>🔒 Réglages DCP (DCP-o-matic) — format, images/s, son, type de contenu</summary>
+    <p class="hint" style="margin-top:8px">Réglages par défaut des « Packs DCP » (onglets Cartons écran et Flyers écran) et cadence des vidéos MP4. Partagés avec tout le monde.</p>
+    <div class="fields" id="dcpFields"></div>
   </details>
   <details id="flyerSet" style="margin-top:12px"><summary>🔒 Base commune — flyers et affiches A3 (fond, logos, QR codes)</summary>
     <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
@@ -280,6 +284,7 @@
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement</option><option value="pulse">pulsation</option></select></label>
     <button class="primary" id="btnPB">Générer les dossiers</button>
   </div>
+  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
   <div id="pbProgress" class="hint"></div>
   <div id="pbOut"></div>
   <hr style="margin:26px 0;border:0;border-top:1px solid var(--line)">
@@ -298,7 +303,10 @@
     <label style="font-size:14px;font-weight:600">Vignettes <select id="cartonMode"><option value="pulse">pulsation</option><option value="clignote">clignotement</option></select></label>
     <button class="primary" id="btnCartons" style="background:#6e264c">🎬 Générer les cartons (MP4)</button>
     <button id="btnCartonsZip" disabled>⬇ Tous les cartons (ZIP)</button>
+    <button id="btnCartonsDcp" disabled style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>
   </div>
+  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
+
   <div id="cartonProgress" class="hint"></div>
   <div id="cartonOut" class="compact" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-top:10px"></div>
 </section>
@@ -322,6 +330,7 @@ const DEFAULTS = {
   flyerAddress:"4 passage Lino Ventura — La Pommeraye, 49620 Mauges-sur-Loire", phone:"", web:"cinemagrandecran.org",
   hashtags:"#cinema #artetessai #lapommeraye #maugessurloire #anjou #cinemagrandecran",
   tCarousel:"09:30", tFilms:"10:00", synLen:"250",
+  dcpRes:"4K", dcpFps:"30", dcpChannels:"6", dcpTypeCarton:"POL", dcpTypeFlyer:"ADV", dcpMode:"separes",
   cAdult:"#80923E", cReduit:"#2D3B4D", cJeune:"#FBD30F"
 };
 const QR_IG="data:image/png;base64,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", QR_FB="data:image/png;base64,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";
@@ -990,10 +999,21 @@ function renderAssets(){ applyFonts();
       <output id="synLenOut" style="min-width:120px;font-size:16px;color:#5b3cc4">${v} caractères</output></label>
     <span class="hint" style="margin:0">Glisse le curseur (de ${SYN_MIN_LEN} à ${SYN_MAX_LEN} caractères). Les synopsis plus longs sont résumés par l'IA en phrases complètes à cette longueur (sinon : phrases entières du synopsis d'origine). Plus c'est court, plus le texte des flyers et affiches peut être grand.</span>`;
     const rg=$("#flyerFields input[type=range]"); rg.oninput=()=>{ $("#synLenOut").textContent=rg.value+" caractères"; }; }
-  document.querySelectorAll("#commonFields [data-set], #flyerFields [data-set]").forEach(inp=>inp.onchange=async()=>{
+  const DCPF={
+    dcpRes:["Format de sortie",[["4K","4K Flat — 3996 × 2160"],["2K","2K Flat — 1998 × 1080"]]],
+    dcpFps:["Images par seconde",[["30","30 i/s"],["60","60 i/s"],["25","25 i/s"],["24","24 i/s"]]],
+    dcpChannels:["Son (pistes audio du DCP)",[["6","5.1 — 6 pistes (standard salle)"],["8","7.1 — 8 pistes"],["16","16 pistes"],["2","Stéréo — 2 pistes"]]],
+    dcpTypeCarton:["Type de contenu — cartons",DCP_TYPES],
+    dcpTypeFlyer:["Type de contenu — flyers écran",DCP_TYPES],
+    dcpMode:["Montage",[["separes","un DCP par vidéo"],["enchaine","un seul DCP qui enchaîne tout"]]]};
+  if($("#dcpFields")) $("#dcpFields").innerHTML=Object.entries(DCPF).map(([k,[l,opts]])=>`<label>${l}<select data-set="${k}">${opts.map(([v,t])=>`<option value="${v}"${(settings[k]||DEFAULTS[k])===v?" selected":""}>${t}</option>`).join("")}</select></label>`).join("")
+    +`<span class="hint" style="margin:0;flex:1 1 100%">Norme SMPTE, conteneur Flat (1.85), non chiffré. Les vidéos n'ont pas de son : DCP-o-matic crée des pistes silencieuses au nombre choisi. Les vidéos MP4 sont fabriquées à la cadence choisie ici (30 ou 60 i/s), pour éviter toute conversion.</span>`;
+  ["cartonFps","pbFps"].forEach(id=>{ const el=$("#"+id); if(el && ["30","60"].includes(settings.dcpFps||DEFAULTS.dcpFps)) el.value=settings.dcpFps||DEFAULTS.dcpFps; });
+  document.querySelectorAll("#commonFields [data-set], #flyerFields [data-set], #dcpFields [data-set]").forEach(inp=>inp.onchange=async()=>{
     if(inp.dataset.set==="synLen"){ inp.value=String(synLimit(inp.value)); }
     settings[inp.dataset.set]=inp.value.trim();
-    const own={}; for(const k of [...Object.keys(L),...Object.keys(L2)]) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k];
+    const own={}; for(const k of [...Object.keys(L),...Object.keys(L2),...Object.keys(DCPF)]) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k];
+    if(inp.dataset.set==="dcpFps") ["cartonFps","pbFps"].forEach(id=>{ const el=$("#"+id); if(el && ["30","60"].includes(inp.value)) el.value=inp.value; });
     await Store.set("settingsCommuns",own); refreshVisuals(); shareSettings(); });
 }
 
@@ -2435,10 +2455,12 @@ $("#btnCartons").onclick=async()=>{
     }
     const low=[]; for(const f of films){ const im=await loadImg(filmState[f.key].poster); if(im && im.height<1640) low.push(`${titleOf(f)} (${im.width}×${im.height} px)`); }
     pr.innerHTML=`✓ ${cartonResults.length} cartons prêts (${fps} images/s).`+(low.length?`<div class="warn">⚠️ Affiche en définition insuffisante pour un écran de 10 m (il faut au moins 1640 px de haut) : ${low.map(esc).join(", ")}. Remplace-la par une version HD.</div>`:"");
-    $("#btnCartonsZip").disabled=false;
+    $("#btnCartonsZip").disabled=false; $("#btnCartonsDcp").disabled=false;
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 };
+$("#btnCartonsDcp").onclick=async()=>{ if(!cartonResults.length) return; const b=$("#btnCartonsDcp"); b.disabled=true;
+  try{ await dcpPack(`Cartons_${isoD(curWeek().start)}`, cartonResults); }catch(e){ alert("Pack DCP impossible : "+e.message); } b.disabled=false; };
 $("#btnCartonsZip").onclick=async()=>{ if(!cartonResults.length) return; const z=new JSZip();
   cartonResults.forEach(r=>z.file(r.name,r.blob,{compression:"STORE"}));
   await saveFile(`cartons_ecran_${isoD(curWeek().start)}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
@@ -2875,11 +2897,12 @@ async function generatePB(){
       box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.length} écran(s) à la suite</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant ci-dessus.</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
-        <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button>`;
+        <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
       const grid=box.querySelector(".films");
       files.forEach(f=>{ const el=document.createElement("div"); el.className="cfilm";
         el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" poster="${f.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b><button class="small">⬇ MP4</button>`;
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); grid.appendChild(el); });
+      box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, files, "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
         files.forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
         await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
@@ -2890,6 +2913,77 @@ async function generatePB(){
   btn.disabled=false;
 }
 document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") generatePB(); });
+
+/* ========================== DCP via DCP-o-matic ========================== */
+// Le navigateur ne peut pas fabriquer lui-même un DCP fiable (JPEG 2000 + MXF, calcul très lourd en 4K).
+// L'outil prépare donc un « pack DCP » : les vidéos + un script qui pilote DCP-o-matic 2 (gratuit) installé sur l'ordinateur.
+// Double-clic sur le script → DCP 4K Flat (3996×2160, SMPTE, non chiffrés) prêts à copier sur la clé / le disque du serveur.
+const dcpSafe=s=>norm(String(s)).replace(/[^a-z0-9]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,60)||"carton";
+const DCP_TYPES=[["POL","Code de conduite (POL)"],["ADV","Publicité (ADV)"],["PSA","Message d'intérêt public (PSA)"],["SHR","Court métrage (SHR)"],["TLR","Bande-annonce (TLR)"],["TSR","Teaser (TSR)"],["TST","Test (TST)"],["FTR","Long métrage (FTR)"]];
+function dcpOptions(px=""){ const S=k=>settings[k]||DEFAULTS[k];
+  return {mode:S("dcpMode"), type:px==="pb"?S("dcpTypeFlyer"):S("dcpTypeCarton"), fps:S("dcpFps"), res:S("dcpRes"), ch:S("dcpChannels")}; }
+function dcpScripts(packName, items, o){
+  const common=`-c ${o.type} --container-ratio 185 ${o.res==="2K"?"--twok":"--fourk"} --standard SMPTE --no-use-isdcf-name -f ${o.fps} -a ${o.ch}`;
+  const jobs=o.mode==="enchaine" ? [{name:dcpSafe(packName), files:items.map(i=>i.name)}] : items.map(i=>({name:dcpSafe(packName+"_"+i.name.replace(/\.mp4$/i,"")), files:[i.name]}));
+  // ---- Windows
+  const bat=["@echo off","chcp 65001 >nul","setlocal enabledelayedexpansion",'cd /d "%~dp0"',
+    "echo ================================================================",
+    `echo   Fabrication des DCP : ${packName}`,
+    "echo   (DCP-o-matic 2 doit etre installe sur cet ordinateur)",
+    "echo ================================================================",
+    'set "BIN="',
+    'for %%P in ("%ProgramFiles%\\DCP-o-matic 2\\bin" "%ProgramW6432%\\DCP-o-matic 2\\bin" "%ProgramFiles(x86)%\\DCP-o-matic 2\\bin") do if exist "%%~P\\dcpomatic2_cli.exe" set "BIN=%%~P"',
+    'if not defined BIN for /f "delims=" %%F in (\'where /r "%ProgramFiles%" dcpomatic2_cli.exe 2^>nul\') do set "BIN=%%~dpF"',
+    'if not defined BIN ( echo. & echo DCP-o-matic 2 est introuvable. Installe-le depuis https://dcpomatic.com puis relance ce fichier. & pause & exit /b 1 )',
+    'if "%BIN:~-1%"=="\\" set "BIN=%BIN:~0,-1%"',
+    'if not exist "DCP" mkdir "DCP"', 'if not exist "travail" mkdir "travail"'];
+  jobs.forEach((j,k)=>{ bat.push(`echo.`, `echo [${k+1}/${jobs.length}] ${j.name}`,
+    `if exist "travail\\${j.name}" rmdir /s /q "travail\\${j.name}"`,
+    `"%BIN%\\dcpomatic2_create.exe" -o "travail\\${j.name}" -n "${j.name}" ${common} ${j.files.map(f=>`"videos\\${f}"`).join(" ")}`,
+    `if errorlevel 1 ( echo Echec de la preparation de ${j.name} & goto :fin )`,
+    `"%BIN%\\dcpomatic2_cli.exe" "travail\\${j.name}"`,
+    `if errorlevel 1 ( echo Echec de l'encodage de ${j.name} & goto :fin )`,
+    `for /d %%D in ("travail\\${j.name}\\*") do ( if exist "%%D\\ASSETMAP.xml" xcopy /e /i /y /q "%%D" "DCP\\%%~nxD" >nul & if exist "%%D\\ASSETMAP" xcopy /e /i /y /q "%%D" "DCP\\%%~nxD" >nul )`); });
+  bat.push("echo.","echo ================================================================","echo   Termine : les DCP sont dans le dossier DCP (a copier tels quels).","echo ================================================================",":fin","pause");
+  // ---- Mac
+  const sh=["#!/bin/bash",'cd "$(dirname "$0")"',
+    `echo "=== Fabrication des DCP : ${packName} ==="`,
+    'CLI=$(find /Applications "$HOME/Applications" -maxdepth 6 -name dcpomatic2_cli -type f 2>/dev/null | head -1)',
+    'CREATE=$(find /Applications "$HOME/Applications" -maxdepth 6 -name dcpomatic2_create -type f 2>/dev/null | head -1)',
+    'if [ -z "$CLI" ] || [ -z "$CREATE" ]; then echo "DCP-o-matic 2 est introuvable. Installe-le depuis https://dcpomatic.com puis relance ce fichier."; read -p "Entrée pour fermer"; exit 1; fi',
+    'mkdir -p DCP travail'];
+  jobs.forEach((j,k)=>{ sh.push(`echo; echo "[${k+1}/${jobs.length}] ${j.name}"`, `rm -rf "travail/${j.name}"`,
+    `"$CREATE" -o "travail/${j.name}" -n "${j.name}" ${common} ${j.files.map(f=>`"videos/${f}"`).join(" ")} || { echo "Échec de la préparation"; read -p "Entrée pour fermer"; exit 1; }`,
+    `"$CLI" "travail/${j.name}" || { echo "Échec de l'encodage"; read -p "Entrée pour fermer"; exit 1; }`,
+    `for d in "travail/${j.name}"/*/; do d="\${d%/}"; if [ -f "$d/ASSETMAP.xml" ] || [ -f "$d/ASSETMAP" ]; then cp -R "$d" "DCP/"; fi; done`); });
+  sh.push('echo; echo "Terminé : les DCP sont dans le dossier DCP (à copier tels quels)."','read -p "Entrée pour fermer"');
+  const lis=`PACK DCP — ${packName}
+==========================================
+
+Ce dossier fabrique des DCP (format des projecteurs de cinéma) à partir des vidéos du dossier « videos ».
+
+1. Une seule fois : installer DCP-o-matic 2 (gratuit) depuis https://dcpomatic.com
+2. Décompresser ce zip (clic droit > Extraire tout), puis :
+   - sur PC Windows : double-cliquer sur « Fabriquer_les_DCP_Windows.bat »
+   - sur Mac : clic droit sur « Fabriquer_les_DCP_Mac.command » > Ouvrir (la 1re fois, macOS demande confirmation)
+3. Attendre la fin (plusieurs minutes par vidéo en 4K).
+4. Les DCP sont dans le dossier « DCP » : copier chaque sous-dossier tel quel sur la clé / le disque d'ingest du serveur.
+
+Réglages : ${o.res==="2K"?"2K Flat 1998×1080":"4K Flat 3996×2160"} (1.85), SMPTE, non chiffré, type ${(DCP_TYPES.find(t=>t[0]===o.type)||[o.type,o.type])[1]}, ${o.fps} images/s, son ${o.ch} pistes (silencieuses), ${o.mode==="enchaine"?"un seul DCP qui enchaîne toutes les vidéos":"un DCP par vidéo"}.
+(Ces réglages se changent dans l'outil : onglet Base de données > Réglages DCP.)
+Le dossier « travail » peut être supprimé ensuite.
+`;
+  return {bat:bat.join("\r\n")+"\r\n", sh:sh.join("\n")+"\n", lis};
+}
+async function dcpPack(packName, items, px=""){
+  const o=dcpOptions(px), z=new JSZip(), root=z.folder("Pack_DCP_"+dcpSafe(packName)), v=root.folder("videos");
+  items.forEach(i=>v.file(i.name,i.blob,{compression:"STORE"}));
+  const S=dcpScripts(packName, items, o);
+  root.file("Fabriquer_les_DCP_Windows.bat", S.bat);
+  root.file("Fabriquer_les_DCP_Mac.command", S.sh, {unixPermissions:"755"});
+  root.file("LISEZMOI.txt", S.lis);
+  await saveFile(`Pack_DCP_${dcpSafe(packName)}.zip`, await z.generateAsync({type:"blob", compression:"STORE", platform:"UNIX"}));
+}
 
 /* ========================== Publication automatique Facebook + Instagram ========================== */
 const META={ok:false, status:null, queue:[]};
