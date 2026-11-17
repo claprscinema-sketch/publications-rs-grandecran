@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 22h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 22h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -3435,10 +3435,11 @@ const bgRunning=k=>bgTasks[k] && bgTasks[k].state==="run";
 // Source : le dossier de la quinzaine dans le dossier de travail, ou un autre dossier choisi (vidéos faites sur un autre ordinateur, clé…).
 async function readyAlt(key, ask){ const h=await Store.get("readyDir:"+key); if(!h) return null;
   try{ let p=await h.queryPermission({mode:"read"}); if(p!=="granted" && ask) p=await h.requestPermission({mode:"read"}); return p==="granted"?h:null; }catch(e){ return null; } }
-async function readySrc(o){ const alt=await readyAlt(o.key,false); if(alt) return {d:alt, alt:true};
+async function readySrc(o, ask){ const alt=await readyAlt(o.key,!!ask); if(alt) return {d:alt, alt:true};
+  if(!o.base && ask){ o.base=await pbDirGet(true); }
   if(!o.base) return {d:null}; try{ return {d:await pbSub(o.base,[o.folder],false)}; }catch(e){ return {d:null}; } }
 async function readyHTML(o){
-  const {d,alt}=await readySrc(o), altH=await Store.get("readyDir:"+o.key);
+  const {d,alt}=await readySrc(o), altH=await Store.get("readyDir:"+o.key), workH=await Store.get("pbDirHandle");
   const found=[]; if(d) for await(const [n,h] of d.entries()) if(h.kind==="file" && /\.mp4$/i.test(n) && !/\.tmp\./.test(n)) found.push(await h.getFile());
   const byName=new Map(found.map(f=>[f.name,f])), names=[...o.expected.map(e=>e+".mp4"), ...found.map(f=>f.name).filter(n=>!o.expected.includes(n.replace(/\.mp4$/i,"")))];
   let dcp=0; if(d){ try{ const dd=await d.getDirectoryHandle("DCP"); for await(const [n,h] of dd.entries()) if(h.kind==="directory") dcp++; }catch(e){} }
@@ -3450,7 +3451,7 @@ async function readyHTML(o){
         <button class="small" data-rplay="${esc(n)}" ${f?"":"disabled"}>▶ Aperçu</button><button class="small primary" data-rdl="${esc(n)}" ${f?"":"disabled"}>⬇ Télécharger</button>
         <span class="hint" style="margin:0">${f?`${sz(f.size)} · ${new Date(f.lastModified).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"})}`:"pas encore fabriquée"}</span></div>`; }).join("")}</div>
     <div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">${found.length>1?'<button class="primary" data-rall>⬇ Tout télécharger</button>':""}<button class="small" data-rref>🔄 Actualiser</button>
-      ${altH&&!alt?`<button class="small primary" data-rreco>🔓 Autoriser « ${esc(altH.name)} »</button>`:""}
+      ${altH&&!alt?`<button class="small primary" data-rreco>🔓 Autoriser « ${esc(altH.name)} »</button>`:!altH&&!d&&workH?`<button class="small primary" data-rreco>🔓 Autoriser l'accès au dossier « ${esc(workH.name)} »</button>`:""}
       <button class="small" data-ralt>📂 ${altH?"Changer de dossier":"Vidéos dans un autre dossier…"}</button>${altH?'<button class="small" data-rwork>↺ Dossier de travail</button>':""}
       ${dcp?`<span class="hint" style="margin:0">${dcp} DCP dans le sous-dossier « DCP » (à copier tel quel sur le disque du projecteur).</span>`:""}</div></div>`;
 }
@@ -3458,20 +3459,23 @@ const readyTimers={};
 async function readyMount(root, o){
   const host=root.querySelector(`[data-readyhost="${o.key}"]`); if(!host) return;
   const draw=async()=>{ host.innerHTML=await readyHTML(o); wire(); };
-  const getF=async n=>{ const {d}=await readySrc(o); return await (await d.getFileHandle(n)).getFile(); };
+  const getF=async n=>{ const {d}=await readySrc(o,true); if(!d) throw new Error("dossier des vidéos inaccessible (bouton « Autoriser »)"); return await (await d.getFileHandle(n)).getFile(); };
+  const safe=fn=>async()=>{ try{ await fn(); }catch(e){ console.error(e); toast("⚠️ "+(e.message||e)); } };
   const wire=()=>{ const box=host.firstElementChild; if(!box) return;
-    box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=async()=>saveFile(b.dataset.rdl, await getF(b.dataset.rdl)));
-    const all=box.querySelector("[data-rall]"); if(all) all.onclick=async()=>{ for(const b of box.querySelectorAll("[data-rdl]:not([disabled])")){ await saveFile(b.dataset.rdl, await getF(b.dataset.rdl)); await new Promise(r=>setTimeout(r,800)); } };
+    box.querySelectorAll("[data-rdl]").forEach(b=>b.onclick=safe(async()=>{ toast(`⬇ ${b.dataset.rdl} : téléchargement…`); await saveFile(b.dataset.rdl, await getF(b.dataset.rdl)); }));
+    const all=box.querySelector("[data-rall]"); if(all) all.onclick=safe(async()=>{ for(const b of box.querySelectorAll("[data-rdl]:not([disabled])")){ await saveFile(b.dataset.rdl, await getF(b.dataset.rdl)); await new Promise(r=>setTimeout(r,800)); } });
     box.querySelector("[data-rref]").onclick=draw;
-    const rr=box.querySelector("[data-rreco]"); if(rr) rr.onclick=async()=>{ await readyAlt(o.key,true); draw(); };
+    const rr=box.querySelector("[data-rreco]"); if(rr) rr.onclick=safe(async()=>{ await readySrc(o,true); draw(); });
     box.querySelector("[data-ralt]").onclick=async()=>{ try{ const h=await window.showDirectoryPicker({id:"videos"+o.key, mode:"read"}); await Store.set("readyDir:"+o.key,h); }catch(e){} draw(); };
     const wk=box.querySelector("[data-rwork]"); if(wk) wk.onclick=async()=>{ await Store.del("readyDir:"+o.key); draw(); };
-    box.querySelectorAll("[data-rplay]").forEach(b=>b.onclick=async()=>{ const f=await getF(b.dataset.rplay), u=URL.createObjectURL(f);
+    box.querySelectorAll("[data-rplay]").forEach(b=>b.onclick=safe(async()=>{ const f=await getF(b.dataset.rplay), u=URL.createObjectURL(f);
       const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px";
       ov.innerHTML=`<div style="color:#fff;font-weight:600">${esc(b.dataset.rplay)}</div><video src="${u}" controls autoplay style="max-width:92vw;max-height:78vh;background:#000"></video>
         <div class="row" style="gap:8px"><button class="small primary" data-d>⬇ Télécharger</button><button class="small" data-c>Fermer</button></div>`;
       const close=()=>{ ov.querySelector("video").pause(); URL.revokeObjectURL(u); ov.remove(); };
-      ov.querySelector("[data-c]").onclick=close; ov.querySelector("[data-d]").onclick=()=>saveFile(b.dataset.rplay,f); ov.onclick=e=>{ if(e.target===ov) close(); }; document.body.append(ov); }); };
+      ov.querySelector("[data-c]").onclick=close; ov.querySelector("[data-d]").onclick=safe(()=>saveFile(b.dataset.rplay,f)); ov.onclick=e=>{ if(e.target===ov) close(); };
+      ov.querySelector("video").onerror=()=>{ const m=document.createElement("div"); m.style.cssText="color:#ffd77a;max-width:600px;text-align:center"; m.textContent="Ce navigateur n'arrive pas à lire cette vidéo (4K trop lourde pour l'aperçu sur cet ordinateur ?). Le fichier n'est pas en cause : télécharge-le et ouvre-le avec VLC."; ov.insertBefore(m, ov.children[2]); };
+      document.body.append(ov); })); };
   await draw();
   // mise à jour automatique tant qu'il manque des vidéos et que l'onglet est affiché
   clearInterval(readyTimers[o.key]);
@@ -3673,7 +3677,7 @@ function pbScripts(steps, jobs, o){
   steps.forEach((s,i)=>{ const out=s.out.replace(/\//g,"\\"), tmp=out.replace(/\.mov$/,".tmp.mov");
     b.push(`if not exist "${out}" ( echo   ${i+1}/${steps.length} ${s.out.split("/").pop()} & "%FF%" -hide_banner -loglevel error -y ${s.cmd} "${tmp}" && move /y "${tmp}" "${out}" >nul )`); });
   b.push("echo [2/3] Assemblage des PB de 30 minutes");
-  jobs.forEach(j=>b.push(`echo   ${j.id}.mp4`, `"%FF%" -hide_banner -loglevel error -y ${finalCmd(j)}"${j.id}.mp4"`, `if errorlevel 1 ( echo Echec de l'assemblage de ${j.id} & goto :fin )`));
+  jobs.forEach(j=>b.push(`echo   ${j.id}.mp4`, `"%FF%" -hide_banner -loglevel error -y ${finalCmd(j)}-f mp4 "${j.id}.tmp.mp4"`, `if errorlevel 1 ( echo Echec de l'assemblage de ${j.id} & goto :fin )`, `move /y "${j.id}.tmp.mp4" "${j.id}.mp4" >nul`));
   b.push('if not defined BIN ( echo DCP-o-matic 2 introuvable : les MP4 sont prets, mais pas les DCP. Installe-le depuis https://dcpomatic.com puis relance. & goto :fin )',"echo [3/3] Fabrication des DCP");
   jobs.forEach(j=>b.push(`echo   ${j.id}`, `if exist "travail\\${j.id}" rmdir /s /q "travail\\${j.id}"`,
     `"%BIN%\\dcpomatic2_create.exe" -o "travail\\${j.id}" -n "${j.id}" ${dcpOpt} "${j.id}.mp4"`, `"%BIN%\\dcpomatic2_cli.exe" "travail\\${j.id}"`,
@@ -3688,7 +3692,7 @@ function pbScripts(steps, jobs, o){
   steps.forEach((s,i)=>{ const tmp=s.out.replace(/\.mov$/,".tmp.mov");
     m.push(`[ -f "${s.out}" ] || { echo "  ${i+1}/${steps.length} ${s.out.split("/").pop()}"; "$FF" -hide_banner -loglevel error -y ${s.cmd.replace(/\$/g,"\\$")} "${tmp}" && mv -f "${tmp}" "${s.out}"; }`); });
   m.push('echo "[2/3] Assemblage des PB de 30 minutes"');
-  jobs.forEach(j=>m.push(`echo "  ${j.id}.mp4"; "$FF" -hide_banner -loglevel error -y ${finalCmd(j)}"${j.id}.mp4" || { echo "Échec de l'assemblage de ${j.id}"; read -p "Entrée pour fermer"; exit 1; }`));
+  jobs.forEach(j=>m.push(`echo "  ${j.id}.mp4"; "$FF" -hide_banner -loglevel error -y ${finalCmd(j)}-f mp4 "${j.id}.tmp.mp4" && mv -f "${j.id}.tmp.mp4" "${j.id}.mp4" || { echo "Échec de l'assemblage de ${j.id}"; read -p "Entrée pour fermer"; exit 1; }`));
   m.push('if [ -z "$CLI" ] || [ -z "$CREATE" ]; then echo "DCP-o-matic 2 introuvable : les MP4 sont prêts, mais pas les DCP."; read -p "Entrée pour fermer"; exit 0; fi','echo "[3/3] Fabrication des DCP"');
   jobs.forEach(j=>m.push(`rm -rf "travail/${j.id}"; "$CREATE" -o "travail/${j.id}" -n "${j.id}" ${dcpOpt} "${j.id}.mp4" && "$CLI" "travail/${j.id}"`,
     `for d in "travail/${j.id}"/*/; do d="\${d%/}"; if [ -f "$d/ASSETMAP.xml" ] || [ -f "$d/ASSETMAP" ]; then cp -R "$d" "DCP/"; fi; done`));
@@ -3832,7 +3836,7 @@ async function renderHall(relink){
     ${wkDirs.map((x,i)=>`<div class="row" style="gap:10px;align-items:center;margin:4px 0">Semaine du ${pad(x.d.getDate())}/${pad(x.d.getMonth()+1)} : <span>${x.g?`✅ <b>${esc(x.g.name)}</b> · ${(pbScanCache["S"+x.iso]||[]).length} bande(s)-annonce(s)`:x.h?"":"⚠️ dossier pas encore déposé sur cet ordinateur"}</span>
       ${x.h&&!x.g?`<button class="small primary" data-wreco="${x.iso}">🔓 Autoriser « ${esc(x.h.name)} »</button>`:""}<button class="small" data-wdir="${x.iso}" data-wi="${i}">📁 ${x.h?"Changer":"Choisir le dossier"}</button></div>`).join("")}
     <p class="hint" style="margin:8px 0 4px">Films en plus, au choix :</p>
-    <div style="margin:4px 0">Sorties adultes (dossier PBA de l'onglet PB écran) : ${st(dir,"A")}</div>
+    <div style="margin:4px 0">Sorties adultes (dossier PBA de l'onglet PB écran) : ${st(dir,"A")} ${!dir&&(await Store.get("pbDirHandle"))?`<button class="small primary" data-hwork>🔓 Autoriser l'accès au dossier « ${esc((await Store.get("pbDirHandle")).name)} »</button>`:""}</div>
     <div style="margin:4px 0">Sorties enfants (dossier PBE de l'onglet PB écran) : ${st(dirE,"E")}</div>
     <button class="small" data-hrescan>🔄 Relire les dossiers</button></div>`;
   if(dir){
@@ -3860,6 +3864,7 @@ async function renderHall(relink){
   const q=s=>root.querySelector(s);
   root.querySelectorAll("[data-wreco]").forEach(b=>b.onclick=async()=>{ await weekDirGet(b.dataset.wreco,true); delete pbScanCache["S"+b.dataset.wreco]; hallRelink(); });
   root.querySelectorAll("[data-wdir]").forEach(b=>b.onclick=async()=>{ try{ const h=await window.showDirectoryPicker({id:"semaine"+b.dataset.wi, mode:"read"}); await Store.set("weekDir:"+b.dataset.wdir,h); delete pbScanCache["S"+b.dataset.wdir]; hallRelink(); }catch(e){} });
+  if(q("[data-hwork]")) q("[data-hwork]").onclick=async()=>{ await pbDirGet(true); renderHall(); };
   q("[data-hrescan]").onclick=()=>{ Object.keys(pbScanCache).forEach(k=>delete pbScanCache[k]); hallRelink(); };
   if(!dir) return;
   // listes initiales : films du programme
@@ -3962,7 +3967,7 @@ function hallScripts(steps, jobs){
   steps.forEach((s,i)=>{ const out=s.out.replace(/\//g,"\\"), tmp=out.replace(/\.mov$/,".tmp.mov");
     b.push(`if not exist "${out}" ( echo   ${i+1}/${steps.length} & "%FF%" -hide_banner -loglevel error -y ${s.cmd} "${tmp}" && move /y "${tmp}" "${out}" >nul )`); });
   b.push("echo [2/2] Assemblage");
-  jobs.forEach(j=>b.push(`echo   ${j.out}.mp4`, `"%FF%" -hide_banner -loglevel error -y ${fin(j)}"${j.out}.mp4"`));
+  jobs.forEach(j=>b.push(`echo   ${j.out}.mp4`, `"%FF%" -hide_banner -loglevel error -y ${fin(j)}-f mp4 "${j.out}.tmp.mp4"`, `if not errorlevel 1 move /y "${j.out}.tmp.mp4" "${j.out}.mp4" >nul`));
   b.push("echo.","echo Termine : les videos sont dans ce dossier.",":fin",'del "en_cours.txt" 2>nul',"pause");
   const m=["#!/bin/bash",'cd "$(dirname "$0")"','caffeinate -i -w $$ 2>/dev/null &',`echo "=== Vidéos PB du hall : ${jobs.map(j=>j.out).join(", ")} ==="`,"mkdir -p ../cache",
     'FF=""; [ -x ../outils/ffmpeg ] && FF=../outils/ffmpeg',
@@ -3971,7 +3976,7 @@ function hallScripts(steps, jobs){
   steps.forEach((s,i)=>{ const tmp=s.out.replace(/\.mov$/,".tmp.mov");
     m.push(`[ -f "${s.out}" ] || { echo "  ${i+1}/${steps.length}"; "$FF" -hide_banner -loglevel error -y ${s.cmd.replace(/\$/g,"\\$")} "${tmp}" && mv -f "${tmp}" "${s.out}"; }`); });
   m.push('echo "[2/2] Assemblage"');
-  jobs.forEach(j=>m.push(`echo "  ${j.out}.mp4"; "$FF" -hide_banner -loglevel error -y ${fin(j)}"${j.out}.mp4"`));
+  jobs.forEach(j=>m.push(`echo "  ${j.out}.mp4"; "$FF" -hide_banner -loglevel error -y ${fin(j)}-f mp4 "${j.out}.tmp.mp4" && mv -f "${j.out}.tmp.mp4" "${j.out}.mp4"`));
   m.push('echo "Terminé : les vidéos sont dans ce dossier."','read -p "Entrée pour fermer"');
   const lis=`PB HALL — ${jobs.map(j=>j.out).join(", ")}
 Vidéos MP4 1280×720 (720p) pour la TV du hall : pour chaque film, vidéo intro BA + bande-annonce + vidéo fin BA.
