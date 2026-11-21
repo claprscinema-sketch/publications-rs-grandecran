@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 17/11/2026 22h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 21/11/2026 15h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1310,6 +1310,19 @@ function getSample(){
     : Promise.resolve(null);
   return samplePromise;
 }
+// IA sur le site publié : fonction Netlify /api/ai (clé gardée sur Netlify). Le service gratuit sans clé de Pollinations a fermé.
+async function blobB64(b){ const u=new Uint8Array(await b.arrayBuffer()); let s=""; for(let i=0;i<u.length;i+=32768) s+=String.fromCharCode.apply(null,u.subarray(i,i+32768)); return btoa(s); }
+const parseJSONText=t=>{ t=String(t||"").replace(/```json|```/g,""); return JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}")+1)); };
+async function aiServer(system, prompt, imageBlob){
+  if(!/^https?:$/.test(location.protocol)) throw new Error("IA disponible seulement sur le site publié");
+  const body={system, prompt}; if(imageBlob) body.image=await blobB64(imageBlob);
+  const r=await fetch("/api/ai",{method:"POST",headers:{"content-type":"application/json","x-code":teamCode()},body:JSON.stringify(body),cache:"no-store"});
+  if(r.status===501) throw new Error("IA non configurée : ajoute la clé GEMINI_KEY dans Netlify (voir LISEZMOI)");
+  if(r.status===401) throw new Error("code d'équipe manquant ou faux");
+  if(r.status===404) throw new Error("fonction IA absente du site : redéploie le dossier complet (avec netlify/functions/ai.mjs)");
+  if(!r.ok) throw new Error("IA indisponible ("+r.status+") : "+(await r.text()).slice(0,160));
+  return (await r.json()).text;
+}
 async function askInfo(f){
   const st=filmState[f.key]||{}, sample=await getSample();
   if(sample){
@@ -1317,18 +1330,11 @@ async function askInfo(f){
     try{ const lim=await sample.limits(); if(lim&&lim.images&&st.poster){ const b=await posterBlob(st.poster); if(b) images=[b]; } }catch(e){}
     return await sample.json(infoPrompt(f,!!images), images?{images}:{});
   }
-  // copie hors ligne : même service et même modèle que le générateur CinéFiche (Pollinations, gratuit, sans clé)
-  let lastErr;
+  // site publié : IA de Netlify, avec l'affiche si elle est connue (et recherche web pour les films récents)
+  let lastErr, img=null; try{ if(st.poster) img=await posterBlob(st.poster); }catch(e){}
   for(let i=0;i<3;i++){
-    try{
-      const r=await fetch("https://text.pollinations.ai/",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"openai-large", private:true,
-          system:"Tu es un expert du cinéma français. Tu réponds UNIQUEMENT avec du JSON valide, sans markdown, sans texte avant ou après.",
-          messages:[{role:"user",content:infoPrompt(f,false)}]})});
-      if(!r.ok) throw new Error("service indisponible ("+r.status+")");
-      const t=(await r.text()).replace(/```json|```/g,"");
-      return JSON.parse(t.slice(t.indexOf("{"), t.lastIndexOf("}")+1));
-    }catch(e){ lastErr=e; await new Promise(r=>setTimeout(r,2000*(i+1))); }
+    try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img), img)); }
+    catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,2000*(i+1))); }
   }
   throw lastErr;
 }
@@ -1361,13 +1367,14 @@ async function fillInfos(auto){
         const stk=stockFor(f.key); details[f.key]=mergeInfo(cur, stk&&{...stk}); if(stk&&stk.synopsis) delete details[f.key].check; Store.set("info:"+f.key, cur);
         const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"]`); if(card){ const n=filmCard(f); n.dataset.key=f.key; card.replaceWith(n); }
         const ic=document.querySelector(`[data-ikey="${CSS.escape(f.key)}"]`); if(ic) ic.replaceWith(infoCard(f));
-      }catch(e){ console.warn(e); failed.push(f.title); if(e&&["not_granted","sampling_disabled","rate_limited"].includes(e.code)) throw e; }
+      }catch(e){ console.warn(e); failed.push(f.title); lastWhy=e.message||String(e); if(e&&(["not_granted","sampling_disabled","rate_limited"].includes(e.code)||/non configurée|code d'équipe|absente|seulement/.test(e.message||""))) throw e; }
       done++; p.textContent=`Recherche des infos… ${done}/${todo.length}`;
     };
+    let lastWhy="";
     p.textContent=`Recherche automatique des infos des nouveaux films… 0/${todo.length}`;
     for(let i=0;i<todo.length;i+=2) await Promise.all(todo.slice(i,i+2).map(run));
     const unsure=todo.filter(f=>details[f.key]&&details[f.key].check).length;
-    p.textContent=`✓ Infos complétées pour ${todo.length-failed.length} film(s).`+(unsure?` ${unsure} à vérifier (⚠).`:"")+(failed.length?` Échec : ${failed.join(", ")}.`:"")+" Relis-les et corrige au besoin dans « Infos du film ».";
+    p.textContent=`✓ Infos complétées pour ${todo.length-failed.length} film(s).`+(unsure?` ${unsure} à vérifier (⚠).`:"")+(failed.length?` Échec : ${failed.join(", ")} (${lastWhy}).`:"")+" Relis-les et corrige au besoin dans « Infos du film ».";
   }catch(e){
     p.textContent = e&&e.code==="not_granted" ? "Autorisation refusée : les infos peuvent être saisies à la main dans « Infos du film »."
       : e&&e.code==="rate_limited" ? "Trop de demandes pour le moment : réessaie dans quelques minutes."
@@ -2055,10 +2062,7 @@ async function aiShortSyn(f, syn){
   const prompt=`Résume ce synopsis de film en français en ${SYN_MAX} caractères MAXIMUM (espaces compris) et au moins ${Math.round(SYN_MAX*.7)} caractères. Le résumé doit être complet et se suffire à lui-même : personnages, situation de départ et enjeu, en phrases entières qui se terminent par un point. Ne coupe jamais une phrase, n'invente rien, pas de guillemets. Film : « ${f.title} ». Synopsis : ${syn}\nRéponds en JSON : {"syn":"..."}`;
   const sample=await getSample();
   if(sample){ const r=await sample.json(prompt); return String((r&&r.syn)||"").trim(); }
-  const r=await fetch("https://text.pollinations.ai/",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"openai-large",private:true,system:"Tu réponds UNIQUEMENT avec du JSON valide.",messages:[{role:"user",content:prompt}]})});
-  if(!r.ok) throw new Error("IA indisponible"); const t=(await r.text()).replace(/```json|```/g,"");
-  return String(JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1)).syn||"").trim();
+  return String(parseJSONText(await aiServer("Tu réponds UNIQUEMENT avec du JSON valide.", prompt)).syn||"").trim();
 }
 async function prepareSyn400(films, onProgress){
   let n=0; SYN_MAX=synLimit(settings.synLen);   // longueur réglée dans la base de données
