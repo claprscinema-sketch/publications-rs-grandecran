@@ -21,10 +21,10 @@ async function geminiModel(key, b, model) {
   const body = { contents: [{ role: "user", parts }], generationConfig: { temperature: 0.2 } };
   if (b.system) body.systemInstruction = { parts: [{ text: b.system }] };
   if (b.search !== false) body.tools = [{ google_search: {} }];          // fiches à jour pour les films récents
-  let r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok && body.tools) { delete body.tools; r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); }   // sans recherche si elle est refusée
+  const call = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) });   // clé en en-tête : marche pour les anciennes (AIza…) et les nouvelles (AQ.…)
+  let r = await call();
+  if (!r.ok && body.tools) { delete body.tools; r = await call(); }   // sans recherche si elle est refusée (offre gratuite)
   if (!r.ok) throw new Error(`Gemini ${r.status} ${model} : ${(await r.text()).slice(0, 300)}`);
   const j = await r.json();
   return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
