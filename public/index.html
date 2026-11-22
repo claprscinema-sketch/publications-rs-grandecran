@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 21/11/2026 15h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 17h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -355,6 +355,7 @@ const ASSETS = [
   {k:"voLogo",   label:"Logo VO",                  hint:"films en VO", def:DEFAULT_VO, char:true},
   {k:"docLogo",  label:"Logo Documentaire",        hint:"actuellement « Mois du doc »", def:DEFAULT_DOC, char:true},
   {k:"gratuitLogo",label:"Logo Entrée gratuite",   hint:"PNG transparent de préférence", char:true},
+  {k:"telethonLogo",label:"Logo Téléthon",         hint:"PNG transparent de préférence ; à cocher pour les films concernés, puis à placer où l'on veut sur chaque visuel"},
   {k:"fondEcran", label:"Image de fond écran (3996×2160)", hint:"photo seule, sans texte ni logo ; si vide : image de fond du flyer", flyer:true, size:4096},
   {k:"fontTexte", label:"Police des textes (Coco Gothic)", hint:"cartons et réseaux sociaux ; dépose le fichier .ttf / .otf de Coco Gothic", flyer:true, font:true, family:"Ecran"},
   {k:"fontTitre", label:"Police du titre écran", hint:"Broadway Engraved par défaut ; pour la changer, dépose un fichier .ttf / .otf / .woff", flyer:true, font:true, def:TITLE_FONT_DEFAULT},
@@ -836,6 +837,7 @@ async function renderFilm(f){
     drawBadges(ctx);
     await drawLogoBR(ctx,W,H);
   }
+  await drawTelethon(ctx, st, "post", W, H);
   return c;
 }
 
@@ -939,6 +941,7 @@ async function renderStory(f){
   });
   // logos
   await drawLogoBR(ctx,W,SH,320,160,40);
+  await drawTelethon(ctx, st, "story", W, SH);
   return c;
 }
 const toBlob = c=>new Promise(res=>c.toBlob(res,"image/jpeg",.93));
@@ -1211,7 +1214,7 @@ function fmtDur(s){ s=Math.round(s); return `${Math.floor(s/60)} min ${pad(s%60)
 function videoDuration(file){ return new Promise(res=>{ const v=document.createElement("video"); v.preload="metadata"; const u=URL.createObjectURL(file);
   v.onloadedmetadata=()=>{ res(v.duration||0); URL.revokeObjectURL(u); }; v.onerror=()=>res(0); v.src=u; setTimeout(()=>res(0),8000); }); }
 async function setTrailer(key,file){ const st=filmState[key]; st.trailer=file; st.trailerDur=await videoDuration(file); }
-function saveFilm(key){ const s=filmState[key]; return Store.set("film:"+key,{poster:s.poster,still:s.still,color:s.color,palette:s.palette,ecran:s.ecran||null,ecranLogo:s.ecranLogo||null,posterSrc:s.posterSrc||null,stillSrc:s.stillSrc||null}); }
+function saveFilm(key){ const s=filmState[key]; return Store.set("film:"+key,{telethon:!!s.telethon, tlPos:s.tlPos||null, poster:s.poster,still:s.still,color:s.color,palette:s.palette,ecran:s.ecran||null,ecranLogo:s.ecranLogo||null,posterSrc:s.posterSrc||null,stillSrc:s.stillSrc||null}); }
 
 // Base de données : fiche d'infos d'un film (modifiable)
 function infoCard(f){
@@ -1252,7 +1255,8 @@ async function renderCompact(boxId, only=null){
       el.innerHTML=`<div class="cposter" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"":"affiche manquante"}</div>
         <b>${esc(titleOf(f))}</b><div class="tags">${charBoxes(fl)}</div>`;
       el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{
-        const k=cb.dataset.t; if(curWeek()===w){ st[k]=cb.checked; const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"] [data-t="${k}"]`); if(card) card.checked=cb.checked; } else f[k]=cb.checked; });
+        const k=cb.dataset.t; if(k==="telethon"){ st.telethon=cb.checked; saveFilm(f.key); document.querySelectorAll(`.film[data-key="${CSS.escape(f.key)}"] [data-t="telethon"]`).forEach(x=>x.checked=cb.checked); return; }
+        if(curWeek()===w){ st[k]=cb.checked; const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"] [data-t="${k}"]`); if(card) card.checked=cb.checked; } else f[k]=cb.checked; });
       grid.appendChild(el);
     }
   }
@@ -1279,7 +1283,7 @@ function filmCard(f){
       st.poster=await Store.image(await shrinkFilm(await readFile(file))); st.palette=await posterPalette(st.poster); st.color=st.palette[0]; saveFilm(f.key); draw(); shareFilmImage(f,"poster",file);
     });
     makeDrop(el.querySelector(".still"),"image/*",async file=>{ st.still=await Store.image(await shrinkFilm(await readFile(file))); saveFilm(f.key); draw(); shareFilmImage(f,"still",file); });
-    el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; });   // partagé avec les autres onglets
+    el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; if(cb.dataset.t==="telethon") saveFilm(f.key); });   // partagé avec les autres onglets
     el.querySelectorAll(".sw[data-c]").forEach(sw=>sw.onclick=()=>{ st.color=sw.dataset.c; saveFilm(f.key); draw(); });
     el.querySelector("input[type=color]").onchange=e=>{ st.color=e.target.value.toUpperCase(); if(!(st.palette||[]).includes(st.color)) st.palette=[...(st.palette||[]),st.color]; saveFilm(f.key); draw(); };
   };
@@ -1387,7 +1391,45 @@ async function fillInfos(auto){
 const CHARS=[["reprise","Reprise","repLogo"],["sn","Sortie nationale","snLogo"],["avp","Avant-première","avpLogo"],["vo","VO","voLogo"],["doc","Documentaire","docLogo"],["gratuit","Entrée gratuite","gratuitLogo"]];
 const charOf=f=>({reprise:!!f.reprise, sn:!!f.sn, avp:!!f.avp, vo:!!f.vo, doc:!!f.doc, gratuit:!!f.gratuit});
 // Cases à cocher des caractéristiques (même choix dans tous les onglets)
-const charBoxes=st=>CHARS.map(([k,l])=>`<label><input type="checkbox" data-t="${k}" ${st[k]?"checked":""}> ${l}</label>`).join("");
+const charBoxes=st=>CHARS.map(([k,l])=>`<label><input type="checkbox" data-t="${k}" ${st[k]?"checked":""}> ${l}</label>`).join("")
+  +`<label title="logo Téléthon, déplaçable sur le visuel"><input type="checkbox" data-t="telethon" ${st.telethon?"checked":""}> Téléthon</label>`;
+// Logo Téléthon : coché film par film (mémorisé), posé à l'endroit choisi sur chaque visuel (publication, story, écran dynamique)
+const TL_DEF={post:{x:.86,y:.12,w:.2}, story:{x:.84,y:.9,w:.24}, ecran:{x:.84,y:.93,w:.24}};
+const tlPos=(st,kind)=>((st.tlPos||{})[kind])||TL_DEF[kind];
+async function drawTelethon(ctx, st, kind, W, H){
+  if(!st || !st.telethon || st._noTl || !assets.telethonLogo) return;
+  const im=await loadCharLogo(assets.telethonLogo); if(!im) return;
+  const p=tlPos(st,kind), iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height, w=p.w*W, h=w*ih/iw;
+  shadowOn(ctx,14,.3,4); ctx.drawImage(im, p.x*W-w/2, p.y*H-h/2, w, h); shadowOff(ctx);
+}
+// Éditeur : glisser le logo sur le visuel, régler sa taille
+async function tlEditor(f, kind, renderBase){
+  const st=filmState[f.key]; if(!assets.telethonLogo){ alert("Dépose d'abord le logo Téléthon dans la base commune (Base de données)."); return false; }
+  st._noTl=true; let base; try{ base=await renderBase(); } finally { delete st._noTl; }
+  const W0=base.width, H0=base.height, p={...tlPos(st,kind)};
+  return await new Promise(done=>{
+    const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px";
+    const dispH=Math.min(window.innerHeight*.76, 900), k=dispH/H0, dispW=W0*k;
+    ov.innerHTML=`<div style="color:#fff;font-weight:600">Logo Téléthon — ${esc(titleOf(f))} : fais glisser le logo, règle sa taille</div>
+      <div data-st style="position:relative;width:${dispW}px;height:${dispH}px;box-shadow:0 4px 20px rgba(0,0,0,.5);touch-action:none">
+        <img src="${base.toDataURL("image/jpeg",.85)}" style="width:100%;height:100%;display:block;user-select:none" draggable="false">
+        <img data-l src="${assets.telethonLogo}" draggable="false" style="position:absolute;cursor:grab;user-select:none;outline:2px dashed #ffd77a;outline-offset:2px"></div>
+      <div class="row" style="gap:10px;align-items:center;color:#fff">Taille <input type="range" min="4" max="70" value="${Math.round(p.w*100)}" data-sz style="width:220px">
+        <button class="small" data-def>Position par défaut</button><button class="small" data-c>Annuler</button><button class="small primary" data-ok>✓ Valider</button></div>`;
+    document.body.append(ov);
+    const lg=ov.querySelector("[data-l]"), stage=ov.querySelector("[data-st]");
+    const place=()=>{ const r=(lg.naturalHeight||1)/(lg.naturalWidth||1), w=p.w*dispW, h=w*r; lg.style.width=w+"px"; lg.style.left=(p.x*dispW-w/2)+"px"; lg.style.top=(p.y*dispH-h/2)+"px"; };
+    lg.onload=place; place();
+    let drag=null;
+    lg.onpointerdown=e=>{ e.preventDefault(); lg.setPointerCapture(e.pointerId); lg.style.cursor="grabbing"; drag={sx:e.clientX, sy:e.clientY, x:p.x, y:p.y}; };
+    lg.onpointermove=e=>{ if(!drag) return; p.x=Math.max(0,Math.min(1,drag.x+(e.clientX-drag.sx)/dispW)); p.y=Math.max(0,Math.min(1,drag.y+(e.clientY-drag.sy)/dispH)); place(); };
+    lg.onpointerup=()=>{ drag=null; lg.style.cursor="grab"; };
+    ov.querySelector("[data-sz]").oninput=e=>{ p.w=e.target.value/100; place(); };
+    ov.querySelector("[data-def]").onclick=()=>{ Object.assign(p,TL_DEF[kind]); ov.querySelector("[data-sz]").value=Math.round(p.w*100); place(); };
+    ov.querySelector("[data-c]").onclick=()=>{ ov.remove(); done(false); };
+    ov.querySelector("[data-ok]").onclick=async()=>{ st.tlPos={...(st.tlPos||{}), [kind]:{x:+p.x.toFixed(4), y:+p.y.toFixed(4), w:+p.w.toFixed(4)}}; await saveFilm(f.key); ov.remove(); done(true); };
+  });
+}
 // Logos des caractéristiques cochées (un logo n'apparaît que s'il est fourni dans la base commune)
 // Recadre un logo sur sa partie visible (supprime les marges transparentes ou de couleur unie autour du motif)
 const _trimCache=new Map();
@@ -1439,7 +1481,7 @@ const BADGE_COL={tp:["#2e7d32","#f0fff1"],rep:["#6a1b9a","#fdf4ff"],vo:["#1565c0
 // sauf pour la semaine affichée où les cases cochées à l'étape 2 font foi
 function flags(f){
   const cw=curWeek(), st=(cw&&cw.films.includes(f)&&filmState[f.key])||{};
-  return {reprise:st.reprise??f.reprise, vo:st.vo??f.vo, doc:st.doc??f.doc, avp:st.avp??f.avp, sn:st.sn??f.sn, gratuit:st.gratuit??f.gratuit};
+  return {reprise:st.reprise??f.reprise, vo:st.vo??f.vo, doc:st.doc??f.doc, avp:st.avp??f.avp, sn:st.sn??f.sn, gratuit:st.gratuit??f.gratuit, telethon:!!(filmState[f.key]||{}).telethon};
 }
 function filmBadges(f, d){
   const raw=String(f.infoRaw||""), out=[];
@@ -1652,6 +1694,7 @@ async function renderEcran(f, seances, out){
   const t0=y+bh/2-(lines.length-1)*lh/2+size*0.04;
   lines.forEach((t,i)=>ctx.fillText(t,540,t0+i*lh));
   if(out){ out.hasLogos=lg.length>0||!!voImg; }
+  await drawTelethon(ctx, st, "ecran", W, SH);
   return c;
 }
 
@@ -1708,12 +1751,13 @@ async function renderEcranList(){
       const c=await renderEcran(p.f,p.seances), t=canvas(270,480); t.getContext("2d").drawImage(c,0,0,270,480);
       el.innerHTML=`<span class="grp">${p.grp}</span><img src="${t.toDataURL("image/jpeg",.85)}" alt="">
         <b>${esc(titleOf(p.f))}</b>${st.poster?"":'<span class="past">⚠ affiche manquante</span>'}
-        <div class="tags">${charBoxes(st)}</div>
+        <div class="tags">${charBoxes(st)}</div>${st.telethon?'<button class="small" data-tl>✥ Placer le logo Téléthon</button>':""}
         <div class="colors">${(st.palette||[]).map(c=>`<span class="sw ${c===cur?"sel":""}" data-e="${c}" style="background:${c}"></span>`).join("")}
           <input type="color" value="${cur}" title="Autre couleur"></div>`;
       el.querySelectorAll(".sw").forEach(sw=>sw.onclick=()=>{ st.ecran=sw.dataset.e; saveFilm(p.f.key); draw(); });
-      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; draw(); const card=document.querySelector(`.film[data-key="${CSS.escape(p.f.key)}"] [data-t="${cb.dataset.t}"]`); if(card) card.checked=cb.checked; });
+      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; if(cb.dataset.t==="telethon") saveFilm(p.f.key); draw(); const card=document.querySelector(`.film[data-key="${CSS.escape(p.f.key)}"] [data-t="${cb.dataset.t}"]`); if(card) card.checked=cb.checked; });
       el.querySelector("input[type=color]").onchange=e=>{ st.ecran=e.target.value.toUpperCase(); if(!(st.palette||[]).includes(st.ecran)) st.palette=[...(st.palette||[]),st.ecran]; saveFilm(p.f.key); draw(); };
+      const tb=el.querySelector("[data-tl]"); if(tb) tb.onclick=async()=>{ if(await tlEditor(p.f,"ecran",()=>renderEcran(p.f,p.seances))) draw(); };
       el.querySelector("img").onclick=async()=>{ const big=await renderEcran(p.f,p.seances); $("#zoom img").src=big.toDataURL("image/jpeg",.9); $("#zoom").style.display="flex"; };
     };
     list.appendChild(el); await draw();
@@ -4133,9 +4177,11 @@ function renderPlan(){
       <td>${kind}<br><b>${o.label}</b><br><span class="hint">${o.sub}</span></td>
       <td><div class="imgset">${o.imgs.map((im,j)=>`<img src="${im.url}" alt="" data-j="${j}">`).join("")}${o.video?`<video src="${o.videoUrl}" muted preload="metadata" title="${o.video.name}"></video>`:""}</div>
         ${o.video&&o.videoDur>60?'<div class="past">⚠ vidéo de plus d\'1 min : Instagram la refusera dans le carrousel (Facebook l\'accepte)</div>':""}
-        <button class="small dl" data-dl>⬇ Télécharger</button> <button class="small" data-meta hidden style="background:#1877f2;color:#fff">📤 Programmer</button><div class="hint" data-mst style="margin:4px 0 0"></div></td>
+        <button class="small dl" data-dl>⬇ Télécharger</button>${(o.kind==="post"||o.kind==="story")&&o.film&&(filmState[o.film.key]||{}).telethon?' <button class="small" data-tl>✥ Logo Téléthon</button>':""} <button class="small" data-meta hidden style="background:#1877f2;color:#fff">📤 Programmer</button><div class="hint" data-mst style="margin:4px 0 0"></div></td>
       <td>${o.kind==="story"?'<span class="hint">Pas de légende pour une story</span>':`<textarea class="cap">${o.caption}</textarea><button class="small" data-copy>Copier la légende</button>`}</td>`;
     tr.querySelector("input").onchange=e=>tr.classList.toggle("done",e.target.checked);
+    const tlb=tr.querySelector("[data-tl]"); if(tlb) tlb.onclick=async()=>{ const rf=o.kind==="post"?()=>renderFilm(o.film):()=>renderStory(o.film);
+      if(!await tlEditor(o.film,o.kind,rf)) return; const im=o.imgs[0]; URL.revokeObjectURL(im.url); im.blob=await toBlob(await rf()); im.url=URL.createObjectURL(im.blob); renderPlan(); };
     tr.querySelector("[data-dl]").onclick=async()=>{
       if(o.imgs.length===1 && !o.video) return saveFile(o.imgs[0].file,o.imgs[0].blob);
       const z=new JSZip(); o.imgs.forEach(im=>z.file(im.file,im.blob)); if(o.video) z.file(o.videoFile,o.video,{compression:"STORE"});
