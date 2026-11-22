@@ -7,27 +7,36 @@
 // Facultatif : AI_MODEL pour choisir le modèle.
 const env = k => (globalThis.Netlify?.env?.get(k) ?? process.env[k] ?? "").trim();
 
-// modèle : AI_MODEL, sinon le dernier « Flash » de Google (alias tenu à jour), puis un modèle connu en secours
+// modèle : AI_MODEL, puis les « Flash » de Google, puis les « Flash-Lite » ; on passe au suivant si l'un est saturé (503/429) ou absent
+const GEMINI_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
 async function gemini(key, b) {
-  let last;
-  for (const model of [env("AI_MODEL"), "gemini-flash-latest", "gemini-2.5-flash"].filter(Boolean)) {
-    try { return await geminiModel(key, b, model); } catch (e) { last = e; if (!/ 404 | 400 /.test(" " + e.message + " ")) throw e; }
+  const t0 = Date.now(); let last;
+  const models = [env("AI_MODEL"), ...GEMINI_MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
+  for (let i = 0; i < models.length; i++) {
+    const left = 24000 - (Date.now() - t0); if (left < 3000) break;               // on reste sous la limite de temps de Netlify
+    try { return await geminiModel(key, b, models[i], left, i < 2); }
+    catch (e) { last = e; if (!/ (400|404|429|500|503|504|TIMEOUT) /.test(" " + e.message + " ")) throw e; }
   }
-  throw last;
+  throw last || new Error("Gemini : délai dépassé");
 }
-async function geminiModel(key, b, model) {
+async function geminiModel(key, b, model, budget, withSearch) {
   const parts = [{ text: b.prompt }];
   if (b.image) parts.push({ inline_data: { mime_type: "image/jpeg", data: b.image } });
   const body = { contents: [{ role: "user", parts }], generationConfig: { temperature: 0.2 } };
   if (b.system) body.systemInstruction = { parts: [{ text: b.system }] };
-  if (b.search !== false) body.tools = [{ google_search: {} }];          // fiches à jour pour les films récents
-  const call = () => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) });   // clé en en-tête : marche pour les anciennes (AIza…) et les nouvelles (AQ.…)
+  if (b.search !== false && withSearch) body.tools = [{ google_search: {} }];   // recherche web avec les modèles Flash (pas les Lite)
+  const t0 = Date.now();
+  const call = async () => { const ms = Math.max(2000, budget - (Date.now() - t0));
+    try { return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(ms) }); }   // clé en en-tête : anciennes (AIza…) et nouvelles (AQ.…)
+    catch (e) { throw new Error(`Gemini TIMEOUT ${model}`); } };
   let r = await call();
-  if (!r.ok && body.tools) { delete body.tools; r = await call(); }   // sans recherche si elle est refusée (offre gratuite)
-  if (!r.ok) throw new Error(`Gemini ${r.status} ${model} : ${(await r.text()).slice(0, 300)}`);
+  if (!r.ok && body.tools && r.status !== 503 && r.status !== 429) { delete body.tools; r = await call(); }   // sans recherche si elle est refusée (offre gratuite)
+  if (!r.ok) throw new Error(`Gemini ${r.status} ${model} : ${(await r.text()).slice(0, 200)}`);
   const j = await r.json();
-  return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  if (!text) throw new Error(`Gemini 500 ${model} : réponse vide`);
+  return text;
 }
 async function pollinations(key, b) {
   const content = b.image ? [{ type: "text", text: b.prompt }, { type: "image_url", image_url: { url: "data:image/jpeg;base64," + b.image } }] : b.prompt;
@@ -69,3 +78,4 @@ export default async (req) => {
 };
 
 export const config = { path: "/api/ai" };
+
