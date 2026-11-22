@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 20h10</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 20h25</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1292,14 +1292,16 @@ function filmCard(f){
 
 /* ========================== Infos automatiques des films ========================== */
 // Sur la page publiée : Claude lit le titre et l'affiche. Copie hors ligne : service Pollinations (sans affiche).
-function infoPrompt(f, withPoster){
-  const when=f.seances[0], tags=[f.vo&&"en version originale", f.reprise&&"reprise", f.doc&&"documentaire"].filter(Boolean).join(", ");
+function infoPrompt(f, withPoster, web){
+  const when=f.seances[0], tags=[f.vo&&"en version originale", f.reprise&&"reprise", f.doc&&"documentaire", f.avp&&"avant-première", f.sn&&"sortie nationale"].filter(Boolean).join(", ");
+  const extra=[f.infoRaw&&`mention du programme : « ${String(f.infoRaw).slice(0,120)} »`, f.duree&&`durée indiquée : ${f.duree}`].filter(Boolean).join(" ; ");
   return `Tu prépares la fiche d'un film pour un cinéma associatif Art et Essai en France.
-Film : « ${f.title} »${tags?` (${tags})`:""}, programmé en ${MOIS[when.getMonth()]} ${when.getFullYear()}.
+Film : « ${f.title} »${tags?` (${tags})`:""}, programmé en ${MOIS[when.getMonth()]} ${when.getFullYear()}${extra?` (${extra})`:""}.
+${web?`Fais d'abord une recherche web : « ${f.title} film allociné », « ${f.title} film ${when.getFullYear()} sortie ». C'est le film à l'affiche dans les cinémas français à cette date (souvent une sortie récente de ${when.getFullYear()-1} ou ${when.getFullYear()}, parfois une reprise ou un film jeune public) : prends sa fiche AlloCiné ou celle du distributeur, pas un homonyme plus ancien. Le titre est exact tel qu'il est écrit ; ne demande pas de précision.`:""}
 ${withPoster?"L'affiche officielle du film est jointe : lis-y le titre exact, le réalisateur, les acteurs et les mentions (festival, prix).":""}
 Réponds uniquement avec un objet JSON :
 {"title":"titre français exact","genres":"1 à 3 genres séparés par ' · ' (ex. Drame · Romance)","duree":"format 1h50, ou vide","real":"réalisateur ou réalisatrice","avec":"2 ou 3 acteurs principaux séparés par des virgules (pour l'animation, les voix)","public":"Tout public, Tout public avec avertissement, Interdit aux moins de 12 ans… ou vide","synopsis":"synopsis en français de 280 à 380 caractères, phrases complètes, sans spoiler, ton neutre","sur":true,"incertains":["noms des champs dont tu n'es pas sûr, parmi title, genres, duree, real, avec, public, synopsis"]}
-Règles strictes : n'invente rien. Si tu ne connais pas ce film avec certitude (film récent, homonyme…), mets "sur":false, laisse vides les champs que tu ignores et l'affiche ne te les donne pas, et pour le synopsis écris seulement ce que l'affiche permet d'affirmer, ou laisse-le vide.`;
+Règles strictes : n'invente rien. ${web?"Si ta recherche ne trouve pas ce film avec certitude":"Si tu ne connais pas ce film avec certitude"} (film récent, homonyme…), mets "sur":false, laisse vides les champs que tu ignores et l'affiche ne te les donne pas, et pour le synopsis écris seulement ce que l'affiche permet d'affirmer, ou laisse-le vide.`;
 }
 async function posterBlob(src){
   const img=await loadImg(src); if(!img) return null;
@@ -1337,7 +1339,7 @@ async function askInfo(f){
   // site publié : IA de Netlify, avec l'affiche si elle est connue (et recherche web pour les films récents)
   let lastErr, img=null; try{ if(st.poster) img=await posterBlob(st.poster); }catch(e){}
   for(let i=0;i<3;i++){
-    try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img), img)); }
+    try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img,true), img)); }
     catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,(/50[234]|demand|TIMEOUT/.test(e.message)?6000:2000)*(i+1))); }   // IA saturée : on patiente davantage
   }
   throw lastErr;
