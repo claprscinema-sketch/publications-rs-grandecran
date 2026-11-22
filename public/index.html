@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 17h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 20h10</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1338,7 +1338,7 @@ async function askInfo(f){
   let lastErr, img=null; try{ if(st.poster) img=await posterBlob(st.poster); }catch(e){}
   for(let i=0;i<3;i++){
     try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img), img)); }
-    catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,2000*(i+1))); }
+    catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,(/50[234]|demand|TIMEOUT/.test(e.message)?6000:2000)*(i+1))); }   // IA saturée : on patiente davantage
   }
   throw lastErr;
 }
