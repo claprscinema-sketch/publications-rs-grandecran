@@ -1,5 +1,7 @@
 // Base partagée du Cinéma Grand Écran : Excel, images et infos des films (Netlify Blobs)
 // GET  /api/base/manifest          → état de la base
+// GET  /api/base/check-site        → vérifie le code d'accès au site (CODE_EQUIPE)
+// GET  /api/base/check-pb          → vérifie le code des onglets PB et des bases communes (CODE_PB, sinon CODE_EQUIPE)
 // GET  /api/base/file/<clé>         → un fichier
 // PUT  /api/base/file/<clé>         → enregistre un fichier        (code d'équipe si défini)
 // PUT  /api/base/manifest          → enregistre l'état            (code d'équipe si défini)
@@ -13,6 +15,14 @@ export default async (req) => {
   const nostore = { "cache-control": "no-store" };
 
   if (req.method === "GET") {
+    if (path === "check-site") {   // accès au site : code d'équipe CODE_EQUIPE
+      const ok = !code || (req.headers.get("x-code") || "").trim() === code;
+      return new Response(ok ? "ok" : "code", { status: ok ? 200 : 401, headers: nostore });
+    }
+    if (path === "check-pb") {   // accès aux onglets PB : code CODE_PB (sinon code d'équipe)
+      const pb = (globalThis.Netlify?.env?.get("CODE_PB") ?? process.env.CODE_PB ?? "").trim() || code;
+      return new Response(!pb || (req.headers.get("x-code") || "").trim() === pb ? "ok" : "code", { status: !pb || (req.headers.get("x-code") || "").trim() === pb ? 200 : 401, headers: nostore });
+    }
     if (path === "manifest") {
       const m = await store.get("manifest", { type: "json" });
       return Response.json(m || {}, { headers: nostore });
