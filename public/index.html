@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 21h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 21h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -255,6 +255,7 @@
 <!-- Écrans dynamiques -->
 <section data-tab="ecrans" hidden>
   <h2><span class="n">3</span> Écrans dynamiques <span class="hint" style="margin:0;font-weight:400">— images verticales 1080 × 1920 px</span></h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <p class="hint">Un écran par film, précédé de « À l'affiche cette semaine » puis de « À venir ». Clique sur une pastille pour choisir la couleur du fond (le texte des séances prend la même couleur). Clique sur un aperçu pour l'agrandir. Les vignettes des caractéristiques cochées (Reprise, Sortie nationale, Entrée gratuite…) se placent automatiquement au-dessus de l'affiche. Les affiches viennent des dossiers d'images (onglet Base de données).</p>
   <div id="ecranEmpty" class="todo">Dépose d'abord l'Excel et les dossiers d'images (onglet Base de données).</div>
   <div class="ecrans" id="ecranList"></div>
@@ -266,6 +267,7 @@
 </section>
 
 <section data-tab="flyers" hidden><h2>Flyer A5 recto-verso — programme de la quinzaine</h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <div class="layoutpick" data-for="flyerLayout">
     <span style="font-weight:700;font-size:15px">Mise en page :</span>
     <label class="lp"><input type="radio" name="flyerLayoutR" value="auto"><svg viewBox="0 0 84 120" width="70" height="100"><rect width="84" height="120" fill="#fff" stroke="#ccc"/><rect width="84" height="16" fill="#1d1d22"/><rect x="0" y="108" width="84" height="12" fill="#1d1d22"/><text x="42" y="68" text-anchor="middle" font-family="Bebas Neue, sans-serif" font-size="26" fill="#6e264c">AUTO</text><path d="M20 80 h44" stroke="#bbb" stroke-width="3"/><path d="M20 88 h30" stroke="#bbb" stroke-width="3"/></svg><span>Auto<br><small>l'outil choisit la disposition<br>qui remplit le mieux la page</small></span></label>
@@ -282,6 +284,7 @@
   <style>#flyerOut figure{margin:0;text-align:center}#flyerOut img{width:330px;border:1px solid #ddd;border-radius:4px;cursor:zoom-in;box-shadow:0 2px 10px rgba(0,0,0,.12)}#flyerOut figcaption{font-size:13px;color:#666;margin-top:4px}</style>
 </section>
 <section data-tab="pba" hidden><h2>🎞️ PB écran — pré-bandes-annonces adultes (PBA) et enfants (PBE)</h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <p class="hint">4 PB de 30 min par quinzaine (ex. 1111PBA, 1111PBE, 1811PBA, 1811PBE) : écran fixe 10 min, puis ouverture + bande-annonce + clôture pour chaque film (17 à 18 min), puis le flyer écran de la date en boucle jusqu'à 20 min. Assemblage en MP4 et DCP sur cet ordinateur (FFmpeg + DCP-o-matic).</p>
   <div id="pbRoot"></div>
   <style>.pbBlock{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fff}.pbBlock h3{margin:0 0 6px}
@@ -292,11 +295,13 @@
   .pbJob ol{margin:4px 0 8px;padding-left:22px}.pbJob li{margin:3px 0;font-size:14px}.pbJob li.pbOff{opacity:.45}.pbJob li button{padding:1px 6px}</style>
 </section>
 <section data-tab="pbhall" hidden><h2>📺 PB Hall — vidéos 720p pour la TV du hall</h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <p class="hint">4 vidéos par quinzaine (ex. « 1111 PB Adultes hall » et « 1111 PB Enfants hall » avec le programme de toute la quinzaine, puis « 1811 PB Adultes hall » et « 1811 PB Enfants hall » avec celui de la 2e semaine) : pour chaque film, vidéo intro BA + bande-annonce + vidéo fin BA, puis le carton des horaires pour les films du programme, avec les modèles de l'onglet PB écran.</p>
   <div id="hallRoot"></div>
 </section>
 <section data-tab="flyerspb" hidden>
   <h2>🎞️ Flyers écran — vidéos MP4 3996×2160</h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <p class="hint">Chaque flyer est une vidéo qui enchaîne en boucle les écrans des semaines choisies (un écran par semaine, 7 à 10 s, fondu entre deux écrans) jusqu'à la durée réglée. Flyer 1 : les 3 semaines cochées ; Flyer 2 : les 2 plus récentes. <b>PBA</b> : films adultes ; <b>PBE</b> : films enfants (même classement que PB Hall, bouton ⇄).</p>
   <div class="hint" id="pbHist" style="margin:0 0 8px"></div>
   <div class="row" style="gap:14px;align-items:center;flex-wrap:wrap">
@@ -330,6 +335,7 @@
   <div id="pbProgress" class="hint" hidden></div><div id="pbOut" hidden></div>
 </section>
 <section data-tab="cartons" hidden><h2>Cartons écran — vidéos MP4 3996 × 2160 px</h2>
+  <div class="quinzBar row" style="gap:10px;align-items:center;margin:4px 0 12px"></div>
   <p class="hint">Une vidéo par film de la semaine choisie (onglet Base de données) : affiche à gauche, titre, vignettes (Reprise, Sortie nationale, Avant-première et Entrée gratuite clignotent ; chacune fait 30 % de la largeur de l'affiche), puis les séances qui s'écrivent comme à la machine et sont complètes 3 secondes avant la fin. Durée : 7 s (1 ou 2 séances), 8 s (3 ou 4), 9 s (5 et plus). Vidéos muettes, H.264. <b>À faire avec Chrome ou Edge</b> ; compter de 20 s à 1 min par carton.</p>
   <div id="cartonFilms"></div>
   <div class="row" style="margin-top:10px">
@@ -1355,6 +1361,13 @@ async function loadWorkbook(file, auto=true){
     const o=document.createElement("option"); o.value=i; o.textContent=`du mercredi ${w.start.getDate()} ${MOIS[w.start.getMonth()]} au mardi ${e.getDate()} ${MOIS[e.getMonth()]} (${w.films.length} films)`; sel.appendChild(o);
     if(best<0 && e>=today) best=i; });
   pairWeeks(); labelFolders(); renderInfoList(); if(typeof renderQuinzBar==="function") renderQuinzBar();
+  // semaines de l'autre quinzaine gardée (choisir l'une d'elles bascule sur sa quinzaine)
+  if(typeof QUINZ!=="undefined"){ const have=new Set(weeks.map(w=>isoD(w.start))), extra=[];
+    for(const q of QUINZ) for(const iso of (q.weeks||[])) if(!have.has(iso) && weekHist[iso]){ have.add(iso); extra.push([iso,q.id]); }
+    extra.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([iso,qid])=>{ const w=deserWeek(weekHist[iso]), e=addDays(w.start,6), o=document.createElement("option");
+      o.value="q:"+qid+":"+iso; o.textContent=`du mercredi ${w.start.getDate()} ${MOIS[w.start.getMonth()]} au mardi ${e.getDate()} ${MOIS[e.getMonth()]} (${w.films.length} films) — autre quinzaine`; sel.appendChild(o); });
+    // tri par date
+    [...sel.options].sort((a,b)=>optIso(a).localeCompare(optIso(b))).forEach(o=>sel.appendChild(o)); }
   [0,1].forEach(i=>$("#dropW"+i).querySelector(".rep").innerHTML="");
   if(weekPair.length) best=weekPair[0];
   sel.value=best<0?weeks.length-1:best; $("#weekRow").hidden=false;
@@ -1374,7 +1387,11 @@ async function quinzLoadList(){ QUINZ=(await Store.get("quinzList"))||[];
   if(SHARED && sharedManifest){ const m=sharedManifest; if(m.quinz) QUINZ=m.quinz; else if(m.excel) QUINZ=[{id:"legacy", name:m.excel.name, key:"excel", weeks:[]}]; }
   QUINZ.sort((a,b)=>a.id.localeCompare(b.id)); renderQuinzBar(); }
 function renderQuinzBar(){
-  const bar=$("#quinzBar"); if(!bar) return; const act=(curQuinz()||{}).id;
+  const act=(curQuinz()||{}).id;
+  // barres des autres onglets : boutons seuls
+  document.querySelectorAll(".quinzBar").forEach(b2=>{ b2.innerHTML=QUINZ.length>1?`<b style="font-size:14px">Quinzaine :</b>`+QUINZ.map(q=>`<button class="${q.id===act?"primary":"small"}" data-quinz="${esc(q.id)}">${q.id===act?"▶ ":""}${esc(quinzLbl(q))}</button>`).join(""):"";
+    b2.querySelectorAll("[data-quinz]").forEach(x=>x.onclick=()=>quinzSwitch(x.dataset.quinz)); });
+  const bar=$("#quinzBar"); if(!bar) return;
   bar.innerHTML=`<b style="font-size:14px">Quinzaines :</b>`+(QUINZ.length?QUINZ.map(q=>`<button class="${q.id===act?"primary":"small"}" data-quinz="${esc(q.id)}" title="${esc(q.name||"")}">${q.id===act?"▶ ":""}${esc(quinzLbl(q))}</button>`).join(""):'<span class="hint" style="margin:0">aucune : dépose l\'Excel ci-dessous</span>')
     +`<span class="hint" style="margin:0">Deux quinzaines gardées. Un nouvel Excel remplace celle qui a les mêmes dates, sinon il s'ajoute et la plus ancienne est retirée (Excel et images).</span>`;
   bar.querySelectorAll("[data-quinz]").forEach(b=>b.onclick=()=>quinzSwitch(b.dataset.quinz));
@@ -1424,6 +1441,7 @@ async function quinzSwitch(id){
       showSharedInfo(); }
     sharedLoading=was;
     await showFilms(); renderInfoList(); renderQuinzBar(); fillInfos(true);
+    if(currentTab!=="base" && currentTab!=="reseaux") showTab(currentTab);
   }catch(e){ console.warn(e); alert("Changement de quinzaine impossible : "+e.message); }
 }
 setTimeout(quinzLoadList,0);
@@ -1432,7 +1450,11 @@ makeDrop($("#dropXlsx"),".xlsx,.xls,.xlsm",async file=>{
   try{ await loadWorkbook(file); await quinzSave(file); }
   catch(e){ console.error(e); $("#xlsxName").innerHTML='<span style="color:#c00">Lecture impossible : '+e.message+'</span>'; }
 });
-$("#weekSel").onchange=showFilms;
+const optIso=o=>o.value.startsWith("q:")?o.value.split(":")[2]:(weeks[+o.value]?isoD(weeks[+o.value].start):"");
+$("#weekSel").onchange=async()=>{ const v=$("#weekSel").value;
+  if(!v.startsWith("q:")) return showFilms();
+  const [,qid,iso]=v.split(":"); await quinzSwitch(qid);
+  const i=weeks.findIndex(w=>isoD(w.start)===iso); if(i>=0){ $("#weekSel").value=i; await showFilms(); } };
 makeDrop($("#dropOldXlsx"),".xlsx,.xls,.xlsm",async file=>{
   try{ const ws=parseWorkbook(await readFile(file,"buf")); if(!ws.length){ alert("Aucune semaine trouvée dans ce fichier."); return; }
     histMerge(ws,true,false); $("#pbProgress").textContent=`✓ ${ws.length} semaine(s) ajoutée(s) à l'historique (${file.name}).`; }
