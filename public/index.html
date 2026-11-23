@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 13h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 14h15</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -290,22 +290,36 @@
 </section>
 <section data-tab="flyerspb" hidden>
   <h2>🎞️ Flyers écran — vidéos MP4 3996×2160</h2>
-  <p class="hint">Deux dossiers pour la quinzaine de l'Excel : le 1er commence par l'écran de la semaine qui précède (le dernier écran de la quinzaine précédente, gardé en stock sur cet ordinateur), puis les deux semaines de la quinzaine ; le 2e contient les deux semaines. Le dernier écran est à son tour mis en stock pour la quinzaine suivante. Chaque écran : fond, dates de la semaine en haut à droite, logo en bas, tous les films avec leurs séances et leurs vignettes.</p>
+  <p class="hint">Chaque flyer est une vidéo qui enchaîne en boucle les écrans des semaines choisies (un écran par semaine, 7 à 10 s, fondu entre deux écrans) jusqu'à la durée réglée. Flyer 1 : les 3 semaines cochées ; Flyer 2 : les 2 plus récentes. <b>PBA</b> : films adultes ; <b>PBE</b> : films enfants (même classement que PB Hall, bouton ⇄).</p>
   <div class="hint" id="pbHist" style="margin:0 0 8px"></div>
-  <div class="row" style="gap:14px;align-items:center">
+  <div class="row" style="gap:14px;align-items:center;flex-wrap:wrap">
     <div class="drop" id="dropOldXlsx" style="min-height:0;padding:10px 14px;flex:0 0 auto">➕ Ajouter un ancien Excel (semaines passées)</div>
-    <label style="font-size:14px;font-weight:600">Durée par écran <select id="pbDur"><option value="10" selected>10 s</option></select></label>
+    <select id="pbDur" hidden><option value="10" selected>10 s</option></select>
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="pbFps"><option value="30">30</option><option value="60">60</option></select></label>
     <label style="font-size:14px;font-weight:600" title="Les vidéos MP4 restent en 3996×2160 ; ce choix règle seulement le DCP fabriqué par le Pack DCP">Format du DCP <select id="pbDcpRes"><option value="2K">2K</option><option value="4K">4K</option></select> <span class="hint" style="margin:0;font-weight:400">(MP4 toujours en 3996×2160)</span></label>
-    <label style="font-size:14px;font-weight:600" title="Flyer 1 : écran en stock de la quinzaine passée + les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée boucle 1 <span class="hint" style="margin:0;font-weight:400">(3 écrans)</span> <input id="pbLoop" placeholder="2:00" style="width:70px"></label>
-    <label style="font-size:14px;font-weight:600" title="Flyer 2 : les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; vide = même durée que la boucle 1">Durée boucle 2 <span class="hint" style="margin:0;font-weight:400">(2 écrans)</span> <input id="pbLoop2" placeholder="= boucle 1" style="width:80px"></label>
     <label style="font-size:14px;font-weight:600"><input type="checkbox" id="pbTrans" checked> Transition fondu 0,5 s</label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement (lent)</option><option value="pulse">pulsation (zoom / dézoom)</option></select></label>
-    <button class="primary" id="btnPB">Générer les dossiers</button>
   </div>
-  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
-  <div id="pbProgress" class="hint"></div>
-  <div id="pbOut"></div>
+  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : la vidéo + un fichier à double-cliquer qui fait fabriquer le DCP par DCP-o-matic 2. Format (2K/4K) et images/s : réglés ci-dessus ; son et type de contenu : onglet Base de données &gt; Réglages DCP.</div>
+  <div id="flyCols" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px">
+    <div class="flyCol" data-aud="PBA" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff">
+      <h3 style="margin:0 0 8px">PBA — films adultes</h3>
+      <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <label style="font-weight:600">Durée flyer 1 <input data-dur="1" placeholder="2:00" style="width:70px"></label>
+        <label style="font-weight:600">Durée flyer 2 <input data-dur="2" placeholder="= flyer 1" style="width:80px"></label></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><button class="primary" data-fly="1">Flyers PBA du …</button><button class="primary" data-fly="2">Flyers PBA du …</button></div>
+      <div class="hint" data-prog style="margin-top:8px"></div><div data-out></div>
+    </div>
+    <div class="flyCol" data-aud="PBE" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff">
+      <h3 style="margin:0 0 8px">PBE — films enfants</h3>
+      <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <label style="font-weight:600">Durée flyer 1 <input data-dur="1" placeholder="2:00" style="width:70px"></label>
+        <label style="font-weight:600">Durée flyer 2 <input data-dur="2" placeholder="= flyer 1" style="width:80px"></label></div>
+      <div style="display:flex;flex-direction:column;gap:8px"><button class="primary" data-fly="1">Flyers PBE du …</button><button class="primary" data-fly="2">Flyers PBE du …</button></div>
+      <div class="hint" data-prog style="margin-top:8px"></div><div data-out></div>
+    </div>
+  </div>
+  <div id="pbProgress" class="hint" hidden></div><div id="pbOut" hidden></div>
 </section>
 <section data-tab="cartons" hidden><h2>Cartons écran — vidéos MP4 3996 × 2160 px</h2>
   <p class="hint">Une vidéo par film de la semaine choisie (onglet Base de données) : affiche à gauche, titre, vignettes (Reprise, Sortie nationale, Avant-première et Entrée gratuite clignotent ; chacune fait 30 % de la largeur de l'affiche), puis les séances qui s'écrivent comme à la machine et sont complètes 3 secondes avant la fin. Durée : 7 s (1 ou 2 séances), 8 s (3 ou 4), 9 s (5 et plus). Vidéos muettes, H.264. <b>À faire avec Chrome ou Edge</b> ; compter de 20 s à 1 min par carton.</p>
@@ -2953,6 +2967,7 @@ async function showTab(t){
   if(t==="flyers") renderCompact("#flyerFilms");
   if(t==="cartons") renderCompact("#cartonFilms");
   if(t==="pba") renderPB();
+  if(t==="flyerspb") renderHistList();
   renderDlBar(t);
   if(t==="pbhall") renderHall();
   if(t==="base") renderInfoList();
@@ -2994,7 +3009,8 @@ function renderHistList(){
     <div style="margin-top:4px">Flyer 1 : les 3 semaines cochées · Flyer 2 : les 2 plus récentes des semaines cochées.</div>`;
   el.querySelectorAll("[data-hw]").forEach(cb=>cb.onchange=()=>{ const keys=[...el.querySelectorAll("[data-hw]:checked")].map(x=>x.dataset.hw);
     if(keys.length>3){ cb.checked=false; toast("3 semaines au maximum (Flyer 1)."); return; }
-    try{ localStorage.setItem("flyerSel",JSON.stringify({keys, latest:rec[rec.length-1]})); }catch(e){} });
+    try{ localStorage.setItem("flyerSel",JSON.stringify({keys, latest:rec[rec.length-1]})); }catch(e){} flyerButtonsRefresh(); });
+  flyerButtonsRefresh();
 }
 const weekStartOf=d=>{ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()-3+7)%7)); return x; };   // mercredi
 const addDays=(d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
@@ -3310,6 +3326,45 @@ try{ const r=localStorage.getItem("pbDcpRes")||(settings.dcpRes||DEFAULTS.dcpRes
   $("#pbDcpRes")&&($("#pbDcpRes").onchange=e=>{ try{ localStorage.setItem("pbDcpRes",e.target.value); }catch(_){} });
   $("#pbFps")&&$("#pbFps").addEventListener("change",e=>{ try{ localStorage.setItem("pbFpsSel",e.target.value); }catch(_){} }); }catch(e){}
 try{ const v=localStorage.getItem("pbLoop"), v2=localStorage.getItem("pbLoop2"); if(v!=null&&$("#pbLoop")) $("#pbLoop").value=v; if(v2!=null&&$("#pbLoop2")) $("#pbLoop2").value=v2; if(localStorage.getItem("pbTrans")==="0"&&$("#pbTrans")) $("#pbTrans").checked=false; }catch(e){}
+/* ---- Flyers écran PBA / PBE : une vidéo en boucle par bouton ---- */
+// semaines du flyer n : Flyer 1 = les 3 semaines cochées, Flyer 2 = les 2 plus récentes ; libellé = date de la 1re semaine
+function flyerWeeksOf(n){ const sel=flyerSel().map(k=>new Date(weekHist[k].start)); return n===1?sel.slice(-3):sel.slice(-2); }
+const flyDurKey=(aud,n)=>`flyDur_${aud}_${n}`;
+function flyerButtonsRefresh(){
+  document.querySelectorAll("#flyCols .flyCol").forEach(col=>{ const aud=col.dataset.aud;
+    col.querySelectorAll("[data-fly]").forEach(b=>{ const ws=flyerWeeksOf(+b.dataset.fly); b.textContent=ws.length?`Flyers ${aud} du ${pad(ws[0].getDate())}/${pad(ws[0].getMonth()+1)}`:`Flyers ${aud} (coche des semaines)`; b.disabled=!ws.length; });
+    col.querySelectorAll("[data-dur]").forEach(i=>{ try{ const v=localStorage.getItem(flyDurKey(aud,i.dataset.dur)); if(v!=null && !i.dataset.init) i.value=v; }catch(e){} i.dataset.init="1";
+      i.onchange=()=>{ try{ localStorage.setItem(flyDurKey(aud,i.dataset.dur),i.value); }catch(e){} }; }); });
+}
+async function generateFlyer(aud, n, col){
+  const pr=col.querySelector("[data-prog]"), out=col.querySelector("[data-out]");
+  if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
+  hallKid=(await Store.get("hallKid"))||hallKid||{};
+  const days=flyerWeeksOf(n); if(!days.length){ pr.textContent="Coche des semaines dans la liste ci-dessus."; return; }
+  const kid=aud==="PBE", ws=[], skip=[];
+  for(const d of days){ const w=histWeek(d); if(!w){ skip.push(`${shortDate(d)} (Excel absent)`); continue; }
+    for(const f of w.films) if(!filmState[f.key]){ const s0=(await Store.get("film:"+f.key))||{}; filmState[f.key]={...s0,...charOf(f)}; }
+    const films=w.films.filter(f=>!!hallGuessKid(f)===kid); if(films.length) ws.push({...w, films}); else skip.push(`${shortDate(d)} (aucun film ${kid?"enfants":"adultes"})`); }
+  if(!ws.length){ pr.textContent=`Rien à mettre dans ce flyer : ${skip.join(", ")}.`; return; }
+  if(!await requirePosters(ws.flatMap(w=>w.films),`Flyer ${aud}`)) return;
+  const fps=Number($("#pbFps").value)||30, mode=$("#pbMode").value, trans=$("#pbTrans").checked;
+  const d1=parseDur(col.querySelector('[data-dur="1"]').value)||120, LT=n===1?d1:(parseDur(col.querySelector('[data-dur="2"]').value)||d1);
+  await document.fonts.load(`100px "Ecran"`,"mercredi 4 - 20h30"); await applyTitleFont();
+  const scr=[]; let k=0; for(const w of ws){ k++; pr.textContent=`Préparation de l'écran ${k}/${ws.length}…`; const P=await preparePB(w); scr.push((ctx,t)=>drawPBFrame(ctx,P,t,mode)); }
+  const pl=loopPlan(LT,scr.length), ddmm=x=>`${pad(x.getDate())}-${pad(x.getMonth()+1)}`, tag=ddmm(days[0]);
+  const r=await encodeLoop(scr, LT, fps, trans, p=>pr.textContent=`Flyers ${aud} du ${tag.replace("-","/")} (${fmtMS(LT)}, ${pl.n} écrans de ${pl.d.toFixed(1)} s)… ${Math.round(p*100)} %`);
+  const name=`Flyers_${aud}_du_${tag}_${fmtMS(LT).replace(":","m")}.mp4`, file={name, blob:r.blob, poster:r.poster};
+  let card=out.querySelector(`[data-n="${n}"]`); if(!card){ card=document.createElement("div"); card.dataset.n=n; card.style.cssText="border:1px solid #eee;border-radius:8px;padding:8px;margin-top:10px"; out.appendChild(card); if(n===1) out.prepend(card); }
+  card.innerHTML=`<video src="${URL.createObjectURL(r.blob)}" poster="${r.poster}" controls muted loop style="width:100%;border-radius:5px;background:#000"></video>
+    <b>${esc(name)}</b><div class="hint" style="margin:2px 0 6px">🔁 ${ws.length} semaine(s) : ${ws.map(w=>shortDate(w.start)).join(", ")} · ${pl.n} écrans de ${pl.d.toFixed(1)} s${pl.ok?"":" ⚠️ hors de 7–10 s"}${trans?", fondu 0,5 s":""}${skip.length?` · non incluses : ${esc(skip.join(", "))}`:""}</div>
+    <button class="small primary" data-dl>⬇ MP4</button> <button class="small" data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
+  card.querySelector("[data-dl]").onclick=()=>saveFile(name,r.blob);
+  card.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(name.replace(/\.mp4$/,""), [file], "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
+  pr.textContent=`✓ ${name} prêt.`;
+}
+document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("#flyCols [data-fly]"); if(!b) return;
+  const col=b.closest(".flyCol"), aud=col.dataset.aud, n=+b.dataset.fly;
+  bgTask(`fly-${aud}-${n}`, `${b.textContent}`, "flyerspb", col.querySelector("[data-prog]"), ()=>generateFlyer(aud,n,col)); });
 document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") bgTask("flyerspb","Flyers écran","flyerspb","#pbProgress",generatePB); });
 
 /* ========================== Éditeur de carton (retouches dans l'outil) ========================== */
