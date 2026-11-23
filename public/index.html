@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 20h15</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 21h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -145,6 +145,7 @@
 <section data-tab="base">
   <div id="sharedStatus" class="shared" hidden></div>
   <h2><span class="n">1</span> Fichier Excel de programmation</h2>
+  <div id="quinzBar" class="row" style="gap:10px;align-items:center;margin:0 0 10px"></div>
   <div class="row">
     <div class="drop" id="dropXlsx"><b>📊 Excel de programmation (2 semaines)</b><br>.xlsx — glisser ici ou cliquer<div id="xlsxName"></div></div>
   </div>
@@ -1353,7 +1354,7 @@ async function loadWorkbook(file, auto=true){
   weeks.forEach((w,i)=>{ const e=new Date(w.start); e.setDate(e.getDate()+6);
     const o=document.createElement("option"); o.value=i; o.textContent=`du mercredi ${w.start.getDate()} ${MOIS[w.start.getMonth()]} au mardi ${e.getDate()} ${MOIS[e.getMonth()]} (${w.films.length} films)`; sel.appendChild(o);
     if(best<0 && e>=today) best=i; });
-  pairWeeks(); labelFolders(); renderInfoList();
+  pairWeeks(); labelFolders(); renderInfoList(); if(typeof renderQuinzBar==="function") renderQuinzBar();
   [0,1].forEach(i=>$("#dropW"+i).querySelector(".rep").innerHTML="");
   if(weekPair.length) best=weekPair[0];
   sel.value=best<0?weeks.length-1:best; $("#weekRow").hidden=false;
@@ -1361,8 +1362,74 @@ async function loadWorkbook(file, auto=true){
   if(auto) fillInfos(true);   // en arrière-plan : infos du stock, recherche seulement pour les films absents
 }
 
+/* ---- Deux quinzaines en mémoire (Excel + dossiers d'images de leurs 2 semaines) ----
+   Chaque quinzaine est repérée par la date de sa 1re semaine. Déposer un Excel remplace la quinzaine qui a les mêmes dates,
+   sinon l'ajoute ; on n'en garde que 2 : la plus ancienne est alors retirée (Excel et images de ses semaines). */
+let QUINZ=[];   // [{id, name, weeks:[iso, iso]}] triées par date
+const quinzActive=()=>{ try{ return localStorage.getItem("quinzActive")||""; }catch(e){ return ""; } };
+const quinzLbl=q=>{ const d=new Date((q.weeks&&q.weeks[0]||q.id)+"T12:00:00"); if(isNaN(d)) return q.name||"quinzaine";
+  const e=addDays(d,13); return `du ${pad(d.getDate())}/${pad(d.getMonth()+1)} au ${pad(e.getDate())}/${pad(e.getMonth()+1)}/${String(e.getFullYear()).slice(2)}`; };
+function curQuinz(){ if(!weeks.length||!weekPair.length) return null; const ws=weekPair.map(i=>weeks[i]).filter(Boolean); return {id:isoD(ws[0].start), weeks:ws.map(w=>isoD(w.start))}; }
+async function quinzLoadList(){ QUINZ=(await Store.get("quinzList"))||[];
+  if(SHARED && sharedManifest){ const m=sharedManifest; if(m.quinz) QUINZ=m.quinz; else if(m.excel) QUINZ=[{id:"legacy", name:m.excel.name, key:"excel", weeks:[]}]; }
+  QUINZ.sort((a,b)=>a.id.localeCompare(b.id)); renderQuinzBar(); }
+function renderQuinzBar(){
+  const bar=$("#quinzBar"); if(!bar) return; const act=(curQuinz()||{}).id;
+  bar.innerHTML=`<b style="font-size:14px">Quinzaines :</b>`+(QUINZ.length?QUINZ.map(q=>`<button class="${q.id===act?"primary":"small"}" data-quinz="${esc(q.id)}" title="${esc(q.name||"")}">${q.id===act?"▶ ":""}${esc(quinzLbl(q))}</button>`).join(""):'<span class="hint" style="margin:0">aucune : dépose l\'Excel ci-dessous</span>')
+    +`<span class="hint" style="margin:0">Deux quinzaines gardées. Un nouvel Excel remplace celle qui a les mêmes dates, sinon il s'ajoute et la plus ancienne est retirée (Excel et images).</span>`;
+  bar.querySelectorAll("[data-quinz]").forEach(b=>b.onclick=()=>quinzSwitch(b.dataset.quinz));
+}
+// enregistre la quinzaine de l'Excel qui vient d'être chargé ; false si elle est plus ancienne que les deux gardées
+async function quinzSave(file){
+  const cq=curQuinz(); if(!cq) return true;
+  const list=[...QUINZ.filter(q=>q.id!=="legacy" || !SHARED)];
+  const known=list.find(q=>q.id===cq.id);
+  if(!known && list.length>=2 && cq.id<list[0].id){ alert("Cette quinzaine est plus ancienne que les deux quinzaines gardées : elle n'est pas enregistrée."); return false; }
+  const entry={id:cq.id, name:file.name, weeks:cq.weeks, key:"excel/"+cq.id};
+  let L=[...list.filter(q=>q.id!==cq.id && q.id!=="legacy"), entry].sort((a,b)=>a.id.localeCompare(b.id));
+  const removed=L.length>2?L.slice(0,L.length-2):[]; L=L.slice(-2);
+  await Store.set("quinzFile:"+cq.id,{name:file.name, buf:await file.arrayBuffer()});
+  for(const r of removed) await Store.del("quinzFile:"+r.id);
+  QUINZ=L; await Store.set("quinzList",L); try{ localStorage.setItem("quinzActive",cq.id); }catch(e){}
+  if(SHARED && !sharedLoading){
+    try{ sharedStatus("☁️ Envoi de l'Excel dans la base partagée…");
+      await api("PUT","file/"+keyPart(entry.key),await file.arrayBuffer(),"application/octet-stream");
+      const m=await getManifest(); m.weeks=m.weeks||{};
+      for(const r of removed) if(r.key && r.key!=="excel") await api("DELETE","prefix/"+keyPart(r.key)).catch(()=>{});
+      m.quinz=L;
+      // compatibilité : « excel » = la quinzaine la plus récente
+      const newest=L[L.length-1]; if(newest.id===cq.id){ await api("PUT","file/excel",await file.arrayBuffer(),"application/octet-stream"); m.excel={name:file.name}; }
+      // images : on garde celles des semaines des 2 quinzaines
+      const keep=new Set(L.flatMap(q=>q.weeks||[])); if(keep.size) for(const iso of Object.keys(m.weeks)) if(!keep.has(iso)){ await api("DELETE","prefix/"+keyPart(`img/${iso}/`)); delete m.weeks[iso]; }
+      await putManifest(m); sharedStatus("✓ Quinzaine enregistrée dans la base partagée.","ok");
+    }catch(e){ console.warn(e); sharedStatus("⚠️ Base partagée non mise à jour : "+esc(e.message),"err"); }
+  }
+  renderQuinzBar(); return true;
+}
+// passe à l'autre quinzaine : son Excel, puis les images de ses 2 semaines
+async function quinzSwitch(id){
+  const q=QUINZ.find(x=>x.id===id); if(!q) return; const cq=curQuinz(); if(cq && cq.id===id) return;
+  try{ localStorage.setItem("quinzActive",id); }catch(e){}
+  try{
+    let file=null; const loc=await Store.get("quinzFile:"+id);
+    if(loc && loc.buf) file=new File([loc.buf],loc.name||"programme.xlsx");
+    else if(SHARED) file=await fetchFile(q.key||("excel/"+id), q.name||"programme.xlsx");
+    if(!file){ alert("Excel de cette quinzaine introuvable : dépose-le à nouveau."); return; }
+    const was=sharedLoading; sharedLoading=true;   // pas de nouvel envoi pendant le changement
+    await loadWorkbook(file,false);
+    if(SHARED){ const m=await getManifest(); sharedManifest=m;
+      for(let wi=0; wi<weekPair.length; wi++){ const w=weeks[weekPair[wi]]; if(!w) continue; const keys=(m.weeks||{})[isoD(w.start)]||[]; if(!keys.length) continue;
+        const files=[]; for(let i=0;i<keys.length;i++){ sharedStatus(`☁️ Images de la semaine du ${shortDate(w.start)} : ${i+1}/${keys.length}…`); try{ files.push(await fetchFile(keys[i], keys[i].split("/").pop())); }catch(e){} }
+        await importFolder(files, wi); }
+      showSharedInfo(); }
+    sharedLoading=was;
+    await showFilms(); renderInfoList(); renderQuinzBar(); fillInfos(true);
+  }catch(e){ console.warn(e); alert("Changement de quinzaine impossible : "+e.message); }
+}
+setTimeout(quinzLoadList,0);
+
 makeDrop($("#dropXlsx"),".xlsx,.xls,.xlsm",async file=>{
-  try{ await loadWorkbook(file); shareExcel(file); }
+  try{ await loadWorkbook(file); await quinzSave(file); }
   catch(e){ console.error(e); $("#xlsxName").innerHTML='<span style="color:#c00">Lecture impossible : '+e.message+'</span>'; }
 });
 $("#weekSel").onchange=showFilms;
@@ -3017,7 +3084,8 @@ async function uploadable(file){
   return {blob, name:file.name.replace(/\.[a-z0-9]+$/i,"")+".jpg", type:"image/jpeg"};
 }
 const keyPart=s=>encodeURIComponent(s);
-async function shareExcel(file){
+async function shareExcel(file){   // (ancien enregistrement d'un seul Excel : remplacé par quinzSave)
+  return quinzSave(file);
   if(!SHARED||sharedLoading) return;
   try{
     sharedStatus("☁️ Envoi de l'Excel dans la base partagée…");
@@ -3107,11 +3175,14 @@ async function sharedInit(){
   try{ const r=await fetch(API+"manifest",{cache:"no-store"}); if(!r.ok) return; m=await r.json(); }catch(e){ return; }
   SHARED=true; sharedManifest=m; showSharedInfo();
   if(m.common){ sharedLoading=true; sharedStatus("☁️ Chargement de la base commune partagée…"); try{ await loadSharedCommon(m); }catch(e){ console.warn(e); } sharedLoading=false; showSharedInfo(); }
-  if(!m.excel){ sharedStatus("☁️ <b>Base partagée vide</b> : dépose l'Excel et les dossiers d'images, ils seront disponibles pour tout le monde.","ok"); return; }
+  if(!m.excel && !(m.quinz&&m.quinz.length)){ sharedStatus("☁️ <b>Base partagée vide</b> : dépose l'Excel et les dossiers d'images, ils seront disponibles pour tout le monde.","ok"); return; }
   sharedLoading=true;
   try{
     sharedStatus("☁️ Chargement de la base partagée : Excel…");
-    await loadWorkbook(await fetchFile("excel",m.excel.name), false);
+    const ql=m.quinz||[], qa=ql.find(q=>q.id===quinzActive())||ql[ql.length-1];
+    const xf=qa?await fetchFile(qa.key||("excel/"+qa.id), qa.name||"programme.xlsx"):await fetchFile("excel",m.excel.name);
+    await loadWorkbook(xf, false);
+    if(!m.quinz){ sharedLoading=false; await quinzSave(xf); sharedLoading=true; m=sharedManifest||m; }   // ancienne base : l'Excel devient la 1re quinzaine
     if(m.details){ try{ const r=await api("GET","file/details.json"); const d=await r.json();
       for(const [k,v] of Object.entries(d||{})){ details[k]=v; Store.set("info:"+k,v); } }catch(e){ console.warn(e); } }
     for(let wi=0; wi<weekPair.length; wi++){
@@ -3120,7 +3191,7 @@ async function sharedInit(){
         try{ files.push(await fetchFile(keys[i], keys[i].split("/").pop())); }catch(e){ console.warn(e); } }
       await importFolder(files, wi);
     }
-    await showFilms(); renderInfoList(); fillInfos(true);
+    await showFilms(); renderInfoList(); fillInfos(true); quinzLoadList();
   }catch(e){ console.warn(e); sharedStatus("⚠️ Chargement de la base partagée incomplet : "+esc(e.message),"err"); }
   sharedLoading=false; showSharedInfo();
 }
@@ -4663,6 +4734,10 @@ async function metaRefresh(){
   try{
     META.status=await (await metaApi("GET","status")).json();
     const s=META.status;
+    if(s.locked){ META.ok=false; st.innerHTML="🔒 <b>Publication automatique verrouillée</b> : rien ne peut être programmé ni publié sur Facebook et Instagram tant que le verrou n'est pas levé dans Netlify (variable META_PUBLICATION)."
+      +(s.configured?"":" La liaison avec la Page Facebook et le compte Instagram n'est pas encore faite non plus.");
+      $("#metaCtrls").hidden=true; document.querySelectorAll("#planBody [data-meta]").forEach(b=>b.hidden=true);
+      try{ META.queue=await (await metaApi("GET","queue")).json(); renderMetaQueue(true); }catch(e){} return; }
     if(!s.configured){ META.ok=false; st.innerHTML="⚙️ <b>Pas encore configurée</b> : il faut relier l'outil à la Page Facebook et au compte Instagram (jeton Meta à saisir dans Netlify, voir le fichier LISEZMOI)."; }
     else { META.ok=!s.fbError || !s.igError;
       st.innerHTML=`${s.page?`✅ Page Facebook : <b>${esc(s.page)}</b>`:`⚠️ Facebook : ${esc(s.fbError||"")}`} &nbsp;·&nbsp; ${s.ig?`✅ Instagram : <b>@${esc(s.ig)}</b>`:`⚠️ Instagram : ${esc(s.igError||"")}`}${s.quota?` &nbsp;·&nbsp; <span title="limite Instagram sur 24 h glissantes">${s.quota.used}/${s.quota.total} publications Instagram sur 24 h</span>`:""}`;
@@ -4672,7 +4747,7 @@ async function metaRefresh(){
     if(META.ok){ META.queue=await (await metaApi("GET","queue")).json(); renderMetaQueue(); }
   }catch(e){ META.ok=false; st.innerHTML="⚠️ Service de publication injoignable : "+esc(e.message); }
 }
-function renderMetaQueue(){
+function renderMetaQueue(ro=false){
   const box=$("#metaQueue"), now=Date.now();
   const list=META.queue.filter(it=>it.state!=="publié" || now-new Date(it.doneAt||it.when)<3*86400e3);
   // état sur chaque ligne du planning
@@ -4685,7 +4760,7 @@ function renderMetaQueue(){
     const errs=Object.entries(it.err||{}).map(([k,v])=>`<div class="past">${k==="fb"?"Facebook":k==="ig"?"Instagram":"⚠"} : ${esc(v)}</div>`).join("");
     return `<tr data-id="${it.id}"><td class="when">${fmtWhen(new Date(it.when))}</td><td>${kind[it.kind]||it.kind}<br><b>${esc(it.label)}</b></td><td>${nets}</td>
       <td><b style="color:${META_STATE[it.state]||"#333"}">${it.state}</b>${errs}</td>
-      <td>${it.state==="programmé"?'<button class="small" data-now>Publier maintenant</button> ':""}${it.state==="erreur"?'<button class="small" data-retry>Relancer</button> ':""}${it.state!=="publié"&&it.state!=="en cours"?'<button class="small" data-del>Annuler</button>':""}</td></tr>`; }).join("")}</tbody></table>`;
+      <td>${!ro&&it.state==="programmé"?'<button class="small" data-now>Publier maintenant</button> ':""}${!ro&&it.state==="erreur"?'<button class="small" data-retry>Relancer</button> ':""}${it.state!=="publié"&&it.state!=="en cours"?'<button class="small" data-del>Annuler</button>':""}</td></tr>`; }).join("")}</tbody></table>`;
   box.querySelectorAll("tr[data-id]").forEach(tr=>{ const id=tr.dataset.id;
     const b=(sel,fn)=>{ const x=tr.querySelector(sel); if(x) x.onclick=async()=>{ x.disabled=true; try{ await fn(); }catch(e){ alert(e.message); } await metaRefresh(); }; };
     b("[data-now]",async()=>{ if(!confirm("Publier tout de suite sur les réseaux cochés ?")) return; $("#metaProg").textContent="Publication en cours…"; await metaApi("POST","now/"+id); $("#metaProg").textContent=""; });
