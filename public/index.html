@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 13h00</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 13h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2980,10 +2980,21 @@ async function histLoad(){
   if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/weekhist.json",{cache:"no-store"}); if(r.ok) Object.assign(weekHist, await r.json()); }catch(e){} }
   renderHistList();
 }
+// Semaines des flyers écran : les 4 plus récentes de l'historique (Excel passés gardés en mémoire), triées par date réelle
+// (le passage de décembre à janvier se fait tout seul : les dates portent l'année). Cochées par défaut : les 3 plus récentes.
+const flyerRecent=()=>Object.keys(weekHist).sort().slice(-4);
+function flyerSel(){ const rec=flyerRecent(); let o=null; try{ o=JSON.parse(localStorage.getItem("flyerSel")||"null"); }catch(e){}
+  if(!o || o.latest!==rec[rec.length-1]) return rec.slice(-3);     // nouvelle semaine arrivée : retour au choix par défaut
+  return rec.filter(k=>o.keys.includes(k)); }
 function renderHistList(){
   const el=$("#pbHist"); if(!el) return;
-  const ks=Object.keys(weekHist).sort();
-  el.innerHTML=ks.length?"Semaines connues : "+ks.map(k=>{ const d=new Date(weekHist[k].start); return `<b>${pad(d.getDate())}/${pad(d.getMonth()+1)}</b>`; }).join(" · "):"Aucune semaine connue : dépose l'Excel dans l'onglet Base de données.";
+  const rec=flyerRecent(); if(!rec.length){ el.innerHTML="Aucune semaine connue : dépose l'Excel dans l'onglet Base de données."; return; }
+  const sel=flyerSel(), lbl=k=>{ const d=new Date(weekHist[k].start), e=addDays(d,6); return `semaine du ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${String(d.getFullYear()).slice(2)} au ${pad(e.getDate())}/${pad(e.getMonth()+1)}`; };
+  el.innerHTML=`<b>Semaines des flyers</b> (les 4 plus récentes gardées en mémoire) : ${rec.map(k=>`<label style="margin-right:12px;white-space:nowrap"><input type="checkbox" data-hw="${k}" ${sel.includes(k)?"checked":""}> ${lbl(k)}</label>`).join("")}
+    <div style="margin-top:4px">Flyer 1 : les 3 semaines cochées · Flyer 2 : les 2 plus récentes des semaines cochées.</div>`;
+  el.querySelectorAll("[data-hw]").forEach(cb=>cb.onchange=()=>{ const keys=[...el.querySelectorAll("[data-hw]:checked")].map(x=>x.dataset.hw);
+    if(keys.length>3){ cb.checked=false; toast("3 semaines au maximum (Flyer 1)."); return; }
+    try{ localStorage.setItem("flyerSel",JSON.stringify({keys, latest:rec[rec.length-1]})); }catch(e){} });
 }
 const weekStartOf=d=>{ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate()-((x.getDay()-3+7)%7)); return x; };   // mercredi
 const addDays=(d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
@@ -3221,13 +3232,20 @@ function flyerQ(){ const q1=pbDates()[1]; return {prev:addDays(q1,-7), q1, q2:ad
 async function generatePB(){
   const pr=$("#pbProgress"), out=$("#pbOut"), btn=$("#btnPB");
   if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
-  // dossier 1 : écran en stock (semaine qui précède la quinzaine) + les 2 semaines de la quinzaine ; dossier 2 : les 2 semaines
-  const {prev,q1,q2}=flyerQ(), stock=await flyerStockGet(isoD(prev));
-  const dossiers=[[prev,[prev,q1,q2]],[q1,[q1,q2]]].map(([d0,days])=>{ const slots=[], miss=[];
-    for(const ds of days){ if(+ds===+prev){ slots.push({date:ds, stock:true}); continue; } const w=histWeek(ds); if(w&&w.films.length) slots.push({date:ds, w}); else miss.push(ds); }
-    return {start:d0, slots, miss}; });
-  const all=[histWeek(q1),histWeek(q2)].filter(w=>w&&w.films.length);
-  if(!all.length){ pr.textContent="Aucune semaine de la quinzaine dans l'historique : dépose l'Excel (onglet Base de données)."; return; }
+  // semaines cochées (dans l'ordre des dates) : Flyer 1 = les 3, Flyer 2 = les 2 plus récentes
+  const selK=flyerSel(); if(!selK.length){ pr.textContent="Coche au moins une semaine (liste ci-dessus) ou dépose l'Excel (onglet Base de données)."; return; }
+  const selD=selK.map(k=>new Date(weekHist[k].start)), f1=selD.slice(-3), f2=selD.slice(-2), newest=selD[selD.length-1];
+  // chaque semaine : dessinée d'après l'Excel gardé en mémoire ; si des affiches manquent sur cet ordinateur et qu'un écran est en stock, on prend le stock
+  const stocks={}, use={};
+  for(const d of selD){ const iso=isoD(d), w=histWeek(d), st=await flyerStockGet(iso); stocks[iso]=st;
+    let posters=true; if(w) for(const f of w.films){ if(!filmState[f.key]){ const s0=(await Store.get("film:"+f.key))||{}; filmState[f.key]={...s0,...charOf(f)}; } if(!filmState[f.key].poster) posters=false; }
+    use[iso]= w&&w.films.length&&(posters||!st) ? "live" : st ? "stock" : "miss"; }
+  const stock=Object.values(stocks).some(Boolean);
+  const dossiers=[[f1[0],f1],[f2[0],f2]].map(([d0,days])=>{ const slots=[], miss=[];
+    for(const ds of days){ const u=use[isoD(ds)]; if(u==="live") slots.push({date:ds, w:histWeek(ds)}); else if(u==="stock") slots.push({date:ds, stock:true}); else miss.push(ds); }
+    return {start:d0, slots, miss, days}; });
+  const all=selD.filter(d=>use[isoD(d)]==="live").map(histWeek);
+  if(!all.length && !stock){ pr.textContent="Aucune semaine cochée dans l'historique : dépose l'Excel (onglet Base de données)."; return; }
   if(!await requirePosters(all.flatMap(w=>w.films),"Génération des flyers écran")) return;
   const fps=Number($("#pbFps").value)||30, mode=$("#pbMode").value, T=Number($("#pbDur").value)||10;
   btn.disabled=true; out.innerHTML=""; pbResults=[];
@@ -3238,15 +3256,15 @@ async function generatePB(){
     for(const w of all){ n++;
       const P=await preparePB(w); preps[isoD(w.start)]=P;
       // seuls les boucles sont livrées ; l'écran de la 2e semaine est quand même fabriqué seul pour être mis en stock (1er écran de la quinzaine suivante)
-      done[isoD(w.start)]=isoD(w.start)===isoD(q2) ? await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran mis en stock (semaine du ${shortDate(w.start)})… ${Math.round(p*100)} %`) : {live:true};
+      done[isoD(w.start)]=isoD(w.start)===isoD(newest) ? await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran mis en stock (semaine du ${shortDate(w.start)})… ${Math.round(p*100)} %`) : {live:true};
     }
     // le dernier écran de la quinzaine part en stock pour la quinzaine suivante
-    if(done[isoD(q2)]) await flyerStockSet(isoD(q2), {...done[isoD(q2)], fps, T, mode, made:new Date().toISOString()});
-    if(stock) done[isoD(prev)]={blob:stock.blob, poster:stock.poster};
+    if(done[isoD(newest)]&&done[isoD(newest)].blob) await flyerStockSet(isoD(newest), {...done[isoD(newest)], fps, T, mode, made:new Date().toISOString()});
+    for(const [iso,st] of Object.entries(stocks)) if(st && use[iso]==="stock") done[iso]={blob:st.blob, poster:st.poster};
     const LT1=parseDur($("#pbLoop").value)||120, LT2=parseDur($("#pbLoop2").value)||LT1, trans=$("#pbTrans").checked;   // vide : 2 min
     try{ localStorage.setItem("pbLoop",$("#pbLoop").value); localStorage.setItem("pbLoop2",$("#pbLoop2").value); localStorage.setItem("pbTrans",trans?"1":"0"); }catch(e){}
     let di=0;
-    for(const d of dossiers){ di++; const LT=di===1?LT1:LT2;      // boucle 1 : 3 écrans (stock + quinzaine) ; boucle 2 : les 2 semaines
+    for(const d of dossiers){ di++; const LT=di===1?LT1:LT2;      // boucle 1 : les 3 semaines cochées ; boucle 2 : les 2 plus récentes
       const ddmm=x=>`${pad(x.getDate())}-${pad(x.getMonth()+1)}`, tag=ddmm(d.start);
       const files=d.slots.map((sl,i)=>({name:`${i+1}_semaine_du_${ddmm(sl.date)}.mp4`, date:sl.date, stock:!!sl.stock, ...(done[isoD(sl.date)]||{})}));
       // vidéo en boucle de la durée totale choisie (écrans disponibles, dans l'ordre)
@@ -3261,7 +3279,7 @@ async function generatePB(){
       files.length=0; if(loopFile) files.push(loopFile); files.push(...waiting);
       pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
-      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyer ${di} — du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — boucle de ${fmtMS(LT)} (${di===1?"écran de la quinzaine passée + ":""}2 semaines de la quinzaine)${files.some(f=>!f.blob)?" — écran de la quinzaine passée en attente":""}</h3>
+      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyer ${di} — du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — boucle de ${fmtMS(LT)} (semaines du ${d.days.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")})</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant (onglet Base de données).</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
         <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
@@ -3283,7 +3301,7 @@ async function generatePB(){
         await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
       out.appendChild(box);
     }
-    pr.textContent=`✓ ${pbResults.length} flyers en boucle prêts (${fps} images/s). L'écran du ${pad(q2.getDate())}/${pad(q2.getMonth()+1)} est mis en stock pour la quinzaine suivante.`+(stock?"":` Case du ${pad(prev.getDate())}/${pad(prev.getMonth()+1)} en attente (pas encore d'écran en stock).`);
+    pr.textContent=`✓ ${pbResults.length} flyers en boucle prêts (${fps} images/s).`;
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 }
