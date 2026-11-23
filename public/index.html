@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 22/11/2026 20h25</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 09h30</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -296,6 +296,8 @@
     <div class="drop" id="dropOldXlsx" style="min-height:0;padding:10px 14px;flex:0 0 auto">➕ Ajouter un ancien Excel (semaines passées)</div>
     <label style="font-size:14px;font-weight:600">Durée par écran <select id="pbDur"><option value="10" selected>10 s</option></select></label>
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="pbFps"><option value="30">30</option><option value="60">60</option></select></label>
+    <label style="font-size:14px;font-weight:600" title="Une vidéo par dossier qui enchaîne les écrans en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée totale de la boucle <input id="pbLoop" placeholder="ex. 2:00" style="width:70px"> <span class="hint" style="margin:0;font-weight:400">(vide = pas de boucle)</span></label>
+    <label style="font-size:14px;font-weight:600"><input type="checkbox" id="pbTrans" checked> Transition fondu 0,5 s</label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement (lent)</option><option value="pulse">pulsation (zoom / dézoom)</option></select></label>
     <button class="primary" id="btnPB">Générer les dossiers</button>
   </div>
@@ -3072,15 +3074,38 @@ async function encodeFrames(draw, T, fps, onProg){
   const cfg={codec:fps===60?"avc1.640034":"avc1.640033", width:EW, height:EH, bitrate:fps===60?45e6:30e6, framerate:fps, avc:{format:"avc"}};
   const sup=await VideoEncoder.isConfigSupported(cfg); if(!sup.supported) throw new Error("ce navigateur ne sait pas encoder en H.264 4K (utilise Chrome ou Edge)");
   enc.configure(cfg);
-  for(let i=0;i<N;i++){ if(err) throw err; draw(ctx,i/fps);
+  for(let i=0;i<N;i++){ if(err) throw err; await draw(ctx,i/fps);
     const vf=new VideoFrame(c,{timestamp:Math.round(i*1e6/fps), duration:Math.round(1e6/fps)}); enc.encode(vf,{keyFrame:i%(fps*2)===0}); vf.close();
     await encWait(enc);
     if(i%10===0) onProg&&onProg(i/N); }
   await enc.flush(); enc.close(); if(err) throw err; muxer.finalize();
-  draw(ctx,0); const th=canvas(800,432); th.getContext("2d").drawImage(c,0,0,800,432);
+  await draw(ctx,0); const th=canvas(800,432); th.getContext("2d").drawImage(c,0,0,800,432);
   return {blob:new Blob([muxer.target.buffer],{type:"video/mp4"}), poster:th.toDataURL("image/jpeg",.8)};
 }
 let pbResults=[];
+// Boucle des flyers écran : durée totale choisie, écrans de 7 à 10 s répétés dans l'ordre, fondu enchaîné de 0,5 s entre deux écrans
+const parseDur=v=>{ v=String(v||"").trim(); if(!v) return 0; const m=v.match(/^(\d+)\s*[:'m]\s*(\d{1,2})?/); return m?Number(m[1])*60+Number(m[2]||0):Number(v.replace(",","."))||0; };
+function loopPlan(T, N){ if(!N||!T) return null; const k=Math.max(1,Math.ceil(T/(N*10))), d=T/(k*N); return {k, d, n:k*N, ok:d>=7&&d<=10}; }
+async function stockDrawer(blob){
+  const v=document.createElement("video"); v.muted=true; v.preload="auto"; v.src=URL.createObjectURL(blob);
+  await new Promise((r,j)=>{ v.onloadeddata=r; v.onerror=()=>j(new Error("écran en stock illisible")); });
+  const dur=v.duration||10;
+  return async (ctx,t)=>{ const tt=Math.min(dur-0.04, Math.max(0,t)%dur);
+    if(Math.abs(v.currentTime-tt)>0.001) await new Promise(r=>{ v.onseeked=r; v.currentTime=tt; });
+    ctx.drawImage(v,0,0,ctx.canvas.width,ctx.canvas.height); };
+}
+async function encodeLoop(screens, T, fps, trans, onProg){
+  const N=screens.length, pl=loopPlan(T,N), d=pl.d, last=pl.n-1, H=trans?0.25:0, oc=canvas(EW,EH), ox=oc.getContext("2d");
+  const r=await encodeFrames(async(ctx,t)=>{
+    const s=Math.min(last,Math.floor(t/d)), loc=t-s*d;
+    await screens[s%N](ctx,loc);
+    let o=null, a=0;
+    if(H && loc>d-H && s<last){ o=(s+1)%N; a=(loc-(d-H))/(2*H); await screens[o](ox,Math.max(0,loc-d)); }        // l'écran suivant apparaît
+    else if(H && loc<H && s>0){ o=(s-1)%N; a=1-(loc+H)/(2*H); await screens[o](ox,d+loc); }                         // le précédent s'efface
+    if(o!==null && a>0){ ctx.save(); ctx.globalAlpha=Math.min(1,a); ctx.drawImage(oc,0,0); ctx.restore(); }
+  }, T, fps, onProg);
+  return {...r, plan:pl};
+}
 // Écran « en stock » : le dernier écran d'une quinzaine (2e semaine) est gardé sur cet ordinateur ; il sert de 1er écran
 // à la quinzaine suivante (semaine qui précède sa 1re semaine). Clé : date ISO de la semaine.
 const flyerStockHas={};
@@ -3102,21 +3127,31 @@ async function generatePB(){
   btn.disabled=true; out.innerHTML=""; pbResults=[];
   await document.fonts.load(`100px "Ecran"`,"mercredi 4 - 20h30"); await applyTitleFont();
   try{
-    const done={};   // une semaine présente dans les deux dossiers n'est encodée qu'une fois
+    const done={}, preps={};   // une semaine présente dans les deux dossiers n'est encodée qu'une fois
     let n=0; const total=all.length;
     for(const w of all){ n++;
-      const P=await preparePB(w);
+      const P=await preparePB(w); preps[isoD(w.start)]=P;
       done[isoD(w.start)]=await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran ${n}/${total} : semaine du ${shortDate(w.start)}… ${Math.round(p*100)} %`);
     }
     // le dernier écran de la quinzaine part en stock pour la quinzaine suivante
     if(done[isoD(q2)]) await flyerStockSet(isoD(q2), {...done[isoD(q2)], fps, T, mode, made:new Date().toISOString()});
     if(stock) done[isoD(prev)]={blob:stock.blob, poster:stock.poster};
-    for(const d of dossiers){
+    const LT=parseDur($("#pbLoop").value), trans=$("#pbTrans").checked; try{ localStorage.setItem("pbLoop",$("#pbLoop").value); localStorage.setItem("pbTrans",trans?"1":"0"); }catch(e){}
+    let di=0;
+    for(const d of dossiers){ di++;
       const ddmm=x=>`${pad(x.getDate())}-${pad(x.getMonth()+1)}`, tag=ddmm(d.start);
       const files=d.slots.map((sl,i)=>({name:`${i+1}_semaine_du_${ddmm(sl.date)}.mp4`, date:sl.date, stock:!!sl.stock, ...(done[isoD(sl.date)]||{})}));
+      // vidéo en boucle de la durée totale choisie (écrans disponibles, dans l'ordre)
+      let loopFile=null;
+      if(LT>0){ const av=files.filter(f=>f.blob), scr=[];
+        for(const f of av){ const P=preps[f.iso||isoD(f.date)]; scr.push(P?((ctx,t)=>drawPBFrame(ctx,P,t,mode)):await stockDrawer(f.blob)); }
+        if(scr.length){ const pl=loopPlan(LT,scr.length);
+          const r=await encodeLoop(scr, LT, fps, trans, p=>pr.textContent=`Boucle ${di}/${dossiers.length} (${fmtMS(LT)}, ${pl.n} passages de ${pl.d.toFixed(1)} s)… ${Math.round(p*100)} %`);
+          loopFile={name:`flyers_ecran_du_${tag}_boucle_${fmtMS(LT).replace(":","m")}.mp4`, date:d.start, loop:true, plan:r.plan, blob:r.blob, poster:r.poster}; } }
+      if(loopFile) files.unshift(loopFile);
       pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
-      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}</h3>
+      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.filter(f=>!f.loop).length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}${loopFile?` + boucle de ${fmtMS(LT)}`:""}</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant (onglet Base de données).</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
         <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
@@ -3127,11 +3162,12 @@ async function generatePB(){
           el.querySelector("button").onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.accept="video/mp4,video/*";
             ip.onchange=async()=>{ const fl=ip.files[0]; if(!fl) return; const o={blob:fl, poster:"", fps, T, mode, made:new Date().toISOString()}; await flyerStockSet(isoD(f.date),o); f.blob=fl; f.poster=""; el.innerHTML=""; el.removeAttribute("style"); drawCard(f,el); }; ip.click(); };
           return; }
-        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" ${f.poster?`poster="${f.poster}"`:""} controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b>${f.stock?'<span class="hint" style="margin:0">📦 repris du stock (quinzaine précédente)</span>':""}<button class="small">⬇ MP4</button>`;
+        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" ${f.poster?`poster="${f.poster}"`:""} controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b>${f.stock?'<span class="hint" style="margin:0">📦 repris du stock (quinzaine précédente)</span>':""}${f.loop?`<span class="hint" style="margin:0">🔁 boucle : ${f.plan.n} écrans de ${f.plan.d.toFixed(1)} s${f.plan.ok?"":" ⚠️ hors de 7–10 s (durée totale trop courte ou trop longue pour ce nombre d'écrans)"}${trans?", fondu 0,5 s":""}</span>`:""}<button class="small">⬇ MP4</button>`;
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); };
       files.forEach(f=>{ f.iso=isoD(f.date); const el=document.createElement("div"); drawCard(f,el); grid.appendChild(el); });
       const ready=()=>files.filter(f=>f.blob);
-      box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, ready(), "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
+      const forDcp=()=>loopFile?[loopFile]:ready().filter(f=>!f.loop);       // avec une boucle : le DCP est fait de la boucle seule
+      box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, forDcp(), "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
         ready().forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
         await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
@@ -3141,6 +3177,7 @@ async function generatePB(){
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 }
+try{ const v=localStorage.getItem("pbLoop"); if(v!=null&&$("#pbLoop")) $("#pbLoop").value=v; if(localStorage.getItem("pbTrans")==="0"&&$("#pbTrans")) $("#pbTrans").checked=false; }catch(e){}
 document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") bgTask("flyerspb","Flyers écran","flyerspb","#pbProgress",generatePB); });
 
 /* ========================== Éditeur de carton (retouches dans l'outil) ========================== */
