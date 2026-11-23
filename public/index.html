@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 22h25</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 22h45</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1720,8 +1720,9 @@ async function askAccroche(f){
   const sample=await getSample();
   if(sample) return await sample.json(accrochePrompt(f));
   let lastErr;
+  const parseAcc=t=>{ try{ return parseJSONText(t); }catch(e){ const g=k=>((String(t).match(new RegExp('"?'+k+'"?\\s*[:=]\\s*"?([^\\n"]+)','i'))||[])[1]||"").trim(); const o={accroche:g("accroche"), topo:g("topo")}; if(o.accroche||o.topo) return o; throw new Error("réponse de l'IA illisible"); } };
   for(let i=0;i<3;i++){
-    try{ return parseJSONText(await aiServer("Tu es un programmateur de cinéma Art et Essai et rédacteur. Tu vérifies les faits sur internet et tu n'inventes rien. Tu réponds UNIQUEMENT avec un objet JSON valide.", accrochePrompt(f))); }
+    try{ return parseAcc(await aiServer("Tu es un programmateur de cinéma Art et Essai et rédacteur. Tu vérifies les faits sur internet et tu n'inventes rien. Tu réponds UNIQUEMENT avec un objet JSON valide.", accrochePrompt(f))); }
     catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,(/50[234]|demand|TIMEOUT/.test(e.message)?6000:2000)*(i+1))); }
   }
   throw lastErr;
@@ -1731,12 +1732,13 @@ async function makeAccroches(all=false){
   for(const w of ws) for(const f of w.films) if(!seen.has(f.key)){ seen.add(f.key); films.push(f); }
   const todo=films.filter(f=>all || !String((details[f.key]||{}).accroche||"").trim());
   if(!todo.length){ pr.textContent="✓ Tous les films de la quinzaine ont leur accroche."; return; }
-  let n=0, err=0;
+  let n=0, err=0, firstErr="";
   for(const f of todo){ pr.textContent=`Rédaction des accroches… ${++n}/${todo.length} : ${titleOf(f)}`;
     try{ const r=await askAccroche(f)||{}; const cur=details[f.key]||(details[f.key]={title:f.title});
+      if(!r.accroche && !r.topo) throw new Error("réponse de l'IA sans accroche");
       if(r.accroche) cur.accroche=String(r.accroche).trim(); if(r.topo) cur.topo=String(r.topo).trim(); saveInfo(f.key); }
-    catch(e){ err++; console.warn(e); } }
-  pr.textContent=`✓ ${todo.length-err} accroche(s) rédigée(s)${err?`, ${err} en échec (relance plus tard)`:""}. À relire dans Base de données › Infos du film avant impression.`;
+    catch(e){ err++; firstErr=firstErr||e.message; console.warn(e); } }
+  pr.innerHTML=`${err<todo.length?"✓":"⚠️"} ${todo.length-err} accroche(s) rédigée(s)${err?`, ${err} en échec — raison : <b>${esc(firstErr)}</b> (relance plus tard : l'IA gratuite est parfois saturée)`:""}. À relire dans Base de données › Infos du film avant impression.`;
   renderInfoList();
 }
 document.addEventListener("click",e=>{ if(!e.target) return; if(e.target.id==="btnAccroches") makeAccroches(false); if(e.target.id==="btnAccrochesAll" && confirm("Refaire toutes les accroches de la quinzaine ? (les accroches modifiées à la main seront remplacées)")) makeAccroches(true); });
