@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h35</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2125,30 +2125,33 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     const metaInline=!!meta && vAdd+lastW()+G+mw<=tw;
     const li=tl.length-1, lineY=k=>ty+k*ts*1.0, capMid=ts*.43;
     if(draw){ ctx.fillStyle="#1d1d22"; ctx.textBaseline="top";
-      // vignettes côté affiche (affiche à gauche : vignettes · TITRE · infos ; à droite : infos · TITRE · vignettes)
+      // vignettes côté affiche (affiche à gauche : vignettes · TITRE · infos ; à droite : TITRE · infos · vignettes)
       let vx=R?tx+tw-vw:tx;
       for(const v of vits){ const h2=v.im?v.w*v.im.height/v.im.width:vh;
         if(v.im) ctx.drawImage(v.im,vx,ty+(ts*0.86-h2)/2,v.w,h2);
         else { const vy=ty+(ts*0.86-h2*.6)/2; ctx.font=`bold ${Math.round(h2*.34)}px ${BODY}`; ctx.strokeStyle=v.c; ctx.lineWidth=Math.max(2,h2*.05); rr(ctx,vx,vy,v.w,h2*.6,h2*.3); ctx.stroke(); ctx.fillStyle=v.c; ctx.textBaseline="middle"; ctx.fillText(v.t,vx+h2*.25,vy+h2*.3); ctx.textBaseline="top"; }
         vx+=v.w+vg; }
       ctx.fillStyle="#1d1d22";
-      tl.forEach((l,k)=>{ ctx.font=`${ts}px ${FONT}`; const w2=ctx.measureText(l).width; ctx.textAlign="left"; ctx.fillText(l, R?tx+tw-vAdd-w2:tx+vAdd, lineY(k)); });
+      // affiche à droite : TITRE · infos · vignettes (infos entre le titre et les vignettes)
+      const mShift=R&&metaInline?mw+G:0;
+      tl.forEach((l,k)=>{ ctx.font=`${ts}px ${FONT}`; const w2=ctx.measureText(l).width; ctx.textAlign="left"; ctx.fillText(l, R?tx+tw-vAdd-w2-(k===li?mShift:0):tx+vAdd, lineY(k)); });
       if(metaInline){ const lw2=lastW(); ctx.font=`bold ${mfs}px ${BODY}`; ctx.fillStyle=color; ctx.textBaseline="middle";
-        ctx.fillText(meta, R?tx+tw-vAdd-lw2-G-mw:tx+vAdd+lw2+G, lineY(li)+capMid); ctx.textBaseline="top"; }
+        ctx.fillText(meta, R?tx+tw-vAdd-mw:tx+vAdd+lw2+G, lineY(li)+capMid); ctx.textBaseline="top"; }
     }
     ty+=tl.length*ts*0.98+4*s;
     // infos sur la ligne suivante si elles ne tiennent pas à côté des vignettes
     if(meta && !metaInline){ ctx.font=`bold ${mfs}px ${BODY}`; const ml=wrapLines(ctx,meta,tw);
       if(draw){ ctx.fillStyle=color; ctx.textBaseline="top"; ml.forEach((l,k)=>{ const w2=ctx.measureText(l).width; ctx.fillText(l,R?tx+tw-w2:tx,ty+k*mlh); }); }
       ty+=ml.length*mlh; }
+    const ws=Math.round(Math.max(bs, mfs*.78)), wlh=ws*1.24;   // réalisation, casting, restriction : agrandis avec le synopsis
     if(restr){
-      ctx.font=`bold ${bs}px ${BODY}`; const pl=wrapLines(ctx,"⚠ "+d.public,tw);
-      if(draw){ ctx.fillStyle="#b71c1c"; pl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=pl.length*lh;
+      ctx.font=`bold ${ws}px ${BODY}`; const pl=wrapLines(ctx,"⚠ "+d.public,tw);
+      if(draw){ ctx.fillStyle="#b71c1c"; pl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*wlh)); } ty+=pl.length*wlh;
     }
     // réalisation / casting
-    ctx.font=`${bs}px ${BODY}`;
+    ctx.font=`${ws}px ${BODY}`;
     const who=[[d.real&&`De ${d.real}`, d.avec&&`${/voix/i.test(d.avecLabel||"")?"avec les voix de":"avec"} ${d.avec}`].filter(Boolean).join(", ")].filter(Boolean);
-    for(const line of who){ const wl=wrapLines(ctx,line,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=wl.length*lh; }
+    for(const line of who){ const wl=wrapLines(ctx,line,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*wlh)); } ty+=wl.length*wlh; }
     // étiquettes VO, AVP…
     // synopsis
     const synBase=syn400Cache[f.key]||(d.synopsis?wholeSentences(d.synopsis,SYN_MAX):"");
@@ -2177,11 +2180,15 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const txtOnly0=pass(false), txtH=txtOnly0+(chipBox?chipBox.gap+chipBox.chH:0), th=Math.max(txtH, colH);
   // synopsis le plus grand possible dans la case (au-dessus des séances), même taille pour tous les films d'une même semaine
   const aphRow=ROW_PH?Math.round(ROW_PH*K3):0;   // hauteur des affiches (identique pour tous les films)
-  if(draw && ROW_PH){ const room=aphRow-(chipBox?chipBox.gap+chipBox.chH:0)-Math.round(6*s), base=Math.round(30*s*SYN_K);
-    let kmax=1; for(let k=1.9;k>1.001;k-=0.03){ SYNFS=Math.round(base*k); if(pass(false)<=room){ kmax=k; break; } SYNFS=0; }
-    const synOk=!!(syn400Cache[f.key]||d.synopsis);
-    if(FLY_SYN_FIX===null){ if(synOk) FLY_SYN_REC[f.key]=kmax; SYNFS=Math.round(base*kmax); }
-    else { const k=Math.min(kmax, FLY_SYN_FIX[f.key]||kmax); SYNFS=k>1.001?Math.round(base*k):0; } }
+  // taille des infos et du synopsis : la plus grande possible, identique pour tous les films de l'édition
+  // (1er passage : taille maximale de chaque film avec un synopsis court ; 2e passage : la plus petite de ces tailles pour tous,
+  //  puis chaque film reprend le synopsis le plus long qui tient à cette taille, pour remplir sa case)
+  if(draw && ROW_PH){ const room=aphRow-(chipBox?chipBox.gap+chipBox.chH:0)-Math.round(6*s), base=Math.round(30*s*SYN_K), synMin=Math.min(synMax,150);
+    if(FLY_SYN_FIX===null){ synMax=synMin; let kmax=1; for(let k=3.2;k>1.001;k-=0.03){ SYNFS=Math.round(base*k); if(pass(false)<=room){ kmax=k; break; } SYNFS=0; }
+      FLY_SYN_REC[f.key]=kmax; SYNFS=Math.round(base*kmax); }
+    else { const k=FLY_SYN_FIX[f.key]||1; SYNFS=k>1.001?Math.round(base*k):0; }
+    for(let sy=SYN_MAX; sy>synMin; sy-=10){ synMax=sy; if(pass(false)<=room) break; }   // synopsis le plus long qui tient
+    if(pass(false)>room) synMax=synMin; }
   const txtOnly=pass(false);
   // affiche : à la hauteur du texte (sans dépasser sa largeur de colonne ni descendre sous 60 % de sa taille)
   // toutes les affiches à la même largeur (colonne entière), hauteur selon leur format
@@ -2522,7 +2529,8 @@ const SYN_K=1.4;   // synopsis : 40 % plus grand que les autres lignes d'infos, 
 async function renderFlyer(){
   FLY_SYN_FIX=null; FLY_SYN_REC={};
   const r1=await renderFlyer0(); const fix={};
-  for(const w of (r1.weeks||[])){ const ks=w.films.map(f=>FLY_SYN_REC[f.key]).filter(Boolean); const m=ks.length?Math.min(...ks):1; for(const f of w.films) fix[f.key]=Math.min(fix[f.key]||9, m); }
+  const ks=Object.values(FLY_SYN_REC), m=ks.length?Math.min(...ks):1;   // le film le plus chargé fixe la taille de toute l'édition
+  for(const w of (r1.weeks||[])) for(const f of w.films) fix[f.key]=m;
   FLY_SYN_FIX=fix; try{ return await renderFlyer0(); } finally { FLY_SYN_FIX=null; }
 }
 async function renderFlyer0(){
