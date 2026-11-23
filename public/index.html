@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 11h10</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 12h15</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -747,6 +747,26 @@ function charRowTL(ctx, logos, x, y, maxW, maxH, fitW, gap=16){
   logos.forEach((im,i)=>{ const [w,h]=sz[i]; shadowOn(ctx,12,.3,4); ctx.drawImage(im,cx,y+(rh-h)/2,w,h); shadowOff(ctx); cx+=w+gap; });
   return y+rh;
 }
+// Bandeaux en haut à gauche (sans la VO, placée sous l'horaire) et logo Téléthon en haut à droite, centrés sur la même ligne.
+// Renvoie le bas de la ligne (l'affiche commence en dessous : aucun chevauchement).
+async function topRow(ctx, st, kind, W0, H0, x0, y0, maxW, maxH, draw){
+  const logos=await charLogos({...st, vo:false});
+  const tl=st.telethon&&assets.telethonLogo?await loadCharLogo(assets.telethonLogo):null;
+  let tw=0, th=0; if(tl){ th=logos.length?Math.min(maxH,  maxH):Math.round(maxH*.8); tw=th*tl.width/tl.height; if(tw>W0*.42){ tw=W0*.42; th=tw*tl.height/tl.width; } }
+  const fitW=W0-2*x0-(tl?tw+24:0);
+  let rowB=0, rh=0;
+  if(logos.length){ const sz=logos.map(im=>contain(im,maxW,maxH)); let tot=sz.reduce((a,[w])=>a+w,0)+16*(logos.length-1), k=tot>fitW?(fitW-16*(logos.length-1))/(tot-16*(logos.length-1)):1; rh=Math.max(...sz.map(([,h])=>h*k)); }
+  if(tl && logos.length && th>rh){ th=rh; tw=th*tl.width/tl.height; }
+  const lineH=Math.max(rh,th), cy=y0+lineH/2;
+  if(draw && logos.length) rowB=charRowTL(ctx,logos,x0,cy-rh/2,maxW,maxH,fitW); else rowB=logos.length?cy+rh/2:0;
+  if(tl){ st._tlDef={...(st._tlDef||{}), [kind]:{x:(W0-x0-tw/2)/W0, y:cy/H0, w:tw/W0}}; }
+  return Math.max(rowB, tl?cy+th/2:0);
+}
+// Logo VO sous le bandeau des horaires, centré, chevauchant légèrement le bas du bandeau (sans cacher le texte)
+async function voUnderBand(ctx, st, cx, bandBottom, h){
+  if(!st.vo || !assets.voLogo) return; const im=await loadCharLogo(assets.voLogo); if(!im) return;
+  const w=h*im.width/im.height; shadowOn(ctx,12,.3,4); ctx.drawImage(im, cx-w/2, bandBottom-h*.22, w, h); shadowOff(ctx);
+}
 // (ancien placement) Bandeaux : centrés dans l'espace à gauche du logo du cinéma, à mi-hauteur de ce logo
 function drawCharRowBR(ctx, logos, L, h, maxW, maxH, minTop){
   if(!logos.length) return;
@@ -799,17 +819,17 @@ const seanceLabel = d=>`${JOURS[d.getDay()]} ${dnum(d)} - ${hm(d)}${d.showLang?`
 
 // Bandeau horaires : texte centré entre les deux pastilles de tarif
 const seanceShort = d=>`${JOURS[d.getDay()].slice(0,3)} ${dnum(d)} - ${hm(d)}${d.showLang?` ${d.showLang}`:""}`.toUpperCase();
-function drawBand(ctx, x, w, bottom, color, seances, minH=150){
+function drawBand(ctx, x, w, bottom, color, seances, minH=150, extraB=0){
   const n=seances.length, cols = n>5 ? 2 : 1;
   const lines = cols===2 ? seances.map(seanceShort) : seances.map(seanceLabel);
   const rows = Math.ceil(n/cols);
   const fs = {1:50,2:50,3:44,4:40,5:36}[rows] || 34;
   const lh = fs*1.18;
-  const h = Math.max(minH, rows*lh+(rows>3?36:52));
+  const h0 = Math.max(minH, rows*lh+(rows>3?36:52)), h=h0+extraB;
   const y = bottom-h;
   ctx.fillStyle=color; ctx.fillRect(x,y,w,h);
   ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  const y0 = y + h/2 - (rows-1)*lh/2 + 3;
+  const y0 = y + h0/2 - (rows-1)*lh/2 + 3;
   const maxW = cols===2 ? 225 : 450;
   lines.forEach((t,i)=>{
     const col = cols===2 ? Math.floor(i/rows) : 0, row = cols===2 ? i%rows : i;
@@ -826,18 +846,19 @@ async function renderFilm(f){
   const poster=await loadImg(st.poster), still=await loadImg(st.still)||poster;
   ctx.fillStyle="#E6E6E6"; ctx.fillRect(0,0,W,H);
   if(still){ ctx.globalAlpha=.55; if(still===poster){ ctx.filter="blur(14px)"; cover(ctx,still,-40,-40,W+80,H+80); ctx.filter="none"; } else cover(ctx,still,0,0,W,H); ctx.globalAlpha=1; }
-  // bandeaux en haut à gauche, puis l'affiche décalée en dessous pour limiter le chevauchement
-  const logos=await charLogos(st);
-  const rowB=charRowTL(ctx,logos,24,20,792,177,W-48);
+  // bandeaux en haut à gauche et Téléthon en haut à droite sur une même ligne, l'affiche en dessous
+  const rowB=await topRow(ctx,st,"post",W,H,24,20,792,150,false);
   const top=Math.max(77, rowB?rowB+12:0);
   const box={x:209,y:top,w:662,h:965-top};
   if(poster){ const [pw,ph]=contain(poster,box.w,box.h); shadowOn(ctx,24,.35,8); ctx.drawImage(poster, box.x+(box.w-pw)/2, box.y, pw, ph); shadowOff(ctx); }
   else { ctx.fillStyle="#999"; ctx.fillRect(box.x,box.y,box.w,box.h); ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.font=`70px ${FONT}`; ctx.fillText("AFFICHE MANQUANTE",540,520); }
-  if(logos.length) charRowTL(ctx,logos,24,20,792,177,W-48);   // bandeaux au premier plan
+  await topRow(ctx,st,"post",W,H,24,20,792,150,true);   // bandeaux au premier plan
   // bandeau + tarifs
   if(false){
   } else {
-    drawBand(ctx,209,662,1210,st.color,f.seances,170);
+    const voH=st.vo&&assets.voLogo?92:0;
+    drawBand(ctx,209,662,1210,st.color,f.seances,170,voH?Math.round(voH*.3):0);
+    await voUnderBand(ctx,st,540,1210,voH);
     drawBadges(ctx);
     await drawLogoBR(ctx,W,H);
   }
@@ -892,6 +913,37 @@ function collageGrid(n, ratios, X=40, Y=190, ZW=1000, ZH=1120, G=36){
   }
   return slots;
 }
+// zone du logo en bas à droite des fonds « Nouveautés / Toujours à l'affiche » (à éviter)
+async function logoBRRect(){ return {x:W-28-260, y:H-28-140, w:260+28, h:140+28}; }
+// Affiches à la même hauteur, la plus grande possible, posées en rangées puis réparties au hasard dans l'espace libre
+// zone : sous le titre et le trait blanc, au-dessus du bas, sans toucher le logo en bas à droite
+// hasLg[i] : l'affiche i porte des vignettes (posées sous son bas) → on réserve leur hauteur sous la rangée
+const COL_LG=.24;   // hauteur des vignettes = 24 % de la largeur de l'affiche
+function collageRandom(ratios, seedStr, L, hasLg=[]){
+  const X0=48, X1=W-48, Y0=200, Y1=H-40, G=34, F=8, n=ratios.length;
+  let seed=[...seedStr].reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619),2166136261)>>>0;
+  const rnd=()=>{ seed=(seed+0x6D2B79F5)>>>0; let t=seed; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; };
+  const pack=hh=>{ const ws=ratios.map(r=>hh/r), rows=[]; let i=0, y=Y0+F;
+    while(i<n){ const res=Math.max(0,...ratios.map((r,k)=>hasLg[k]?ws[k]*COL_LG*.8:0)), rowBot=y+hh+F+res, xmax=(rowBot>L.y-G && L.x<X1)?L.x-G:X1; let x=X0+F, row=[];
+      while(i<n && x+ws[i]+F<=xmax+1e-6){ row.push({i,w:ws[i]}); x+=ws[i]+2*F+G; i++; }
+      if(!row.length) return null; const rr=Math.max(0,...row.map(it=>hasLg[it.i]?it.w*COL_LG*.8:0));
+      rows.push({y, items:row, xmax, used:x-G-F-X0, res:rr}); y+=hh+2*F+G+rr; }
+    if(y-G-F>Y1) return null; return {rows, end:y-G-F}; };
+  let lo=60, hi=900, best=null; for(let k=0;k<40;k++){ const m=(lo+hi)/2, p=pack(m); if(p){ best={h:m,p}; lo=m; } else hi=m; }
+  if(!best){ best={h:60,p:pack(60)||{rows:[],end:Y0}}; }
+  const hh=best.h, rows=best.p.rows, out=[];
+  // espace restant réparti au hasard : au-dessus, entre et sous les rangées ; dans chaque rangée, entre les affiches ; petits décalages verticaux
+  const vs=Math.max(0,Y1-best.p.end), gv=Array.from({length:rows.length+1},()=>.5+rnd()), gvs=gv.reduce((a,b)=>a+b,0);
+  let dy=0;
+  rows.forEach((r,ri)=>{ dy+=vs*gv[ri]/gvs;
+    const free=Math.max(0,(r.xmax-X0)-r.used), cnt=r.items.length, gw=Array.from({length:cnt+1},()=>.3+rnd()), gs=gw.reduce((a,b)=>a+b,0);
+    const amp=Math.min(70, G*.6+vs/(rows.length+1)*.6);
+    let x=X0+F+free*gw[0]/gs;
+    r.items.forEach((it,j)=>{ const jy=(rnd()-.5)*amp, rb=hasLg[it.i]?it.w*COL_LG*.8:0; let yy=Math.max(Y0+F, Math.min(Y1-F-hh-rb, r.y+dy+jy));
+      if(x+it.w+F>L.x-G/2 && yy+hh+F+rb>L.y-G/2) yy=Math.max(Y0+F, L.y-G/2-F-hh-rb);      // jamais sur le logo en bas à droite
+      out[it.i]={x, y:yy, w:it.w, h:hh}; x+=it.w+2*F+G+free*gw[j+1]/gs; }); });
+  return out;
+}
 async function renderCollage(title, films){
   const c=canvas(W,H), ctx=c.getContext("2d");
   await drawBg(ctx, assets.bgCollage, W, H, ["#3b3a52","#5a4f6e","#2a2335"]);
@@ -901,19 +953,19 @@ async function renderCollage(title, films){
   const list=films;
   const imgs=[]; for(const f of list) imgs.push(await loadImg(filmState[f.key].poster));
   const ratios=imgs.map(im=>im?im.height/im.width:1.42);
-  const slots=collageGrid(list.length, ratios);
+  const lgs=[]; for(const f of list){ const st=filmState[f.key]; lgs.push(await charLogos(/TOUJOURS/.test(title)?{...st, reprise:false}:st)); }
+  const L=await logoBRRect(), slots=collageRandom(ratios, title+list.map(f=>f.key).join(), L, lgs.map(l=>l.length>0));
   const extras=[];
   for(let i=0;i<list.length;i++){
-    const f=list[i], st=filmState[f.key], img=imgs[i], {x,w,rowH}=slots[i];
-    const h=w*ratios[i], y=slots[i].y+(rowH-h)/2;     // affiches centrées dans leur rangée
-    shadowOn(ctx,26,.45,10);
+    const f=list[i], st=filmState[f.key], img=imgs[i], {x,y,w,h}=slots[i];
+    shadowOn(ctx,26,.45,10); ctx.fillStyle="#fff"; ctx.fillRect(x-8,y-8,w+16,h+16); shadowOff(ctx);   // cadre blanc de 8 px autour de l'affiche
     if(img) ctx.drawImage(img,x,y,w,h); else { ctx.fillStyle="#777"; ctx.fillRect(x,y,w,h); }
-    shadowOff(ctx);
     if(!img){ ctx.fillStyle="#fff"; fitText(ctx,f.title.toUpperCase(),w-20,40); ctx.fillText(f.title.toUpperCase(),x+w/2,y+h/2); }
     // « Toujours à l'affiche » : jamais le bandeau Reprise
-    const lg=await charLogos(/TOUJOURS/.test(title)?{...st, reprise:false}:st); if(lg.length) extras.push({lg, x:x+w/2, y:y+h-w*.3-8, w});
+    // vignettes (Avant-première, VO…) sous le bas de l'affiche, centrées, chevauchant légèrement le bas du cadre
+    const lg=lgs[i]; if(lg.length){ const vh=w*COL_LG; extras.push({lg, x:x+w/2, y:y+h+8-vh*.3, w, vh}); }
   }
-  for(const e of extras) drawLogoRow(ctx,e.lg,e.x,e.y,Math.min(e.w*.42,(e.w*.95-10*(e.lg.length-1))/e.lg.length),e.w*.3);
+  for(const e of extras) drawLogoRow(ctx,e.lg,e.x,e.y,Math.min(e.w*.45,(e.w*1.1-10*(e.lg.length-1))/e.lg.length),e.vh,"center",10);
   return c;
 }
 
@@ -926,16 +978,15 @@ async function renderStory(f){
   const n=f.seances.length, cols=n>5?2:1, rows=Math.ceil(n/cols);
   const lines=f.seances.map(cols===2?seanceShort:seanceLabel);
   const fs={1:72,2:70,3:62,4:54,5:48}[rows]||44, lh=fs*1.2;
-  const bandH=Math.max(160, rows*lh+56), bandBottom=1620, bandTop=bandBottom-bandH;
-  // affiche : la plus grande possible au-dessus du bandeau
-  const logos=await charLogos(st);
-  const rowB=charRowTL(ctx,logos,40,40,855,192,W-80);
+  const voH=st.vo&&assets.voLogo?130:0, bandH=Math.max(160, rows*lh+56)+(voH?Math.round(voH*.3):0), bandBottom=1620, bandTop=bandBottom-bandH;
+  // affiche : la plus grande possible au-dessus du bandeau ; bandeaux en haut à gauche, Téléthon en haut à droite
+  const rowB=await topRow(ctx,st,"story",W,SH,40,40,855,170,true);
   const top=Math.max(190, rowB?rowB+16:0);
   const box={x:100,y:top,w:880,h:bandTop-40-top};
   if(poster){ const [pw,ph]=contain(poster,box.w,box.h); shadowOn(ctx,30,.4,10); ctx.drawImage(poster,box.x+(box.w-pw)/2,box.y+(box.h-ph),pw,ph); shadowOff(ctx); }
   ctx.fillStyle=st.color; ctx.fillRect(100,bandTop,880,bandH);
   ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
-  const y0=bandTop+bandH/2-(rows-1)*lh/2+4;
+  const y0=bandTop+(bandH-(voH?Math.round(voH*.3):0))/2-(rows-1)*lh/2+4;
   lines.forEach((t,i)=>{
     const col=cols===2?Math.floor(i/rows):0, row=cols===2?i%rows:i;
     const cx=cols===2?540+(col===0?-210:210):540, maxW=cols===2?390:800;
@@ -943,6 +994,7 @@ async function renderStory(f){
     while(ctx.measureText(t).width>maxW && size>28){ size-=2; ctx.font=`${size}px ${FONT}`; }
     ctx.fillText(t,cx,y0+row*lh);
   });
+  await voUnderBand(ctx,st,540,bandBottom,voH);
   // logos
   await drawLogoBR(ctx,W,SH,320,160,40);
   await drawTelethon(ctx, st, "story", W, SH);
@@ -1401,7 +1453,8 @@ const charBoxes=st=>CHARS.map(([k,l])=>`<label><input type="checkbox" data-t="${
   +`<label title="logo Téléthon, déplaçable sur le visuel"><input type="checkbox" data-t="telethon" ${st.telethon?"checked":""}> Téléthon</label>`;
 // Logo Téléthon : coché film par film (mémorisé), posé à l'endroit choisi sur chaque visuel (publication, story, écran dynamique)
 const TL_DEF={post:{x:.86,y:.12,w:.2}, story:{x:.84,y:.9,w:.24}, ecran:{x:.84,y:.93,w:.24}};
-const tlPos=(st,kind)=>((st.tlPos||{})[kind])||TL_DEF[kind];
+// position choisie à la main (v:2) sinon position par défaut du visuel (publication et story : en haut à droite, alignée sur les bandeaux)
+const tlPos=(st,kind)=>{ const m=(st.tlPos||{})[kind]; if(m && m.v===2) return m; return (st._tlDef||{})[kind]||TL_DEF[kind]; };
 async function drawTelethon(ctx, st, kind, W, H){
   if(!st || !st.telethon || st._noTl || !assets.telethonLogo) return;
   const im=await loadCharLogo(assets.telethonLogo); if(!im) return;
@@ -1428,12 +1481,13 @@ async function tlEditor(f, kind, renderBase){
     lg.onload=place; place();
     let drag=null;
     lg.onpointerdown=e=>{ e.preventDefault(); lg.setPointerCapture(e.pointerId); lg.style.cursor="grabbing"; drag={sx:e.clientX, sy:e.clientY, x:p.x, y:p.y}; };
-    lg.onpointermove=e=>{ if(!drag) return; p.x=Math.max(0,Math.min(1,drag.x+(e.clientX-drag.sx)/dispW)); p.y=Math.max(0,Math.min(1,drag.y+(e.clientY-drag.sy)/dispH)); place(); };
+    lg.onpointermove=e=>{ if(!drag) return; p.reset=false; p.x=Math.max(0,Math.min(1,drag.x+(e.clientX-drag.sx)/dispW)); p.y=Math.max(0,Math.min(1,drag.y+(e.clientY-drag.sy)/dispH)); place(); };
     lg.onpointerup=()=>{ drag=null; lg.style.cursor="grab"; };
-    ov.querySelector("[data-sz]").oninput=e=>{ p.w=e.target.value/100; place(); };
-    ov.querySelector("[data-def]").onclick=()=>{ Object.assign(p,TL_DEF[kind]); ov.querySelector("[data-sz]").value=Math.round(p.w*100); place(); };
+    ov.querySelector("[data-sz]").oninput=e=>{ p.w=e.target.value/100; p.reset=false; place(); };
+    ov.querySelector("[data-def]").onclick=()=>{ Object.assign(p,(st._tlDef||{})[kind]||TL_DEF[kind]); p.reset=true; ov.querySelector("[data-sz]").value=Math.round(p.w*100); place(); };
     ov.querySelector("[data-c]").onclick=()=>{ ov.remove(); done(false); };
-    ov.querySelector("[data-ok]").onclick=async()=>{ st.tlPos={...(st.tlPos||{}), [kind]:{x:+p.x.toFixed(4), y:+p.y.toFixed(4), w:+p.w.toFixed(4)}}; await saveFilm(f.key); ov.remove(); done(true); };
+    ov.querySelector("[data-ok]").onclick=async()=>{ if(p.reset){ st.tlPos={...(st.tlPos||{})}; delete st.tlPos[kind]; }       // « Position par défaut » : place automatique (en haut à droite)
+      else st.tlPos={...(st.tlPos||{}), [kind]:{x:+p.x.toFixed(4), y:+p.y.toFixed(4), w:+p.w.toFixed(4), v:2}}; await saveFilm(f.key); ov.remove(); done(true); };
   });
 }
 // Logos des caractéristiques cochées (un logo n'apparaît que s'il est fourni dans la base commune)
@@ -1647,14 +1701,21 @@ async function renderEcran(f, seances, out){
   const c=canvas(W,SH), ctx=c.getContext("2d");
   ctx.fillStyle=color; ctx.fillRect(0,0,W,SH);
   const lines=seances.map(ecranLine), bx=81, bw=911;
+  try{ await applyFonts(); await document.fonts.load('80px "Ecran"', lines.join(" ")); }catch(e){}   // police chargée avant de mesurer (sinon texte trop grand au 1er écran)
   const size=ecranSeancesFont(ctx,lines,bw), lh=size*1.04, bh=Math.round(lines.length*lh+60);
   const BS=0.8, badgeD=Math.round(2*136*BS), GAP=36, TOP=50, BOTTOM=50;
   const isVO=!!st.vo;
   const badgeH = ecranTarifs ? badgeD+GAP : 0;
   // bandeau haut (sauf VO) : marges serrées, vignettes plus grandes
   const BT=4, BG=4;
-  const lg=await charLogos({...st, vo:false}), row=vignetteRow(lg, 532, 230, 600, 16);
-  const rowH=row?BT+row.H+BG:0;
+  const lg=await charLogos({...st, vo:false});
+  // logo Téléthon : en haut à droite, sur la ligne des vignettes (centré verticalement avec elles) ; les autres vignettes se décalent à gauche
+  const tlCustom=((st.tlPos||{}).ecran||{}).v===2, tlIm=st.telethon&&!st._noTl&&!tlCustom&&assets.telethonLogo?await loadCharLogo(assets.telethonLogo):null;
+  let tw=0, th=0; if(tlIm){ th=lg.length?200:170; tw=th*tlIm.width/tlIm.height; if(tw>380){ tw=380; th=tw*tlIm.height/tlIm.width; } }
+  const tlX=W-40-tw, lgMax=tlIm?Math.min(532, tlX-24-40):532;
+  const row0=vignetteRow(lg, lgMax, 230, 600, 16), rowHH=Math.max(row0?row0.H:0, tlIm?th:0);
+  const row=row0||(tlIm?{H:0,ws:[],total:0,G:0}:null);
+  const rowH=(row0||tlIm)?BT+rowHH+BG:0;
   // encart VO : sous l'affiche, centré, léger chevauchement
   let voImg=null, voW=0, voH=0, voOver=0;
   if(isVO && assets.voLogo){ voImg=await loadCharLogo(assets.voLogo); if(voImg){ const r=vignetteRow([voImg],940,170,440,0); voW=r.ws[0]; voH=r.H; voOver=Math.round(voH*0.3); } }
@@ -1668,10 +1729,13 @@ async function renderEcran(f, seances, out){
   const TOPM=row?0:TOP;
   let y = TOPM+Math.max(0, Math.round((SH-TOPM-BOTTOM-total)/2));
   // 1. vignettes au-dessus de l'affiche
-  if(row){
-    y+=BT; let x=(W-row.total)/2;
-    lg.forEach((im,i)=>{ shadowOn(ctx,12,.3,4); ctx.drawImage(im,x,y,row.ws[i],row.H); shadowOff(ctx); x+=row.ws[i]+row.G; });
-    y+=row.H+BG;
+  if(row0||tlIm){
+    y+=BT; const cy=y+rowHH/2;
+    if(row0){ let x=tlIm?Math.max(40,(40+tlX-24)/2-row0.total/2):(W-row0.total)/2;
+      lg.forEach((im,i)=>{ shadowOn(ctx,12,.3,4); ctx.drawImage(im,x,cy-row0.H/2,row0.ws[i],row0.H); shadowOff(ctx); x+=row0.ws[i]+row0.G; }); }
+    if(tlIm){ shadowOn(ctx,12,.3,4); ctx.drawImage(tlIm,tlX,cy-th/2,tw,th); shadowOff(ctx); }
+    if(st.telethon) st._tlDef={...(st._tlDef||{}), ecran:{x:(W-40-(tw||300)/2)/W, y:cy/SH, w:(tw||300)/W}};
+    y+=rowHH+BG;
   }
   // 2. affiche
   const px=Math.round((W-pw)/2), py=y;
@@ -1699,8 +1763,8 @@ async function renderEcran(f, seances, out){
   ctx.font=`${size}px "Ecran"`; ctx.fillStyle=color; ctx.textAlign="center"; ctx.textBaseline="middle";
   const t0=y+bh/2-(lines.length-1)*lh/2+size*0.04;
   lines.forEach((t,i)=>ctx.fillText(t,540,t0+i*lh));
-  if(out){ out.hasLogos=lg.length>0||!!voImg; }
-  await drawTelethon(ctx, st, "ecran", W, SH);
+  if(out){ out.hasLogos=lg.length>0||!!voImg||!!tlIm; }
+  if(tlCustom) await drawTelethon(ctx, st, "ecran", W, SH);   // position choisie à la main dans l'éditeur
   return c;
 }
 
@@ -3038,10 +3102,9 @@ async function preparePB(w){
     if(!st.palette && st.poster) st.palette=await posterPalette(st.poster);
     const col=st.ecran||st.color||(st.palette||[])[0]||"#34513B";
     // affiche
-    shadowOn(ctx,40,.45,14);
+    shadowOn(ctx,40,.45,14); ctx.fillStyle="#fff"; ctx.fillRect(c.x-8,c.y-8,c.pw+16,c.ph+16); shadowOff(ctx);   // cadre blanc de 8 px autour de l'affiche
     if(poster){ ctx.save(); ctx.beginPath(); ctx.rect(c.x,c.y,c.pw,c.ph); ctx.clip(); cover(ctx,poster,c.x,c.y,c.pw,c.ph); ctx.restore(); }
     else { ctx.fillStyle="#555"; ctx.fillRect(c.x,c.y,c.pw,c.ph); }
-    shadowOff(ctx);
     // cadre des séances, accolé à droite de l'affiche
     const lines=f.seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""));
     const maxBW=c.pw*1.25, pad=c.pw*.1, fs=FS;
