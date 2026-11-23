@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 22h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 22h25</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -278,6 +278,13 @@
   </div>
   <p class="hint">Utilise l'Excel, les dossiers d'images et les infos des films (onglet Base de données), pour les deux semaines du fichier Excel. Recto : la 1re semaine ; verso : la 2e semaine. Chaque film avec affiche, genre, durée, réalisation, casting, synopsis, restrictions, VO et séances. Sur chaque face, « Toujours à l'affiche » (films en reprise) et en bas : labels, QR codes Instagram et Facebook, coordonnées et tarifs. Vérifie les cases de chaque film avant de composer (elles sont remplies d'après l'Excel).</p>
   <p class="hint" style="margin:4px 0">↔️ Glisse les films pour choisir leur ordre sur le flyer : le plus à gauche est en 1re ligne, puis le suivant… (ordre partagé ; par défaut, l'ordre des séances)</p>
+  <div class="row" style="gap:12px;align-items:center;margin:6px 0 8px">
+    <label style="font-weight:700">Texte des films :
+      <select id="flyerTexte"><option value="synopsis">Synopsis</option><option value="accroche">Accroche + topo du film</option></select></label>
+    <button class="small" id="btnAccroches">✨ Rédiger les accroches manquantes</button>
+    <button class="small" id="btnAccrochesAll" title="refait toutes les accroches de la quinzaine">↻ Toutes les refaire</button>
+    <span class="hint" style="margin:0" id="accProg">Accroche : précédents films du réalisateur, dernier succès des acteurs ou courte citation de presse (avec le journal), puis un topo rapide. À relire avant impression ; modifiable dans Infos du film.</span>
+  </div>
   <div id="flyerFilms"></div>
   <div class="row" style="margin-top:10px"><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
   <div id="flyerProgress" class="hint"></div>
@@ -670,7 +677,7 @@ function parseNewsletter(html){
 }
 // Infos d'un film (genres, durée, réalisation, avec, public, synopsis) : enregistrées par film,
 // donc une reprise garde ses infos d'une semaine à l'autre.
-const INFO_FIELDS=[["title","Titre"],["genres","Genres"],["duree","Durée"],["real","Réalisation"],["avec","Avec"],["public","Public"],["synopsis","Synopsis"]];
+const INFO_FIELDS=[["title","Titre"],["genres","Genres"],["duree","Durée"],["real","Réalisation"],["avec","Avec"],["public","Public"],["synopsis","Synopsis"],["accroche","Accroche (flyers)"],["topo","Topo du film (flyers)"]];
 // Fiche d'un film = fiche en stock, complétée/corrigée champ par champ par les infos saisies ou trouvées
 // dans ce navigateur. Un champ vide ne masque jamais la valeur du stock.
 function mergeInfo(base, over){
@@ -1495,8 +1502,8 @@ function infoCard(f){
     el.innerHTML=`<div><h3>${esc((d&&d.title)||f.title)}${chk}</h3>${d&&d.check?`<div class="meta" style="color:#9a5b00">⚠ ${esc(d.check)}</div>`:""}</div>
       <details class="info"><summary>Infos du film</summary>
         <div class="tags" style="margin:6px 0 10px">${charBoxes({...charOf(f), telethon:!!(filmState[f.key]||{}).telethon || !!(filmFlags[f.key]||{}).telethon})}</div>
-        <div class="grid">${INFO_FIELDS.map(([k,l])=>k==="synopsis"
-          ? `<label class="full">${l} <span class="hint">${((d&&d.synopsis)||"").length} car.</span><textarea data-i="${k}">${esc((d&&d[k])||"")}</textarea></label>`
+        <div class="grid">${INFO_FIELDS.map(([k,l])=>(k==="synopsis"||k==="topo"||k==="accroche")
+          ? `<label class="full">${l} <span class="hint">${((d&&d[k])||"").length} car.</span><textarea data-i="${k}" ${k==="synopsis"?"":'rows="2"'}>${esc((d&&d[k])||"")}</textarea></label>`
           : `<label>${l}<input data-i="${k}" value="${esc((d&&d[k])||"")}"></label>`).join("")}</div>
       </details>`;
     el.dataset.fkey=f.key;
@@ -1696,6 +1703,44 @@ let filmFlags={};
 const charOf=f=>{ const b={reprise:!!f.reprise, sn:!!f.sn, avp:!!f.avp, vo:!!f.vo, doc:!!f.doc, gratuit:!!f.gratuit, ae:!!f.vo||/art\s*(et|&)\s*essai/i.test(String(f.infoRaw||""))}, o=filmFlags[f.key];
   if(o) for(const k of Object.keys(o)) if(typeof o[k]==="boolean") b[k]=o[k];
   return b; };
+// ---- Accroches des flyers : texte vendeur (réalisateur, acteurs, presse) + topo rapide, à la place du synopsis
+const FLY_TEXT=()=>{ const e=$("#flyerTexte"); return e?e.value:"synopsis"; };
+setTimeout(()=>{ const e=$("#flyerTexte"); if(!e) return; try{ e.value=localStorage.getItem("flyerTexte")||"synopsis"; }catch(_){} e.onchange=()=>{ try{ localStorage.setItem("flyerTexte",e.value); }catch(_){} }; },0);
+function accrochePrompt(f){ const d=findDetails(f.key)||{};
+  return `Film : « ${titleOf(f)} »${d.real?` de ${d.real}`:""}${d.avec?`, avec ${d.avec}`:""}${d.genres?` (${d.genres})`:""}.
+Rédige en français, pour le flyer d'un cinéma Art et Essai, à partir de recherches sur internet (filmographies, presse, festivals) :
+1. "accroche" : UNE phrase courte (80 à 140 caractères), vendeuse et VRAIE, au choix selon ce qui est le plus fort et vérifiable :
+   - les précédents films connus du réalisateur ou de la réalisatrice (« Par le réalisateur de … »),
+   - le plus récent succès ou rôle marquant d'un acteur ou d'une actrice du film,
+   - ou une courte citation de presse, MOT POUR MOT et de 12 mots au plus, entre guillemets français, suivie du nom du journal (ex. « Un bijou d'émotion » — Télérama). N'invente jamais de citation : si tu n'en trouves pas une réelle, n'en mets pas.
+   - éventuellement un prix ou une sélection en festival.
+2. "topo" : 1 ou 2 phrases (150 à 260 caractères) qui disent de quoi parle le film, sans dévoiler la fin, avec tes propres mots.
+Réponds uniquement avec un objet JSON : {"accroche":"…","topo":"…"}`; }
+async function askAccroche(f){
+  const sample=await getSample();
+  if(sample) return await sample.json(accrochePrompt(f));
+  let lastErr;
+  for(let i=0;i<3;i++){
+    try{ return parseJSONText(await aiServer("Tu es un programmateur de cinéma Art et Essai et rédacteur. Tu vérifies les faits sur internet et tu n'inventes rien. Tu réponds UNIQUEMENT avec un objet JSON valide.", accrochePrompt(f))); }
+    catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,(/50[234]|demand|TIMEOUT/.test(e.message)?6000:2000)*(i+1))); }
+  }
+  throw lastErr;
+}
+async function makeAccroches(all=false){
+  const pr=$("#accProg"), ws=weekPair.map(i=>weeks[i]).filter(Boolean), seen=new Set(), films=[];
+  for(const w of ws) for(const f of w.films) if(!seen.has(f.key)){ seen.add(f.key); films.push(f); }
+  const todo=films.filter(f=>all || !String((details[f.key]||{}).accroche||"").trim());
+  if(!todo.length){ pr.textContent="✓ Tous les films de la quinzaine ont leur accroche."; return; }
+  let n=0, err=0;
+  for(const f of todo){ pr.textContent=`Rédaction des accroches… ${++n}/${todo.length} : ${titleOf(f)}`;
+    try{ const r=await askAccroche(f)||{}; const cur=details[f.key]||(details[f.key]={title:f.title});
+      if(r.accroche) cur.accroche=String(r.accroche).trim(); if(r.topo) cur.topo=String(r.topo).trim(); saveInfo(f.key); }
+    catch(e){ err++; console.warn(e); } }
+  pr.textContent=`✓ ${todo.length-err} accroche(s) rédigée(s)${err?`, ${err} en échec (relance plus tard)`:""}. À relire dans Base de données › Infos du film avant impression.`;
+  renderInfoList();
+}
+document.addEventListener("click",e=>{ if(!e.target) return; if(e.target.id==="btnAccroches") makeAccroches(false); if(e.target.id==="btnAccrochesAll" && confirm("Refaire toutes les accroches de la quinzaine ? (les accroches modifiées à la main seront remplacées)")) makeAccroches(true); });
+
 // Ordre des films sur le flyer, par semaine (cliquer-glisser dans l'onglet Flyers) — partagé dans la base
 let FLY_ORDER={};
 async function flyOrderLoad(){ FLY_ORDER={...((await Store.get("flyerOrder"))||{})};
@@ -2267,9 +2312,15 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     const who=[[d.real&&`De ${d.real}`, d.avec&&`${/voix/i.test(d.avecLabel||"")?"avec les voix de":"avec"} ${d.avec}`].filter(Boolean).join(", ")].filter(Boolean);
     for(const line of who){ const wl=wrapLines(ctx,line,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*wlh)); } ty+=wl.length*wlh; }
     // étiquettes VO, AVP…
-    // synopsis
-    const synBase=syn400Cache[f.key]||(d.synopsis?wholeSentences(d.synopsis,SYN_MAX):"");
+    // synopsis, ou accroche + topo (réglage de l'onglet Flyers)
+    const accMode=FLY_TEXT()==="accroche" && !!String(d.accroche||"").trim();
+    const synBase=accMode?String(d.topo||"").trim():(syn400Cache[f.key]||(d.synopsis?wholeSentences(d.synopsis,SYN_MAX):""));
     const synTxt=synBase.length<=synMax?synBase:wholeSentences(synBase,synMax);   // phrases entières seulement
+    if(accMode){ const sfs=SYNFS||Math.round(bs*SYN_K), slh=sfs*1.22;
+      ty+=8*s; ctx.font=`italic bold ${sfs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
+      const al=wrapLines(ctx,String(d.accroche).trim(),tw);
+      if(draw){ ctx.fillStyle=color; al.forEach((l,i)=>ctx.fillText(l,tx,ty+i*slh)); }
+      ty+=al.length*slh; if(synTxt) ty-=8*s; }
     if(synTxt){
       const sfs=SYNFS||Math.round(bs*SYN_K), slh=sfs*1.22;      // synopsis : police agrandie au maximum (voir plus bas)
       ty+=8*s; ctx.font=`${sfs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
@@ -2376,7 +2427,7 @@ async function flyerMini(ctx, f, x, y, w, s, draw){
   if(restr){ const pl=wrapLines(ctx,"⚠ "+d.public,tw); if(draw){ ctx.fillStyle="#b71c1c"; pl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=pl.length*lh; }
   const who=[d.real&&`De ${d.real}`, d.avec&&`${/voix/i.test(d.avecLabel||"")?"avec les voix de":"avec"} ${d.avec}`].filter(Boolean).join(", ");
   if(who){ ctx.font=`${bs}px ${BODY}`; const wl=wrapLines(ctx,who,tw); if(draw){ ctx.fillStyle="#333"; wl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=wl.length*lh; }
-  if(MINI_SYN>0){ const base=syn400Cache[f.key]||d.synopsis||""; const t=base.length<=MINI_SYN?base:wholeSentences(base,MINI_SYN);
+  if(MINI_SYN>0){ const base=(FLY_TEXT()==="accroche"&&d.accroche)?(d.accroche+" "+(d.topo||"")).trim():(syn400Cache[f.key]||d.synopsis||""); const t=base.length<=MINI_SYN?base:wholeSentences(base,MINI_SYN);
     if(t){ ty+=6*s; ctx.font=`${bs}px ${BODY}`; ctx.textAlign="left"; ctx.textBaseline="top"; const sl=wrapLines(ctx,t,tw); if(draw){ ctx.fillStyle="#222"; sl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=sl.length*lh; } }
   ty+=10*s;
   ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(30*s),color,draw);
