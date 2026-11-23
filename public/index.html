@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 14h45</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 15h00</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1327,7 +1327,7 @@ async function renderCompact(boxId, only=null){
     for(const f of w.films){
       const st=filmState[f.key], fl=flags(f), el=document.createElement("div"); el.className="cfilm";
       el.innerHTML=`<div class="cposter" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"":"affiche manquante"}</div>
-        <b>${esc(titleOf(f))}</b><div class="tags">${charBoxes(fl)}</div>`;
+        <b>${esc(titleOf(f))}</b>${boxId==="#flyerFilms"?"":`<div class="tags">${charBoxes(fl)}</div>`}`;
       el.dataset.fkey=f.key;
       el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));
       grid.appendChild(el);
@@ -1344,9 +1344,6 @@ function filmCard(f){
       <div class="imgs">
         <div class="slot poster ${st.poster?"filled":""}" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"affiche ✓":"Affiche"}</div>
         <div class="slot still ${st.still?"filled":""}" style="${st.still?`background-image:url('${st.still}')`:""}">${st.still?"image du film ✓":"Image du film (fond)"}</div>
-      </div>
-      <div class="tags">
-        ${charBoxes(st)}
       </div>
       <div class="colors">Bandeau : ${(st.palette||[]).map(c=>`<span class="sw ${c===st.color?"sel":""}" data-c="${c}" style="background:${c}"></span>`).join("")}
         <input type="color" value="${st.color||"#34513b"}" title="Autre couleur"></div>
@@ -1858,7 +1855,7 @@ async function renderEcranList(){
       const c=await renderEcran(p.f,p.seances), t=canvas(270,480); t.getContext("2d").drawImage(c,0,0,270,480);
       el.innerHTML=`<span class="grp">${p.grp}</span><img src="${t.toDataURL("image/jpeg",.85)}" alt="">
         <b>${esc(titleOf(p.f))}</b>${st.poster?"":'<span class="past">⚠ affiche manquante</span>'}
-        <div class="tags">${charBoxes(st)}</div>${st.telethon?'<button class="small" data-tl>✥ Placer le logo Téléthon</button>':""}
+
         <div class="colors">${(st.palette||[]).map(c=>`<span class="sw ${c===cur?"sel":""}" data-e="${c}" style="background:${c}"></span>`).join("")}
           <input type="color" value="${cur}" title="Autre couleur"></div>`;
       el.querySelectorAll(".sw").forEach(sw=>sw.onclick=()=>{ st.ecran=sw.dataset.e; saveFilm(p.f.key); draw(); });
