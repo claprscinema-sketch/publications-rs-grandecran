@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h45</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h55</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -334,7 +334,7 @@
   <div class="row" style="margin-top:10px">
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="cartonFps"><option value="30">30</option><option value="60">60</option></select></label>
     <label style="font-size:14px;font-weight:600">Son de vieille machine à écrire <select id="cartonSon"><option value="-18" selected>volume bas (conseillé en salle)</option><option value="-24">très bas</option><option value="-12">moyen</option><option value="off">sans son</option></select></label>
-    <label style="font-size:14px;font-weight:600" title="0 : image de fond inchangée · 100 : floue, l'essentiel reste reconnaissable">Flou de l'arrière-plan <input type="range" id="cartonBlurPx" min="0" max="100" step="1" value="50" style="width:140px"> <span id="cartonBlurV">50</span></label>
+    <label style="font-size:14px;font-weight:600" title="0 : image de fond d'origine · comme le réglage « Transparence » de Canva, sur fond blanc">Transparence de l'arrière-plan <input type="range" id="cartonTransp" min="0" max="100" step="1" value="40" style="width:140px"> <span id="cartonTranspV">40</span></label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="cartonMode"><option value="pulse">pulsation</option><option value="clignote">clignotement</option></select></label>
     <button class="primary" id="btnCartons" style="background:#6e264c">🎬 Générer les cartons de la quinzaine (MP4)</button>
     <button id="btnCartonsZip" disabled>⬇ Tous les cartons (ZIP)</button>
@@ -2746,12 +2746,11 @@ async function editsLoad(){
   if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/carton-edits.json",{cache:"no-store"}); if(r.ok) Object.assign(cartonEdits, await r.json()); }catch(e){} }
 }
 function editsSave(){ Store.set("cartonEdits",cartonEdits); if(SHARED && !sharedLoading) api("PUT","file/carton-edits.json",JSON.stringify(cartonEdits),"application/json").catch(e=>console.warn(e)); }
-// flou de l'arrière-plan des cartons : case + curseur (48 px par défaut, l'équivalent du flou des publications en 4K), mémorisés
-// curseur 0–100 → rayon du flou sur l'image 4K (100 = 28 px : flou, mais formes et visages restent lisibles)
-function cartonBlurPx(){ const r=$("#cartonBlurPx"), v=r?Number(r.value):50; return Math.max(0,Math.min(100,isNaN(v)?50:v))*0.28; }
-setTimeout(()=>{ try{ const r=$("#cartonBlurPx"), v=$("#cartonBlurV"); if(!r) return;
-  const b=localStorage.getItem("cartonBlurLvl"); if(b!=null){ r.value=b; v.textContent=b; }
-  r.oninput=()=>{ v.textContent=r.value; localStorage.setItem("cartonBlurLvl",r.value); }; }catch(e){} },0);
+// transparence de l'arrière-plan des cartons (comme Canva) : 0 = image d'origine, 40 = l'ancien réglage (image à 60 % sur blanc), 100 = blanc
+function cartonOpacity(){ const r=$("#cartonTransp"), v=r?Number(r.value):40; return 1-Math.max(0,Math.min(100,isNaN(v)?40:v))/100; }
+setTimeout(()=>{ try{ const r=$("#cartonTransp"), v=$("#cartonTranspV"); if(!r) return;
+  const b=localStorage.getItem("cartonTransp"); if(b!=null){ r.value=b; v.textContent=b; }
+  r.oninput=()=>{ v.textContent=r.value; localStorage.setItem("cartonTransp",r.value); }; }catch(e){} },0);
 async function prepareCarton(f, seances, E0){
   const E=E0||cartonEdits[editKey(f)]||{}, D=(o)=>o||{dx:0,dy:0};
   const cw=CARTON_WEEK||curWeek(), st={...(filmState[f.key]||{}), ...(cw?pbFlags(f,cw):flags(f))};
@@ -2807,18 +2806,16 @@ async function prepareCarton(f, seances, E0){
       ls.forEach((l,k)=>b.fillText(l,x.x,x.y+k*(x.size||110)*1.2)); rects.extras[i]={x:x.x,y:x.y,w,h}; }
     else if(x.type==="img"){ const im=await loadImg(x.src); if(im){ const h=x.w*im.height/im.width; b.drawImage(im,x.x,x.y,x.w,h); rects.extras[i]={x:x.x,y:x.y,w:x.w,h}; } } }
   const blinkers=top.filter(t=>t.blink);
-  // fond : image du film à 60 % sur blanc, jamais retournée ; cadrage automatique hors des éléments du premier plan, ou celui choisi dans l'éditeur
+  // fond : image du film sur blanc, transparence réglée dans l'onglet, jamais retournée ; cadrage automatique hors des éléments du premier plan, ou celui choisi dans l'éditeur
   const covers=[rects.poster, rects.box, ...(rects.logo?[rects.logo]:[]), ...Object.values(rects.tags)];
   const F=canvas(CW_,CH_), fx=F.getContext("2d"); fx.fillStyle="#fff"; fx.fillRect(0,0,CW_,CH_);
   let bgGeom=null;
   if(still){ fx.save();
-    const bl=cartonBlurPx(), BW=fx.canvas.width, BH=fx.canvas.height, tmp=canvas(BW,BH), tx=tmp.getContext("2d");
+    const BW=fx.canvas.width, BH=fx.canvas.height, tmp=canvas(BW,BH), tx=tmp.getContext("2d");
     if(E.bg){ bgGeom={...E.bg}; tx.drawImage(still,E.bg.ox,E.bg.oy,E.bg.iw,E.bg.ih); }
     else { const s0=Math.max(CW_/still.width, CH_/still.height), iw=still.width*s0, ih=still.height*s0;   // image telle quelle : remplit l'écran, centrée
       bgGeom={ox:(CW_-iw)/2, oy:(CH_-ih)/2, iw, ih}; tx.drawImage(still,bgGeom.ox,bgGeom.oy,iw,ih); }
-    if(bl>0){ const m=Math.ceil(bl*2), pd=canvas(BW+2*m,BH+2*m), px=pd.getContext("2d");   // marge prolongée : pas de bords clairs une fois flouté
-      px.drawImage(tmp,0,0,pd.width,pd.height); px.drawImage(tmp,m,m); fx.filter=`blur(${bl}px)`; fx.drawImage(pd,-m,-m); }
-    else fx.drawImage(tmp,0,0);
+    fx.globalAlpha=cartonOpacity(); fx.drawImage(tmp,0,0);   // image nette, rendue transparente sur fond blanc (0 : image d'origine)
     fx.restore(); }
   fx.drawImage(bg,0,0);
   return {bg:F, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(lines.length), rects, bgGeom, still, defaultLines:seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""))};
