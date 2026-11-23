@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 12h15</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 12h25</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -924,9 +924,9 @@ function collageRandom(ratios, seedStr, L, hasLg=[]){
   let seed=[...seedStr].reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619),2166136261)>>>0;
   const rnd=()=>{ seed=(seed+0x6D2B79F5)>>>0; let t=seed; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; };
   const pack=hh=>{ const ws=ratios.map(r=>hh/r), rows=[]; let i=0, y=Y0+F;
-    while(i<n){ const res=Math.max(0,...ratios.map((r,k)=>hasLg[k]?ws[k]*COL_LG*.8:0)), rowBot=y+hh+F+res, xmax=(rowBot>L.y-G && L.x<X1)?L.x-G:X1; let x=X0+F, row=[];
+    while(i<n){ const res=Math.max(0,...ratios.map((r,k)=>hasLg[k]?ws[k]*COL_LG:0)), rowBot=y+hh+F+res, xmax=(rowBot>L.y-G && L.x<X1)?L.x-G:X1; let x=X0+F, row=[];
       while(i<n && x+ws[i]+F<=xmax+1e-6){ row.push({i,w:ws[i]}); x+=ws[i]+2*F+G; i++; }
-      if(!row.length) return null; const rr=Math.max(0,...row.map(it=>hasLg[it.i]?it.w*COL_LG*.8:0));
+      if(!row.length) return null; const rr=Math.max(0,...row.map(it=>hasLg[it.i]?it.w*COL_LG:0));
       rows.push({y, items:row, xmax, used:x-G-F-X0, res:rr}); y+=hh+2*F+G+rr; }
     if(y-G-F>Y1) return null; return {rows, end:y-G-F}; };
   let lo=60, hi=900, best=null; for(let k=0;k<40;k++){ const m=(lo+hi)/2, p=pack(m); if(p){ best={h:m,p}; lo=m; } else hi=m; }
@@ -939,7 +939,7 @@ function collageRandom(ratios, seedStr, L, hasLg=[]){
     const free=Math.max(0,(r.xmax-X0)-r.used), cnt=r.items.length, gw=Array.from({length:cnt+1},()=>.3+rnd()), gs=gw.reduce((a,b)=>a+b,0);
     const amp=Math.min(70, G*.6+vs/(rows.length+1)*.6);
     let x=X0+F+free*gw[0]/gs;
-    r.items.forEach((it,j)=>{ const jy=(rnd()-.5)*amp, rb=hasLg[it.i]?it.w*COL_LG*.8:0; let yy=Math.max(Y0+F, Math.min(Y1-F-hh-rb, r.y+dy+jy));
+    r.items.forEach((it,j)=>{ const jy=(rnd()-.5)*amp, rb=hasLg[it.i]?it.w*COL_LG:0; let yy=Math.max(Y0+F, Math.min(Y1-F-hh-rb, r.y+dy+jy));
       if(x+it.w+F>L.x-G/2 && yy+hh+F+rb>L.y-G/2) yy=Math.max(Y0+F, L.y-G/2-F-hh-rb);      // jamais sur le logo en bas à droite
       out[it.i]={x, y:yy, w:it.w, h:hh}; x+=it.w+2*F+G+free*gw[j+1]/gs; }); });
   return out;
@@ -963,7 +963,7 @@ async function renderCollage(title, films){
     if(!img){ ctx.fillStyle="#fff"; fitText(ctx,f.title.toUpperCase(),w-20,40); ctx.fillText(f.title.toUpperCase(),x+w/2,y+h/2); }
     // « Toujours à l'affiche » : jamais le bandeau Reprise
     // vignettes (Avant-première, VO…) sous le bas de l'affiche, centrées, chevauchant légèrement le bas du cadre
-    const lg=lgs[i]; if(lg.length){ const vh=w*COL_LG; extras.push({lg, x:x+w/2, y:y+h+8-vh*.3, w, vh}); }
+    const lg=lgs[i]; if(lg.length){ const vh=w*COL_LG; extras.push({lg, x:x+w/2, y:y+h+8-6, w, vh}); }   // ne mord que de 6 px sur le cadre blanc, jamais sur l'affiche
   }
   for(const e of extras) drawLogoRow(ctx,e.lg,e.x,e.y,Math.min(e.w*.45,(e.w*1.1-10*(e.lg.length-1))/e.lg.length),e.vh,"center",10);
   return c;
@@ -1718,7 +1718,7 @@ async function renderEcran(f, seances, out){
   const rowH=(row0||tlIm)?BT+rowHH+BG:0;
   // encart VO : sous l'affiche, centré, léger chevauchement
   let voImg=null, voW=0, voH=0, voOver=0;
-  if(isVO && assets.voLogo){ voImg=await loadCharLogo(assets.voLogo); if(voImg){ const r=vignetteRow([voImg],940,170,440,0); voW=r.ws[0]; voH=r.H; voOver=Math.round(voH*0.3); } }
+  if(isVO && assets.voLogo){ voImg=await loadCharLogo(assets.voLogo); if(voImg){ const r=vignetteRow([voImg],940,170,440,0); voW=r.ws[0]; voH=r.H; voOver=6; } }   // ne mord que de 6 px sur le liseré de l'affiche
   const voExtra = voImg ? voH-voOver : 0;
   // l'affiche prend la hauteur restante
   const poster=await loadImg(st.poster), B=7;
