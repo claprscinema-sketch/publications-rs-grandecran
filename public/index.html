@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 14h15</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 14h45</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -301,6 +301,7 @@
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement (lent)</option><option value="pulse">pulsation (zoom / dézoom)</option></select></label>
   </div>
   <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : la vidéo + un fichier à double-cliquer qui fait fabriquer le DCP par DCP-o-matic 2. Format (2K/4K) et images/s : réglés ci-dessus ; son et type de contenu : onglet Base de données &gt; Réglages DCP.</div>
+  <div class="row" style="margin-top:14px;gap:12px;align-items:center"><button class="primary" id="btnFlyAll" style="font-size:16px;padding:12px 22px">🎬 Générer tous les flyers (PBA et PBE)</button><span class="hint" style="margin:0" id="flyAllProg"></span></div>
   <div id="flyCols" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px">
     <div class="flyCol" data-aud="PBA" style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff">
       <h3 style="margin:0 0 8px">PBA — films adultes</h3>
@@ -3218,7 +3219,8 @@ async function encodeFrames(draw, T, fps, onProg){
 let pbResults=[];
 // Boucle des flyers écran : durée totale choisie, écrans de 7 à 10 s répétés dans l'ordre, fondu enchaîné de 0,5 s entre deux écrans
 const parseDur=v=>{ v=String(v||"").trim(); if(!v) return 0; const m=v.match(/^(\d+)\s*[:'m]\s*(\d{1,2})?/); return m?Number(m[1])*60+Number(m[2]||0):Number(v.replace(",","."))||0; };
-function loopPlan(T, N){ if(!N||!T) return null; const k=Math.max(1,Math.ceil(T/(N*10))), d=T/(k*N); return {k, d, n:k*N, ok:d>=7&&d<=10}; }
+// nombre de passages : le plus petit qui garde chaque écran sous 10 s (les écrans tournent dans l'ordre, la boucle peut s'arrêter en cours de tour)
+function loopPlan(T, N){ if(!N||!T) return null; const n=Math.max(1,Math.ceil(T/10-1e-9)), d=T/n; return {k:n/N, d, n, ok:d>=7-1e-9&&d<=10+1e-9}; }
 async function stockDrawer(blob){
   const v=document.createElement("video"); v.muted=true; v.preload="auto"; v.src=URL.createObjectURL(blob);
   await new Promise((r,j)=>{ v.onloadeddata=r; v.onerror=()=>j(new Error("écran en stock illisible")); });
@@ -3362,6 +3364,13 @@ async function generateFlyer(aud, n, col){
   card.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(name.replace(/\.mp4$/,""), [file], "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
   pr.textContent=`✓ ${name} prêt.`;
 }
+// tous les flyers d'un coup : PBA 1, PBA 2, PBE 1, PBE 2, l'un après l'autre (en arrière-plan)
+document.addEventListener("click",e=>{ if(!(e.target&&e.target.id==="btnFlyAll")) return;
+  const pr=$("#flyAllProg");
+  bgTask("fly-all","Tous les flyers écran","flyerspb",pr,async()=>{ const jobs=[...document.querySelectorAll("#flyCols [data-fly]")].filter(b=>!b.disabled); let i=0;
+    for(const b of jobs){ i++; const col=b.closest(".flyCol"); pr.textContent=`${i}/${jobs.length} : ${b.textContent}…`;
+      try{ await generateFlyer(col.dataset.aud,+b.dataset.fly,col); }catch(err){ col.querySelector("[data-prog]").textContent="Erreur : "+err.message; } }
+    pr.textContent=`✓ ${jobs.length} flyers traités (voir chaque colonne).`; }); });
 document.addEventListener("click",e=>{ const b=e.target&&e.target.closest&&e.target.closest("#flyCols [data-fly]"); if(!b) return;
   const col=b.closest(".flyCol"), aud=col.dataset.aud, n=+b.dataset.fly;
   bgTask(`fly-${aud}-${n}`, `${b.textContent}`, "flyerspb", col.querySelector("[data-prog]"), ()=>generateFlyer(aud,n,col)); });
