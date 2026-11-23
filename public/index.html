@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h35</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h45</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2180,13 +2180,13 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const txtOnly0=pass(false), txtH=txtOnly0+(chipBox?chipBox.gap+chipBox.chH:0), th=Math.max(txtH, colH);
   // synopsis le plus grand possible dans la case (au-dessus des séances), même taille pour tous les films d'une même semaine
   const aphRow=ROW_PH?Math.round(ROW_PH*K3):0;   // hauteur des affiches (identique pour tous les films)
-  // taille des infos et du synopsis : la plus grande possible, identique pour tous les films de l'édition
+  // taille des infos et du synopsis : la plus grande possible, identique pour tous les films de la semaine (de la face)
   // (1er passage : taille maximale de chaque film avec un synopsis court ; 2e passage : la plus petite de ces tailles pour tous,
   //  puis chaque film reprend le synopsis le plus long qui tient à cette taille, pour remplir sa case)
   if(draw && ROW_PH){ const room=aphRow-(chipBox?chipBox.gap+chipBox.chH:0)-Math.round(6*s), base=Math.round(30*s*SYN_K), synMin=Math.min(synMax,150);
     if(FLY_SYN_FIX===null){ synMax=synMin; let kmax=1; for(let k=3.2;k>1.001;k-=0.03){ SYNFS=Math.round(base*k); if(pass(false)<=room){ kmax=k; break; } SYNFS=0; }
-      FLY_SYN_REC[f.key]=kmax; SYNFS=Math.round(base*kmax); }
-    else { const k=FLY_SYN_FIX[f.key]||1; SYNFS=k>1.001?Math.round(base*k):0; }
+      FLY_SYN_REC[FLY_WK+"|"+f.key]=kmax; SYNFS=Math.round(base*kmax); }
+    else { const k=FLY_SYN_FIX[FLY_WK+"|"+f.key]||1; SYNFS=k>1.001?Math.round(base*k):0; }
     for(let sy=SYN_MAX; sy>synMin; sy-=10){ synMax=sy; if(pass(false)<=room) break; }   // synopsis le plus long qui tient
     if(pass(false)>room) synMax=synMin; }
   const txtOnly=pass(false);
@@ -2425,7 +2425,7 @@ async function prepareSyn400(films, onProgress){
 // Recherche de la mise en page : la plus grande échelle lisible avec les synopsis complets (400 car.) ;
 // si la semaine est trop chargée, synopsis plus courts (toujours en phrases entières), puis texte plus petit.
 // Lignes de films : chaque affiche occupe toute la hauteur de sa ligne, même taille pour toutes
-const POSTER_RATIO=1.42; let ROW_PH=0, FLY_N=4;   // FLY_N : nombre de films de la semaine (taille des encarts de séances)
+const POSTER_RATIO=1.42; let ROW_PH=0, FLY_N=4, FLY_WK=0;   // FLY_WK : face (semaine) en cours de dessin   // FLY_N : nombre de films de la semaine (taille des encarts de séances)
 async function rowFit(pt, w, s, syn, H, GAP, cols=1){
   const tmp=canvas(10,10).getContext("2d"), inGrid=cols>1&&pt.reps.length>0;   // option 3 : les reprises occupent une case
   const n=pt.news.length, rows=Math.ceil((n+(inGrid?1:0))/cols), cw=cols>1?(w-CG2)/cols:w; FLY_N=n;
@@ -2529,8 +2529,9 @@ const SYN_K=1.4;   // synopsis : 40 % plus grand que les autres lignes d'infos, 
 async function renderFlyer(){
   FLY_SYN_FIX=null; FLY_SYN_REC={};
   const r1=await renderFlyer0(); const fix={};
-  const ks=Object.values(FLY_SYN_REC), m=ks.length?Math.min(...ks):1;   // le film le plus chargé fixe la taille de toute l'édition
-  for(const w of (r1.weeks||[])) for(const f of w.films) fix[f.key]=m;
+  // chaque semaine (chaque face) a sa propre taille : celle du film le plus chargé de cette semaine
+  const byWk={}; for(const [k,v] of Object.entries(FLY_SYN_REC)){ const wk=k.split("|")[0]; byWk[wk]=Math.min(byWk[wk]??9, v); }
+  for(const k of Object.keys(FLY_SYN_REC)) fix[k]=byWk[k.split("|")[0]];
   FLY_SYN_FIX=fix; try{ return await renderFlyer0(); } finally { FLY_SYN_FIX=null; }
 }
 async function renderFlyer0(){
@@ -2568,7 +2569,7 @@ async function renderFlyer0(){
     if(pt){
       await flyerHeader(ctx,pt.week,true,k===1);
       let y=headHs[k]+FM-30;
-      const keep=FLYER_LAYOUT; FLYER_LAYOUT=plans[k].style; await rowsDraw(ctx,pt,FM,y,W0,plans[k].s,plans[k].syn,GAP,avail(k),plans[k].cols); FLYER_LAYOUT=keep;
+      const keep=FLYER_LAYOUT; FLYER_LAYOUT=plans[k].style; FLY_WK=k; await rowsDraw(ctx,pt,FM,y,W0,plans[k].s,plans[k].syn,GAP,avail(k),plans[k].cols); FLYER_LAYOUT=keep;
     }
     await flyerFooter(ctx,FM,FH-footH,W0,true);
   }
