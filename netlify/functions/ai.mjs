@@ -8,13 +8,16 @@
 const env = k => (globalThis.Netlify?.env?.get(k) ?? process.env[k] ?? "").trim();
 
 // modèle : AI_MODEL, puis les « Flash » de Google, puis les « Flash-Lite » ; on passe au suivant si l'un est saturé (503/429) ou absent
+// Netlify coupe une fonction au bout de 10 secondes : tout doit tenir en ~9 s (recherche web limitée à 6,5 s, puis modèle rapide sans recherche)
 const GEMINI_MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"];
 async function gemini(key, b) {
   const t0 = Date.now(); let last;
   const models = [env("AI_MODEL"), ...GEMINI_MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
   for (let i = 0; i < models.length; i++) {
-    const left = 24000 - (Date.now() - t0); if (left < 3000) break;               // on reste sous la limite de temps de Netlify
-    try { return await geminiModel(key, b, models[i], left, i < 2); }
+    const left = 9200 - (Date.now() - t0); if (left < 1500) break;                // limite de Netlify : 10 s
+    const withSearch = i === 0 && b.search !== false;                            // recherche web : 1er essai seulement
+    const budget = withSearch ? Math.min(left, 6500) : left;
+    try { return await geminiModel(key, b, withSearch ? models[i] : (models.find(m => /lite/.test(m)) || models[i]), budget, withSearch); }
     catch (e) { last = e; if (!/ (400|404|429|500|503|504|TIMEOUT) /.test(" " + e.message + " ")) throw e; }
   }
   throw last || new Error("Gemini : délai dépassé");
