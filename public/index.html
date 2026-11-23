@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 10h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 11h10</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -2477,7 +2477,8 @@ async function prepareCarton(f, seances, E0){
     const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
     tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
   // logo Téléthon (fixe, jamais clignotant) : sous le rectangle des séances, centré, en le chevauchant légèrement
-  if(st.telethon && assets.telethonLogo){ const im=await loadCharLogo(assets.telethonLogo); if(im){ const w=Math.min(VW*1.15, PW*.42); tags.push({k:"telethon", im, label:"Téléthon", w, h:w*im.height/im.width, blink:false}); } }
+  if(st.telethon){ const im=assets.telethonLogo?await loadCharLogo(assets.telethonLogo):null, w=Math.min(VW*1.15, PW*.42);   // sans logo dans la base : étiquette « Téléthon »
+    tags.push({k:"telethon", im, label:"Téléthon", w, h:im?w*im.height/im.width:w*.3, blink:false}); }
   const vo=tags.find(t=>t.k==="vo"), tl=tags.find(t=>t.k==="telethon"), top=tags.filter(t=>t.k!=="vo"&&t.k!=="telethon");
   const under=[tl,vo].filter(Boolean), uh=under.length?Math.max(...under.map(t=>t.h)):0;
   // rectangle des séances (déplaçable) ; Téléthon et VO sont calés dessous, au centre, et le chevauchent sans cacher le texte
@@ -2605,6 +2606,7 @@ async function generateCartonsRun(){
   if(!cartonSupported()){ pr.innerHTML='<span style="color:#b71c1c">Ce navigateur ne sait pas fabriquer de vidéo MP4. Ouvre l\'outil avec Chrome ou Edge.</span>'; return; }
   if(!await requirePosters(ws.flatMap(w=>w.films),"Génération des cartons écran")) return;
   const fps=Number($("#cartonFps").value)||30, mode=$("#cartonMode").value;
+  if(ws.some(w=>w.films.some(f=>(filmState[f.key]||{}).telethon)) && !assets.telethonLogo) toast("⚠️ Téléthon coché mais aucun logo Téléthon dans la base commune : une simple étiquette « Téléthon » sera affichée.");
   btn.disabled=true; out.innerHTML=""; cartonResults=[];
   await document.fonts.load(`100px "Ecran"`, "ven 20 nov - 18h30"); await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ");
   const total=ws.reduce((n,w)=>n+w.films.length,0); let done=0;
@@ -2632,8 +2634,10 @@ async function generateCartonsRun(){
       }
     }
     CARTON_WEEK=null;
-    const low=[]; for(const f of ws.flatMap(w=>w.films)){ const im=await loadImg(filmState[f.key].poster); if(im && im.height<1640 && !low.includes(titleOf(f))) low.push(`${titleOf(f)} (${im.width}×${im.height} px)`); }
-    pr.innerHTML=`✓ ${cartonResults.length} cartons prêts pour la quinzaine (${fps} images/s).`+(low.length?`<div class="warn">⚠️ Affiche en définition insuffisante pour un écran de 10 m (il faut au moins 1640 px de haut) : ${low.map(esc).join(", ")}. Remplace-la par une version HD.</div>`:"");
+    // définition : seule la hauteur compte ; l'affiche occupe environ 70 % de la hauteur de l'image projetée (1080 px en 2K, 2160 px en 4K)
+    const scrH=dcpOptions("").res==="2K"?1080:2160, minH=Math.round(scrH*.7), seen=new Set(), low=[];
+    for(const f of ws.flatMap(w=>w.films)){ if(seen.has(f.key)) continue; seen.add(f.key); const im=await loadImg(filmState[f.key].poster); if(im && im.height<minH) low.push(`${titleOf(f)} (${im.height} px de haut)`); }
+    pr.innerHTML=`✓ ${cartonResults.length} cartons prêts pour la quinzaine (${fps} images/s).`+(low.length?`<div class="warn">⚠️ Affiche un peu juste pour un DCP ${scrH===1080?"2K":"4K"} (au moins ${minH} px de haut conseillés, soit 70 % de la hauteur de l'écran) : ${low.map(esc).join(", ")}.</div>`:"");
     $("#btnCartonsZip").disabled=false; $("#btnCartonsDcp").disabled=false;
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   CARTON_WEEK=null; btn.disabled=false;
