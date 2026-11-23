@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 18h15</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 19h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -1400,7 +1400,8 @@ function infoCard(f){
   const el=document.createElement("div"); el.className="film"; el.dataset.ikey=f.key;
   const draw=()=>{
     const d=details[f.key]||null;
-    const chk = !d||!d.synopsis ? '<span class="chk none">infos à compléter</span>' : d.check ? '<span class="chk todo">⚠ à vérifier</span>' : '<span class="chk ok">infos ✓</span>';
+    const miss=d?infoMissing(f.key):[];
+    const chk = !d||!d.synopsis ? '<span class="chk none">infos à compléter</span>' : miss.length ? `<span class="chk todo">⚠ manque : ${miss.map(k=>INFO_LBL[k]).join(", ")}</span>` : d.check ? '<span class="chk todo">⚠ à vérifier</span>' : '<span class="chk ok">infos ✓</span>';
     el.innerHTML=`<div><h3>${esc((d&&d.title)||f.title)}${chk}</h3>${d&&d.check?`<div class="meta" style="color:#9a5b00">⚠ ${esc(d.check)}</div>`:""}</div>
       <details class="info"><summary>Infos du film</summary>
         <div class="tags" style="margin:6px 0 10px">${charBoxes({...charOf(f), telethon:!!(filmState[f.key]||{}).telethon || !!(filmFlags[f.key]||{}).telethon})}</div>
@@ -1449,7 +1450,8 @@ function filmCard(f){
   const el=document.createElement("div"); el.className="film";
   const draw=()=>{
     const d=details[f.key]||null;
-    const chk = !d||!d.synopsis ? '<span class="chk none">infos à compléter</span>' : d.check ? '<span class="chk todo">⚠ à vérifier</span>' : '<span class="chk ok">infos ✓</span>';
+    const miss=d?infoMissing(f.key):[];
+    const chk = !d||!d.synopsis ? '<span class="chk none">infos à compléter</span>' : miss.length ? `<span class="chk todo">⚠ manque : ${miss.map(k=>INFO_LBL[k]).join(", ")}</span>` : d.check ? '<span class="chk todo">⚠ à vérifier</span>' : '<span class="chk ok">infos ✓</span>';
     el.innerHTML=`<div><h3>${esc((d&&d.title)||f.title)}${chk}</h3><div class="meta">${f.seances.map(s=>`${JOURS[s.getDay()]} ${s.getDate()} – ${hm(s)}`).join(" · ")}</div></div>
       <div class="imgs">
         <div class="slot poster ${st.poster?"filled":""}" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"affiche ✓":"Affiche"}</div>
@@ -1472,15 +1474,17 @@ function filmCard(f){
 
 /* ========================== Infos automatiques des films ========================== */
 // Sur la page publiée : Claude lit le titre et l'affiche. Copie hors ligne : service Pollinations (sans affiche).
-function infoPrompt(f, withPoster, web){
+const INFO_KEYS=["genres","duree","real","avec","public","synopsis"], INFO_LBL={title:"titre",genres:"genres",duree:"durée",real:"réalisation",avec:"acteurs",public:"public",synopsis:"synopsis"};
+function infoMissing(key){ const d=details[key]||{}; return INFO_KEYS.filter(k=>!String(d[k]||"").trim()); }
+function infoPrompt(f, withPoster, web, missing){
   const when=f.seances[0], tags=[f.vo&&"en version originale", f.reprise&&"reprise", f.doc&&"documentaire", f.avp&&"avant-première", f.sn&&"sortie nationale"].filter(Boolean).join(", ");
   const extra=[f.infoRaw&&`mention du programme : « ${String(f.infoRaw).slice(0,120)} »`, f.duree&&`durée indiquée : ${f.duree}`].filter(Boolean).join(" ; ");
   return `Tu prépares la fiche d'un film pour un cinéma associatif Art et Essai en France.
 Film : « ${f.title} »${tags?` (${tags})`:""}, programmé en ${MOIS[when.getMonth()]} ${when.getFullYear()}${extra?` (${extra})`:""}.
 ${web?`Fais d'abord une recherche web : « ${f.title} film allociné », « ${f.title} film ${when.getFullYear()} sortie ». C'est le film à l'affiche dans les cinémas français à cette date (souvent une sortie récente de ${when.getFullYear()-1} ou ${when.getFullYear()}, parfois une reprise ou un film jeune public) : prends sa fiche AlloCiné ou celle du distributeur, pas un homonyme plus ancien. Le titre est exact tel qu'il est écrit ; ne demande pas de précision.`:""}
 ${withPoster?"L'affiche officielle du film est jointe : lis-y le titre exact, le réalisateur, les acteurs et les mentions (festival, prix).":""}
-Réponds uniquement avec un objet JSON :
-{"title":"titre français exact","genres":"1 à 3 genres séparés par ' · ' (ex. Drame · Romance)","duree":"format 1h50, ou vide","real":"réalisateur ou réalisatrice","avec":"2 ou 3 acteurs principaux séparés par des virgules (pour l'animation, les voix)","public":"Tout public, Tout public avec avertissement, Interdit aux moins de 12 ans… ou vide","synopsis":"synopsis en français de 280 à 380 caractères, phrases complètes, sans spoiler, ton neutre","sur":true,"incertains":["noms des champs dont tu n'es pas sûr, parmi title, genres, duree, real, avec, public, synopsis"]}
+${missing&&missing.length?`Les informations suivantes manquent encore dans la fiche : ${missing.map(k=>INFO_LBL[k]).join(", ")}. Cherche-les en priorité, avec soin (durée exacte en heures et minutes, réalisateur ou réalisatrice, 2 ou 3 acteurs principaux ou voix, public visé).\n`:""}Réponds uniquement avec un objet JSON :
+{"title":"titre français exact","genres":"1 à 3 genres séparés par ' · ' (ex. Drame · Romance)","duree":"format 1h50, ou vide","real":"réalisateur ou réalisatrice","avec":"2 ou 3 acteurs principaux séparés par des virgules (pour l'animation, les voix)","public":"public visé, toujours rempli : Tout public (par défaut), Jeune public dès 3 ans / dès 6 ans…, Tout public avec avertissement, Interdit aux moins de 12 ans…","synopsis":"synopsis en français de 280 à 380 caractères, phrases complètes, sans spoiler, ton neutre","sur":true,"incertains":["noms des champs dont tu n'es pas sûr, parmi title, genres, duree, real, avec, public, synopsis"]}
 Règles strictes : n'invente rien. ${web?"Si ta recherche ne trouve pas ce film avec certitude":"Si tu ne connais pas ce film avec certitude"} (film récent, homonyme…), mets "sur":false, laisse vides les champs que tu ignores et l'affiche ne te les donne pas, et pour le synopsis écris seulement ce que l'affiche permet d'affirmer, ou laisse-le vide.`;
 }
 async function posterBlob(src){
@@ -1509,17 +1513,17 @@ async function aiServer(system, prompt, imageBlob){
   if(!r.ok) throw new Error("IA indisponible ("+r.status+") : "+(await r.text()).slice(0,160));
   return (await r.json()).text;
 }
-async function askInfo(f){
+async function askInfo(f, missing){
   const st=filmState[f.key]||{}, sample=await getSample();
   if(sample){
     let images;
     try{ const lim=await sample.limits(); if(lim&&lim.images&&st.poster){ const b=await posterBlob(st.poster); if(b) images=[b]; } }catch(e){}
-    return await sample.json(infoPrompt(f,!!images), images?{images}:{});
+    return await sample.json(infoPrompt(f,!!images,false,missing), images?{images}:{});
   }
   // site publié : IA de Netlify, avec l'affiche si elle est connue (et recherche web pour les films récents)
   let lastErr, img=null; try{ if(st.poster) img=await posterBlob(st.poster); }catch(e){}
   for(let i=0;i<3;i++){
-    try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img,true), img)); }
+    try{ return parseJSONText(await aiServer("Tu es un expert du cinéma français. Cherche les informations exactes du film (fiches AlloCiné, distributeur, presse). Tu réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après.", infoPrompt(f,!!img,true,missing), img)); }
     catch(e){ lastErr=e; if(/non configurée|code d'équipe|absente|seulement/.test(e.message)) break; await new Promise(r=>setTimeout(r,(/50[234]|demand|TIMEOUT/.test(e.message)?6000:2000)*(i+1))); }   // IA saturée : on patiente davantage
   }
   throw lastErr;
@@ -1531,12 +1535,16 @@ async function fillInfos(auto){
   try{
     const films=allFilms();
     for(const f of films){ if(!details[f.key]) await loadInfo(f); if(!filmState[f.key]){ const s=(await Store.get("film:"+f.key))||{}; filmState[f.key]={...s,...charOf(f)}; } }
-    const todo=films.filter(f=>!(details[f.key]&&details[f.key].synopsis&&!details[f.key].check));
-    if(!todo.length){ p.textContent = auto ? `✓ Infos des ${films.length} films prêtes.` : "Tous les films ont déjà leurs infos. Pour en refaire une, vide son synopsis puis relance."; btn.disabled=false; return; }
+    // durée connue par l'Excel : reprise directement
+    for(const f of films){ const d=details[f.key]; if(d && !String(d.duree||"").trim() && f.duree){ d.duree=f.duree; saveInfo(f.key); } }
+    // en automatique, un film déjà cherché sans succès n'est pas redemandé avant 7 jours (bouton : toujours)
+    const todo=films.filter(f=>(!details[f.key] || details[f.key].check || infoMissing(f.key).length) && !(auto && details[f.key] && details[f.key].triedAt && Date.now()-details[f.key].triedAt<7*864e5));
+    if(!todo.length){ p.textContent = auto ? `✓ Infos des ${films.length} films prêtes.` : "Tous les films ont toutes leurs infos (genres, durée, réalisation, acteurs, public, synopsis). Pour en refaire une, vide son synopsis puis relance."; btn.disabled=false; return; }
     let done=0, failed=[];
     const run=async f=>{
       try{
-        const r=await askInfo(f)||{};
+        const had=details[f.key]&&details[f.key].synopsis?{...details[f.key]}:null, miss=had?infoMissing(f.key):null;
+        const r=await askInfo(f, miss)||{};
         const cur={title:String(r.title||f.title).trim()};
         for(const k of ["genres","duree","real","avec","public","synopsis"]) cur[k]=String(r[k]||"").trim();
         const LBL={title:"titre",genres:"genres",duree:"durée",real:"réalisation",avec:"acteurs",public:"public",synopsis:"synopsis"};
@@ -1550,6 +1558,14 @@ async function fillInfos(auto){
           cur.check=parts.join(" · ");
         }
         cur.auto=true;
+        if(had){ // fiche déjà remplie : on ne fait que compléter les champs vides (rien n'est écrasé)
+          const m={...had}; for(const k of INFO_KEYS) if(!String(m[k]||"").trim() && cur[k]) m[k]=cur[k];
+          const still=INFO_KEYS.filter(k=>!String(m[k]||"").trim()).map(k=>INFO_LBL[k]);
+          if(still.length){ m.check="non trouvé : "+still.join(", "); m.triedAt=Date.now(); } else { if(/^non trouvé/.test(had.check||"")) delete m.check; delete m.triedAt; }
+          details[f.key]=m; saveInfo(f.key);
+          const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"]`); if(card){ const n=filmCard(f); n.dataset.key=f.key; card.replaceWith(n); }
+          const ic=document.querySelector(`[data-ikey="${CSS.escape(f.key)}"]`); if(ic) ic.replaceWith(infoCard(f));
+          done++; p.textContent=`Recherche des infos… ${done}/${todo.length}`; return; }
         const stk=stockFor(f.key); details[f.key]=mergeInfo(cur, stk&&{...stk}); if(stk&&stk.synopsis) delete details[f.key].check; Store.set("info:"+f.key, cur);
         const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"]`); if(card){ const n=filmCard(f); n.dataset.key=f.key; card.replaceWith(n); }
         const ic=document.querySelector(`[data-ikey="${CSS.escape(f.key)}"]`); if(ic) ic.replaceWith(infoCard(f));
@@ -2092,32 +2108,39 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const lcw=0, lgap=0;   // vignettes : en ligne sous le titre (voir plus bas), toutes affichées
   const pass=(draw,dy=0)=>{
   const R=side==="right", tx=R?x:x+pw+Math.round(40*s), tw=w-pw-Math.round(40*s)-lcw-lgap; let ty=y+dy;
-    // titre
+    // ligne du titre : TITRE · vignettes · genre/durée/public (affiche à gauche), ordre inverse si l'affiche est à droite (titre côté affiche)
     let ts=Math.round(104*s); ctx.font=`${ts}px ${FONT}`;
     const title=(d.title||f.title).toUpperCase();
-    // vignettes (VO, Sortie nationale, Avant-première, Documentaire, Entrée gratuite, Téléthon) sur la ligne du titre, côté affiche :
-    // affiche / vignettes / titre (affiche à gauche) ou titre / vignettes / affiche (affiche à droite)
     const vh=Math.round(ts*.82), vg=Math.round(12*s), vits=tags.map(([t,c,k])=>{ const im=k&&CHAR_IMG[k]; if(im) return {im,w:vh*im.width/im.height};
       ctx.font=`bold ${Math.round(vh*.34)}px ${BODY}`; return {t,c,w:ctx.measureText(t).width+vh*.5}; });
     let vw=vits.reduce((a,v)=>a+v.w,0)+vg*Math.max(0,vits.length-1); if(vw>tw*.45){ const k2=tw*.45/vw; vits.forEach(v=>v.w*=k2); vw=tw*.45; }
-    const tgap=vits.length?Math.round(22*s):0, ttw=tw-vw-tgap, ttx=R?tx:tx+vw+tgap;
-    ctx.font=`${ts}px ${FONT}`;
-    const tl=wrapLines(ctx,title,ttw).slice(0,2);
-    if(draw){ ctx.fillStyle="#1d1d22"; ctx.textAlign="left"; ctx.textBaseline="top"; tl.forEach((l,i)=>ctx.fillText(l,ttx,ty+i*ts*1.0));
-      if(vits.length){ ctx.font=`${ts}px ${FONT}`; let vx=R?Math.min(tx+tw-vw, ttx+ctx.measureText(tl[0]||"").width+tgap):tx;   // juste après le titre const hh=Math.min(vh, vh*vw/Math.max(1,vw)); const vy=ty+(ts*0.86-hh)/2;
-        for(const v of vits){ const h2=v.im?v.w*v.im.height/v.im.width:hh;
-          if(v.im) ctx.drawImage(v.im,vx,ty+(ts*0.86-h2)/2,v.w,h2);
-          else { ctx.font=`bold ${Math.round(h2*.34)}px ${BODY}`; ctx.strokeStyle=v.c; ctx.lineWidth=Math.max(2,h2*.05); rr(ctx,vx,vy,v.w,h2*.6,h2*.3); ctx.stroke(); ctx.fillStyle=v.c; ctx.textBaseline="middle"; ctx.fillText(v.t,vx+h2*.25,vy+h2*.3); ctx.textBaseline="top"; }
-          vx+=v.w+vg; } } }
-    ty+=tl.length*ts*0.98+4*s;
-    // genre · durée · public (restrictions)
     const bs=Math.round(30*s), lh=bs*1.26;
     const restr = d.public && !/^tout public$/i.test(d.public.trim());
     const meta=[d.genres, d.duree&&d.duree.replace(/^0h/,"")+(/^0h/.test(d.duree)?" min":""), !restr&&d.public].filter(Boolean).join("  ·  ");
-    ctx.font=`bold ${bs}px ${BODY}`;
-    const ml=wrapLines(ctx,meta,tw);
-    if(draw){ ctx.fillStyle=color; ml.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); }
-    ty+=ml.length*lh;
+    const mfs=SYNFS||Math.round(bs*SYN_K), mlh=mfs*1.22, G=Math.round(22*s);          // infos à la taille du synopsis
+    ctx.font=`bold ${mfs}px ${BODY}`; const mw=meta?ctx.measureText(meta).width:0;
+    ctx.font=`${ts}px ${FONT}`;
+    const vAdd=vits.length?G+vw:0;
+    let tl=wrapLines(ctx,title,tw-vAdd).slice(0,2), lastW=()=>{ ctx.font=`${ts}px ${FONT}`; return ctx.measureText(tl[tl.length-1]||"").width; };
+    const metaInline=!!meta && vAdd+lastW()+G+mw<=tw;
+    const li=tl.length-1, lineY=k=>ty+k*ts*1.0, capMid=ts*.43;
+    if(draw){ ctx.fillStyle="#1d1d22"; ctx.textBaseline="top";
+      // vignettes côté affiche (affiche à gauche : vignettes · TITRE · infos ; à droite : infos · TITRE · vignettes)
+      let vx=R?tx+tw-vw:tx;
+      for(const v of vits){ const h2=v.im?v.w*v.im.height/v.im.width:vh;
+        if(v.im) ctx.drawImage(v.im,vx,ty+(ts*0.86-h2)/2,v.w,h2);
+        else { const vy=ty+(ts*0.86-h2*.6)/2; ctx.font=`bold ${Math.round(h2*.34)}px ${BODY}`; ctx.strokeStyle=v.c; ctx.lineWidth=Math.max(2,h2*.05); rr(ctx,vx,vy,v.w,h2*.6,h2*.3); ctx.stroke(); ctx.fillStyle=v.c; ctx.textBaseline="middle"; ctx.fillText(v.t,vx+h2*.25,vy+h2*.3); ctx.textBaseline="top"; }
+        vx+=v.w+vg; }
+      ctx.fillStyle="#1d1d22";
+      tl.forEach((l,k)=>{ ctx.font=`${ts}px ${FONT}`; const w2=ctx.measureText(l).width; ctx.textAlign="left"; ctx.fillText(l, R?tx+tw-vAdd-w2:tx+vAdd, lineY(k)); });
+      if(metaInline){ const lw2=lastW(); ctx.font=`bold ${mfs}px ${BODY}`; ctx.fillStyle=color; ctx.textBaseline="middle";
+        ctx.fillText(meta, R?tx+tw-vAdd-lw2-G-mw:tx+vAdd+lw2+G, lineY(li)+capMid); ctx.textBaseline="top"; }
+    }
+    ty+=tl.length*ts*0.98+4*s;
+    // infos sur la ligne suivante si elles ne tiennent pas à côté des vignettes
+    if(meta && !metaInline){ ctx.font=`bold ${mfs}px ${BODY}`; const ml=wrapLines(ctx,meta,tw);
+      if(draw){ ctx.fillStyle=color; ctx.textBaseline="top"; ml.forEach((l,k)=>{ const w2=ctx.measureText(l).width; ctx.fillText(l,R?tx+tw-w2:tx,ty+k*mlh); }); }
+      ty+=ml.length*mlh; }
     if(restr){
       ctx.font=`bold ${bs}px ${BODY}`; const pl=wrapLines(ctx,"⚠ "+d.public,tw);
       if(draw){ ctx.fillStyle="#b71c1c"; pl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); } ty+=pl.length*lh;
