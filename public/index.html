@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 09h30</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 10h50</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -296,7 +296,9 @@
     <div class="drop" id="dropOldXlsx" style="min-height:0;padding:10px 14px;flex:0 0 auto">➕ Ajouter un ancien Excel (semaines passées)</div>
     <label style="font-size:14px;font-weight:600">Durée par écran <select id="pbDur"><option value="10" selected>10 s</option></select></label>
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="pbFps"><option value="30">30</option><option value="60">60</option></select></label>
-    <label style="font-size:14px;font-weight:600" title="Une vidéo par dossier qui enchaîne les écrans en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée totale de la boucle <input id="pbLoop" placeholder="ex. 2:00" style="width:70px"> <span class="hint" style="margin:0;font-weight:400">(vide = pas de boucle)</span></label>
+    <label style="font-size:14px;font-weight:600" title="Les vidéos MP4 restent en 3996×2160 ; ce choix règle seulement le DCP fabriqué par le Pack DCP">Format du DCP <select id="pbDcpRes"><option value="2K">2K</option><option value="4K">4K</option></select> <span class="hint" style="margin:0;font-weight:400">(MP4 toujours en 3996×2160)</span></label>
+    <label style="font-size:14px;font-weight:600" title="Flyer 1 : écran en stock de la quinzaine passée + les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée boucle 1 <span class="hint" style="margin:0;font-weight:400">(3 écrans)</span> <input id="pbLoop" placeholder="ex. 2:00" style="width:70px"></label>
+    <label style="font-size:14px;font-weight:600" title="Flyer 2 : les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; vide = même durée que la boucle 1">Durée boucle 2 <span class="hint" style="margin:0;font-weight:400">(2 écrans)</span> <input id="pbLoop2" placeholder="= boucle 1" style="width:80px"></label>
     <label style="font-size:14px;font-weight:600"><input type="checkbox" id="pbTrans" checked> Transition fondu 0,5 s</label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement (lent)</option><option value="pulse">pulsation (zoom / dézoom)</option></select></label>
     <button class="primary" id="btnPB">Générer les dossiers</button>
@@ -316,7 +318,7 @@
     <button id="btnCartonsZip" disabled>⬇ Tous les cartons (ZIP)</button>
     <button id="btnCartonsDcp" disabled style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>
   </div>
-  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Réglages (format, images/s, son, type de contenu) : onglet Base de données &gt; Réglages DCP.</div>
+  <div class="hint dcpRecap" style="margin-top:8px;background:#f4f1fa;border:1px solid #d8cdea;border-radius:8px;padding:8px 12px">🎞️ <b>Pack DCP</b> : les vidéos + un fichier à double-cliquer qui fait fabriquer les DCP par DCP-o-matic 2 (gratuit, à installer une fois). Format (2K/4K) et images/s : réglés ci-dessus pour cet onglet ; son et type de contenu : onglet Base de données &gt; Réglages DCP.</div>
 
   <div id="cartonProgress" class="hint"></div>
   <div id="cartonOut" style="margin-top:10px"></div>
@@ -1829,7 +1831,8 @@ function seanceChips(ctx, seances, x, y, maxW, size, color, draw, boxH=0){
 // Petites étiquettes (VO, Avant-première…) ; renvoie la hauteur
 // Caractéristiques (VO, Avant-première, Sortie nationale, Documentaire, Entrée gratuite) : logo de la base commune, sinon étiquette texte
 const CHAR_IMG={};
-async function loadCharImgs(){ for(const [k,,a] of CHARS){ CHAR_IMG[k]=assets[a]?await loadCharLogo(assets[a]):null; } }
+async function loadCharImgs(){ for(const [k,,a] of CHARS){ CHAR_IMG[k]=assets[a]?await loadCharLogo(assets[a]):null; }
+  CHAR_IMG.telethon=assets.telethonLogo?await loadCharLogo(assets.telethonLogo):null; }
 function tagChips(ctx, tags, x, y, maxW, size, draw){
   if(!tags.length) return 0;
   const lh=Math.round(size*3), g=size*.6, ph=size*.5, th=size*1.6;
@@ -1869,6 +1872,7 @@ function filmTags(st, seances){
   if(st.avp) t.push(["Avant-première","#c2410c","avp"]);
   if(st.doc) t.push(["Documentaire","#00695c","doc"]);
   if(st.gratuit) t.push(["Entrée gratuite","#2e7d32","gratuit"]);
+  if(st.telethon) t.push(["Téléthon","#e30613","telethon"]);
   return t;
 }
 
@@ -1878,7 +1882,7 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const pwMax=ROW_PH?Math.round(ROW_PH/POSTER_RATIO):Math.round(290*s*POSTER_PF), poster=await loadImg(st.poster), ratio=poster?poster.height/poster.width:1.42;
   const pw=pwMax;   // colonne de l'affiche
   const tags=filmTags(st,f.seances);
-  const lcw=tags.length?Math.round(Math.min(230*s,(w-pw)*.26)):0, lgap=lcw?Math.round(30*s):0;   // colonne des logos à droite
+  const lcw=0, lgap=0;   // vignettes : en ligne sous le titre (voir plus bas), toutes affichées
   const pass=(draw,dy=0)=>{
   const R=side==="right", tx=R?x:x+pw+Math.round(40*s), tw=w-pw-Math.round(40*s)-lcw-lgap; let ty=y+dy;
     // titre
@@ -1887,6 +1891,8 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     const tl=wrapLines(ctx,title,tw).slice(0,2);
     if(draw){ ctx.fillStyle="#1d1d22"; ctx.textAlign="left"; ctx.textBaseline="top"; tl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*ts*1.0)); }
     ty+=tl.length*ts*0.98+4*s;
+    // vignettes (VO, Sortie nationale, Avant-première, Documentaire, Entrée gratuite, Téléthon) juste sous le titre, toutes sur la ligne (retour à la ligne si besoin)
+    if(tags.length){ ty+=6*s; ty+=tagChips(ctx,tags,tx,ty,tw,Math.round(30*s),draw)+10*s; }
     // genre · durée · public (restrictions)
     const bs=Math.round(30*s), lh=bs*1.26;
     const restr = d.public && !/^tout public$/i.test(d.public.trim());
@@ -1917,7 +1923,7 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     if(!ROW_PH){ ty+=14*s; ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(36*s),color,draw); }
     return ty-y; };
   // encarts des séances : hauteur = 20 % de l'affiche, calés en bas du cadre du film
-  const colH=charColumn(ctx,tags,0,0,lcw,Math.round(22*s),false);
+  const colH=lcw?charColumn(ctx,tags,0,0,lcw,Math.round(22*s),false):0;
   let chipBox=null;
   if(ROW_PH && f.seances.length){
     const cbh=Math.round(ROW_PH*.2), R=side==="right", cx=R?x:x+pw+Math.round(40*s), wide=w-pw-Math.round(40*s), narrow=wide-lcw-lgap;
@@ -2470,16 +2476,22 @@ async function prepareCarton(f, seances, E0){
   for(const k of ["sn","avp","gratuit","doc","vo"]){ if(!st[k]) continue; const a=CHARS.find(c=>c[0]===k);
     const im=assets[a[2]]?await loadCharLogo(assets[a[2]]):null, h=im?VW*im.height/im.width:VW*.38;
     tags.push({k, im, label:a[1], w:VW, h, blink:PB_BLINK.includes(k)}); }
-  const vo=tags.find(t=>t.k==="vo"), top=tags.filter(t=>t.k!=="vo");
-  // rectangle des séances (déplaçable) ; la VO est calée sous le rectangle, qu'elle chevauche sans cacher le texte
+  // logo Téléthon (fixe, jamais clignotant) : sous le rectangle des séances, centré, en le chevauchant légèrement
+  if(st.telethon && assets.telethonLogo){ const im=await loadCharLogo(assets.telethonLogo); if(im){ const w=Math.min(VW*1.15, PW*.42); tags.push({k:"telethon", im, label:"Téléthon", w, h:w*im.height/im.width, blink:false}); } }
+  const vo=tags.find(t=>t.k==="vo"), tl=tags.find(t=>t.k==="telethon"), top=tags.filter(t=>t.k!=="vo"&&t.k!=="telethon");
+  const under=[tl,vo].filter(Boolean), uh=under.length?Math.max(...under.map(t=>t.h)):0;
+  // rectangle des séances (déplaçable) ; Téléthon et VO sont calés dessous, au centre, et le chevauchent sans cacher le texte
   const lh=ss*1.36, padX=ss*1.2, padY=ss*.45, BW=measure()+2*padX;
-  const over=vo?vo.h*.3:0, padB=vo?Math.max(padY, over+ss*.3):padY;
-  const bd=D(E.box), BH=lines.length*lh+padY+padB, BX=BX0+bd.dx, BY=(vo?2082-vo.h+over:2082)-BH+bd.dy;
+  const over=uh?uh*.25:0, padB=uh?Math.max(padY, over+ss*.3):padY;
+  const bd=D(E.box), BH=lines.length*lh+padY+padB, BX=BX0+bd.dx, BY=(uh?2082-uh+over:2082)-BH+bd.dy;
   b.fillStyle=color; b.fillRect(BX,BY,BW,BH); rects.box={x:BX,y:BY,w:BW,h:BH};
-  if(vo){ const vd=D((E.tags||{}).vo); vo.cx=BX+BW/2+vd.dx; vo.cy=BY+BH-over+vo.h/2+vd.dy; }
+  if(under.length){ const gap=VW*.08, tot=under.reduce((a,t)=>a+t.w,0)+gap*(under.length-1); let x=BX+BW/2-tot/2;
+    for(const t of under){ const td=D((E.tags||{})[t.k]); t.cx=x+t.w/2+td.dx; t.cy=BY+BH-over+t.h/2+td.dy; x+=t.w+gap; } }
   // en haut à droite de l'affiche, côte à côte : Toujours à l'affiche, Sortie nationale, Avant-première, Entrée gratuite (clignotantes), Documentaire (fixe)
   top.forEach((t,i)=>{ const td=D((E.tags||{})[t.k]); t.cx=px+PW-i*VW*1.06+td.dx; t.cy=Math.max(t.h/2+30, py-t.h*.25)+td.dy; });
-  for(const t of tags){ rects.tags[t.k]={x:t.cx-t.w/2,y:t.cy-t.h/2,w:t.w,h:t.h}; if(!t.blink) pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}); }
+  for(const t of tags){ rects.tags[t.k]={x:t.cx-t.w/2,y:t.cy-t.h/2,w:t.w,h:t.h};
+    if(t.k==="telethon"){ const m=t.w*.06; b.save(); shadowOn(b,18,.25,6); b.fillStyle="#fff"; rr(b,t.cx-t.w/2-m,t.cy-t.h/2-m,t.w+2*m,t.h+2*m,m); b.fill(); shadowOff(b); b.restore(); }   // cartouche blanc : lisible sur le rectangle coloré
+    if(!t.blink) pbDrawVignette(b,{im:t.im, x:t.cx-t.w/2, y:t.cy-t.h/2, w:t.w, h:t.h, label:t.label, col:color}); }
   if(logo){ const r=rects.logo; b.drawImage(logo,r.x,r.y,r.w,r.h); }
   // ajouts libres (texte, image)
   for(const [i,x] of (E.extras||[]).entries()){
@@ -2942,12 +2954,12 @@ async function renderFondEcran(){
 }
 
 /* ========================== Écrans PB : programme de la semaine en vidéo (3996×2160) ========================== */
-const PB_BLINK=["reprise","sn","avp","gratuit"];   // clignotent ; VO et Documentaire restent fixes
+const PB_BLINK=["reprise","sn","avp","gratuit"];   // le logo Téléthon ne clignote jamais   // clignotent ; VO et Documentaire restent fixes
 const pbJour=d=>`${JOURS[d.getDay()]} ${d.getDate()} - ${d.getHours()}h${d.getMinutes()?pad(d.getMinutes()):""}`;
 // « Toujours à l'affiche » : film en reprise, ou déjà programmé la semaine précédente (historique des Excel)
 function wasShownBefore(key, start){ const prev=weekHist[isoD(addDays(start,-7))]; return !!(prev && prev.films.some(x=>x.key===key)); }
 function pbFlags(f, w){ const cw=curWeek(); const fl=(cw && isoD(cw.start)===isoD(w.start)) ? flags(cw.films.find(x=>x.key===f.key)||f) : charOf(f);
-  return {...fl, reprise: fl.reprise || wasShownBefore(f.key, w.start)}; }
+  return {...fl, reprise: fl.reprise || wasShownBefore(f.key, w.start), telethon:!!(filmState[f.key]||{}).telethon}; }
 // tampon vert « Toujours à l'affiche » (films en reprise), dessiné comme sur le modèle
 function stampToujours(w){
   const h=Math.round(w*.42), c=canvas(Math.round(w*1.1),Math.round(h*1.6)), x=c.getContext("2d");
@@ -3038,6 +3050,7 @@ async function preparePB(w){
     // vignettes sous le cadre : fixes (VO, Documentaire) et clignotantes (Sortie nationale, Avant-première, Entrée gratuite)
     const vh=Math.max(c.ph*.24, fs*1.9); let vx=bx+bw; const vy=by+bh+vh*.18;
     const below=[]; for(const [k,label,a] of CHARS){ if(!fl[k] || k==="reprise") continue; below.push({k,label,im:CHAR_IMG[k]}); }
+    if(fl.telethon && CHAR_IMG.telethon) below.push({k:"telethon", label:"Téléthon", im:CHAR_IMG.telethon});
     for(const v of below.reverse()){
       const vw=v.im?vh*v.im.width/v.im.height:vh*2.6; vx-=vw;
       const item={im:v.im, x:vx, y:vy, w:vw, h:vh, label:v.label, col}; used.push({x:vx,y:vy,w:vw,h:vh});
@@ -3136,9 +3149,10 @@ async function generatePB(){
     // le dernier écran de la quinzaine part en stock pour la quinzaine suivante
     if(done[isoD(q2)]) await flyerStockSet(isoD(q2), {...done[isoD(q2)], fps, T, mode, made:new Date().toISOString()});
     if(stock) done[isoD(prev)]={blob:stock.blob, poster:stock.poster};
-    const LT=parseDur($("#pbLoop").value), trans=$("#pbTrans").checked; try{ localStorage.setItem("pbLoop",$("#pbLoop").value); localStorage.setItem("pbTrans",trans?"1":"0"); }catch(e){}
+    const LT1=parseDur($("#pbLoop").value), LT2=parseDur($("#pbLoop2").value)||LT1, trans=$("#pbTrans").checked;
+    try{ localStorage.setItem("pbLoop",$("#pbLoop").value); localStorage.setItem("pbLoop2",$("#pbLoop2").value); localStorage.setItem("pbTrans",trans?"1":"0"); }catch(e){}
     let di=0;
-    for(const d of dossiers){ di++;
+    for(const d of dossiers){ di++; const LT=di===1?LT1:LT2;      // boucle 1 : 3 écrans (stock + quinzaine) ; boucle 2 : les 2 semaines
       const ddmm=x=>`${pad(x.getDate())}-${pad(x.getMonth()+1)}`, tag=ddmm(d.start);
       const files=d.slots.map((sl,i)=>({name:`${i+1}_semaine_du_${ddmm(sl.date)}.mp4`, date:sl.date, stock:!!sl.stock, ...(done[isoD(sl.date)]||{})}));
       // vidéo en boucle de la durée totale choisie (écrans disponibles, dans l'ordre)
@@ -3147,11 +3161,11 @@ async function generatePB(){
         for(const f of av){ const P=preps[f.iso||isoD(f.date)]; scr.push(P?((ctx,t)=>drawPBFrame(ctx,P,t,mode)):await stockDrawer(f.blob)); }
         if(scr.length){ const pl=loopPlan(LT,scr.length);
           const r=await encodeLoop(scr, LT, fps, trans, p=>pr.textContent=`Boucle ${di}/${dossiers.length} (${fmtMS(LT)}, ${pl.n} passages de ${pl.d.toFixed(1)} s)… ${Math.round(p*100)} %`);
-          loopFile={name:`flyers_ecran_du_${tag}_boucle_${fmtMS(LT).replace(":","m")}.mp4`, date:d.start, loop:true, plan:r.plan, blob:r.blob, poster:r.poster}; } }
+          loopFile={name:`flyer_${di}_boucle_du_${tag}_${fmtMS(LT).replace(":","m")}.mp4`, date:d.start, loop:true, plan:r.plan, missing:d.slots.length-scr.length, blob:r.blob, poster:r.poster}; } }
       if(loopFile) files.unshift(loopFile);
       pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
-      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyers du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.filter(f=>!f.loop).length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}${loopFile?` + boucle de ${fmtMS(LT)}`:""}</h3>
+      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyer ${di} — du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.filter(f=>!f.loop).length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}${loopFile?` + boucle de ${fmtMS(LT)}`:""}</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant (onglet Base de données).</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
         <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
@@ -3162,7 +3176,7 @@ async function generatePB(){
           el.querySelector("button").onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.accept="video/mp4,video/*";
             ip.onchange=async()=>{ const fl=ip.files[0]; if(!fl) return; const o={blob:fl, poster:"", fps, T, mode, made:new Date().toISOString()}; await flyerStockSet(isoD(f.date),o); f.blob=fl; f.poster=""; el.innerHTML=""; el.removeAttribute("style"); drawCard(f,el); }; ip.click(); };
           return; }
-        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" ${f.poster?`poster="${f.poster}"`:""} controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b>${f.stock?'<span class="hint" style="margin:0">📦 repris du stock (quinzaine précédente)</span>':""}${f.loop?`<span class="hint" style="margin:0">🔁 boucle : ${f.plan.n} écrans de ${f.plan.d.toFixed(1)} s${f.plan.ok?"":" ⚠️ hors de 7–10 s (durée totale trop courte ou trop longue pour ce nombre d'écrans)"}${trans?", fondu 0,5 s":""}</span>`:""}<button class="small">⬇ MP4</button>`;
+        el.innerHTML=`<video src="${URL.createObjectURL(f.blob)}" ${f.poster?`poster="${f.poster}"`:""} controls muted loop style="width:100%;border-radius:5px;background:#000"></video><b>${esc(f.name)}</b>${f.stock?'<span class="hint" style="margin:0">📦 repris du stock (quinzaine précédente)</span>':""}${f.loop?`<span class="hint" style="margin:0">🔁 boucle : ${f.plan.n} écrans de ${f.plan.d.toFixed(1)} s${f.plan.ok?"":" ⚠️ hors de 7–10 s (durée totale trop courte ou trop longue pour ce nombre d'écrans)"}${trans?", fondu 0,5 s":""}${f.missing?` · ⚠️ ${f.missing} écran manquant (écran de la quinzaine passée pas encore en stock : dépose son MP4 dans la case en attente puis régénère)`:""}</span>`:""}<button class="small">⬇ MP4</button>`;
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); };
       files.forEach(f=>{ f.iso=isoD(f.date); const el=document.createElement("div"); drawCard(f,el); grid.appendChild(el); });
       const ready=()=>files.filter(f=>f.blob);
@@ -3177,7 +3191,11 @@ async function generatePB(){
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 }
-try{ const v=localStorage.getItem("pbLoop"); if(v!=null&&$("#pbLoop")) $("#pbLoop").value=v; if(localStorage.getItem("pbTrans")==="0"&&$("#pbTrans")) $("#pbTrans").checked=false; }catch(e){}
+try{ const r=localStorage.getItem("pbDcpRes")||(settings.dcpRes||DEFAULTS.dcpRes), f=localStorage.getItem("pbFpsSel");
+  if($("#pbDcpRes")) $("#pbDcpRes").value=r; if(f&&$("#pbFps")) $("#pbFps").value=f;
+  $("#pbDcpRes")&&($("#pbDcpRes").onchange=e=>{ try{ localStorage.setItem("pbDcpRes",e.target.value); }catch(_){} });
+  $("#pbFps")&&$("#pbFps").addEventListener("change",e=>{ try{ localStorage.setItem("pbFpsSel",e.target.value); }catch(_){} }); }catch(e){}
+try{ const v=localStorage.getItem("pbLoop"), v2=localStorage.getItem("pbLoop2"); if(v!=null&&$("#pbLoop")) $("#pbLoop").value=v; if(v2!=null&&$("#pbLoop2")) $("#pbLoop2").value=v2; if(localStorage.getItem("pbTrans")==="0"&&$("#pbTrans")) $("#pbTrans").checked=false; }catch(e){}
 document.addEventListener("click",e=>{ if(e.target && e.target.id==="btnPB") bgTask("flyerspb","Flyers écran","flyerspb","#pbProgress",generatePB); });
 
 /* ========================== Éditeur de carton (retouches dans l'outil) ========================== */
@@ -3271,7 +3289,9 @@ function openCartonEditor(f, seances, onDone, week){
 const dcpSafe=s=>norm(String(s)).replace(/[^a-z0-9]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,60)||"carton";
 const DCP_TYPES=[["POL","Code de conduite (POL)"],["ADV","Publicité (ADV)"],["PSA","Message d'intérêt public (PSA)"],["SHR","Court métrage (SHR)"],["TLR","Bande-annonce (TLR)"],["TSR","Teaser (TSR)"],["TST","Test (TST)"],["FTR","Long métrage (FTR)"]];
 function dcpOptions(px=""){ const S=k=>settings[k]||DEFAULTS[k];
-  return {mode:S("dcpMode"), type:px==="pb"?S("dcpTypeFlyer"):S("dcpTypeCarton"), fps:S("dcpFps"), res:S("dcpRes"), ch:S("dcpChannels")}; }
+  const o={mode:S("dcpMode"), type:px==="pb"?S("dcpTypeFlyer"):S("dcpTypeCarton"), fps:S("dcpFps"), res:S("dcpRes"), ch:S("dcpChannels")};
+  if(px==="pb"){ if($("#pbDcpRes")) o.res=$("#pbDcpRes").value; if($("#pbFps")) o.fps=$("#pbFps").value; }   // Flyers écran : réglages de l'onglet (DCP à la cadence des MP4)
+  return o; }
 function dcpScripts(packName, items, o){
   const common=`-c ${o.type} --container-ratio 185 ${o.res==="2K"?"--twok":"--fourk"} --standard SMPTE --no-use-isdcf-name -f ${o.fps} -a ${o.ch}`;
   const jobs=o.mode==="enchaine" ? [{name:dcpSafe(packName), files:items.map(i=>i.name)}] : items.map(i=>({name:i.dcp||dcpSafe(packName+"_"+i.name.replace(/\.mp4$/i,"")), files:[i.name]}));
