@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 15h00</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 12h40</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -215,7 +215,6 @@
   <div class="row" style="margin-bottom:12px">
     <button class="primary" id="btnZip">⬇ Réseaux sociaux</button>
     <button class="primary" id="btnNews" style="background:#1a1a1a">⬇ Newsletter (HTML)</button>
-    <button class="primary" id="btnNewsCourt" style="background:#555">⬇ Newsletter courte</button>
   </div>
   <div id="planWarn"></div>
   <div id="metaBox" style="border:2px solid #1877f2;border-radius:10px;padding:14px 16px;margin:0 0 16px;background:#f4f8ff">
@@ -281,7 +280,8 @@
   <div id="pbRoot"></div>
   <style>.pbBlock{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fff}.pbBlock h3{margin:0 0 6px}
   .pbModels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.pbModel{display:flex;flex-direction:column;gap:4px;border:1px solid #eee;border-radius:8px;padding:8px}
-  .pbJobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}.pbJob{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.pbJob h4{margin:0 0 4px}
+  .pbJobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(640px,1fr));gap:12px}
+  .pbJob li{display:flex;align-items:center;gap:8px;white-space:nowrap}.pbJob li .pbT{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}.pbJob li .pbI{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}.pbJob li .pbB{margin-left:auto;flex:none}.pbJob{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.pbJob h4{margin:0 0 4px}
   .pbJob ol{margin:4px 0 8px;padding-left:22px}.pbJob li{margin:3px 0;font-size:14px}.pbJob li.pbOff{opacity:.45}.pbJob li button{padding:1px 6px}</style>
 </section>
 <section data-tab="pbhall" hidden><h2>📺 PB Hall — vidéos 720p pour la TV du hall</h2>
@@ -328,6 +328,8 @@
   <div class="row" style="margin-top:10px">
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="cartonFps"><option value="30">30</option><option value="60">60</option></select></label>
     <label style="font-size:14px;font-weight:600">Son de vieille machine à écrire <select id="cartonSon"><option value="-18" selected>volume bas (conseillé en salle)</option><option value="-24">très bas</option><option value="-12">moyen</option><option value="off">sans son</option></select></label>
+    <label style="font-size:14px;font-weight:600"><input type="checkbox" id="cartonBlur" checked> Flouter l'arrière-plan</label>
+    <label style="font-size:14px;font-weight:600">Flou <input type="range" id="cartonBlurPx" min="0" max="120" step="2" value="48" style="width:120px"> <span id="cartonBlurV">48</span></label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="cartonMode"><option value="pulse">pulsation</option><option value="clignote">clignotement</option></select></label>
     <button class="primary" id="btnCartons" style="background:#6e264c">🎬 Générer les cartons de la quinzaine (MP4)</button>
     <button id="btnCartonsZip" disabled>⬇ Tous les cartons (ZIP)</button>
@@ -358,7 +360,7 @@ const DEFAULTS = {
   flyerAddress:"4 passage Lino Ventura — La Pommeraye, 49620 Mauges-sur-Loire", phone:"", web:"cinemagrandecran.org",
   hashtags:"#cinema #artetessai #lapommeraye #maugessurloire #anjou #cinemagrandecran",
   tCarousel:"09:30", tFilms:"10:00", synLen:"250",
-  hallMusic:"1", pbVol:"20", pbFadeIn:"1.0", pbFadeOut:"1.0", pbRes:"4K", pbFps:"30", pbType:"TLR",
+  hallMusic:"1", hallIntroChoice:"auto", hallVol:"20", hallFadeIn:"1.0", hallFadeOut:"1.0", pbIntroChoice:"auto", pbVol:"20", pbFadeIn:"1.0", pbFadeOut:"1.0", pbRes:"4K", pbFps:"30", pbType:"TLR",
   dcpRes:"4K", dcpFps:"30", dcpChannels:"6", dcpTypeCarton:"POL", dcpTypeFlyer:"ADV", dcpMode:"separes",
   cAdult:"#80923E", cReduit:"#2D3B4D", cJeune:"#FBD30F"
 };
@@ -1327,7 +1329,7 @@ async function renderCompact(boxId, only=null){
     for(const f of w.films){
       const st=filmState[f.key], fl=flags(f), el=document.createElement("div"); el.className="cfilm";
       el.innerHTML=`<div class="cposter" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"":"affiche manquante"}</div>
-        <b>${esc(titleOf(f))}</b>${boxId==="#flyerFilms"?"":`<div class="tags">${charBoxes(fl)}</div>`}`;
+        <b>${esc(titleOf(f))}</b>`;   // cases : dans Base de données > Infos du film
       el.dataset.fkey=f.key;
       el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));
       grid.appendChild(el);
@@ -1699,7 +1701,7 @@ ${head}${body}${prochainement?`
 </html>
 `;
 }
-$("#btnNewsCourt").onclick=()=>downloadNewsletter(true);
+
 $("#btnNews").onclick=()=>downloadNewsletter(false);
 async function downloadNewsletter(court){
   for(const f of allFilms()) if(!details[f.key]) await loadInfo(f);
@@ -1978,7 +1980,8 @@ function filmTags(st, seances){
 // Bloc film : affiche à gauche, infos à droite. draw=false → mesure seulement.
 async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const st={...(filmState[f.key]||{}), ...flags(f)}, d=findDetails(f.key)||{}, color=st.ecran||st.color||(st.palette||[])[0]||"#6E264C";
-  const pwMax=ROW_PH?Math.round(ROW_PH/POSTER_RATIO):Math.round(290*s*POSTER_PF), poster=await loadImg(st.poster), ratio=poster?poster.height/poster.width:1.42;
+  const K3=(ROW_PH && FLYER_LAYOUT==="deux")?.72:1;   // option 3 : affiches réduites pour laisser plus de place aux infos
+  const pwMax=ROW_PH?Math.round(ROW_PH*K3/POSTER_RATIO):Math.round(290*s*POSTER_PF), poster=await loadImg(st.poster), ratio=poster?poster.height/poster.width:1.42;
   const pw=pwMax;   // colonne de l'affiche
   const tags=filmTags(st,f.seances);
   const lcw=0, lgap=0;   // vignettes : en ligne sous le titre (voir plus bas), toutes affichées
@@ -1987,11 +1990,21 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     // titre
     let ts=Math.round(104*s); ctx.font=`${ts}px ${FONT}`;
     const title=(d.title||f.title).toUpperCase();
-    const tl=wrapLines(ctx,title,tw).slice(0,2);
-    if(draw){ ctx.fillStyle="#1d1d22"; ctx.textAlign="left"; ctx.textBaseline="top"; tl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*ts*1.0)); }
+    // vignettes (VO, Sortie nationale, Avant-première, Documentaire, Entrée gratuite, Téléthon) sur la ligne du titre, côté affiche :
+    // affiche / vignettes / titre (affiche à gauche) ou titre / vignettes / affiche (affiche à droite)
+    const vh=Math.round(ts*.82), vg=Math.round(12*s), vits=tags.map(([t,c,k])=>{ const im=k&&CHAR_IMG[k]; if(im) return {im,w:vh*im.width/im.height};
+      ctx.font=`bold ${Math.round(vh*.34)}px ${BODY}`; return {t,c,w:ctx.measureText(t).width+vh*.5}; });
+    let vw=vits.reduce((a,v)=>a+v.w,0)+vg*Math.max(0,vits.length-1); if(vw>tw*.45){ const k2=tw*.45/vw; vits.forEach(v=>v.w*=k2); vw=tw*.45; }
+    const tgap=vits.length?Math.round(22*s):0, ttw=tw-vw-tgap, ttx=R?tx:tx+vw+tgap;
+    ctx.font=`${ts}px ${FONT}`;
+    const tl=wrapLines(ctx,title,ttw).slice(0,2);
+    if(draw){ ctx.fillStyle="#1d1d22"; ctx.textAlign="left"; ctx.textBaseline="top"; tl.forEach((l,i)=>ctx.fillText(l,ttx,ty+i*ts*1.0));
+      if(vits.length){ ctx.font=`${ts}px ${FONT}`; let vx=R?Math.min(tx+tw-vw, ttx+ctx.measureText(tl[0]||"").width+tgap):tx;   // juste après le titre const hh=Math.min(vh, vh*vw/Math.max(1,vw)); const vy=ty+(ts*0.86-hh)/2;
+        for(const v of vits){ const h2=v.im?v.w*v.im.height/v.im.width:hh;
+          if(v.im) ctx.drawImage(v.im,vx,ty+(ts*0.86-h2)/2,v.w,h2);
+          else { ctx.font=`bold ${Math.round(h2*.34)}px ${BODY}`; ctx.strokeStyle=v.c; ctx.lineWidth=Math.max(2,h2*.05); rr(ctx,vx,vy,v.w,h2*.6,h2*.3); ctx.stroke(); ctx.fillStyle=v.c; ctx.textBaseline="middle"; ctx.fillText(v.t,vx+h2*.25,vy+h2*.3); ctx.textBaseline="top"; }
+          vx+=v.w+vg; } } }
     ty+=tl.length*ts*0.98+4*s;
-    // vignettes (VO, Sortie nationale, Avant-première, Documentaire, Entrée gratuite, Téléthon) juste sous le titre, toutes sur la ligne (retour à la ligne si besoin)
-    if(tags.length){ ty+=6*s; ty+=tagChips(ctx,tags,tx,ty,tw,Math.round(30*s),draw)+10*s; }
     // genre · durée · public (restrictions)
     const bs=Math.round(30*s), lh=bs*1.26;
     const restr = d.public && !/^tout public$/i.test(d.public.trim());
@@ -2013,10 +2026,11 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     const synBase=syn400Cache[f.key]||(d.synopsis?wholeSentences(d.synopsis,SYN_MAX):"");
     const synTxt=synBase.length<=synMax?synBase:wholeSentences(synBase,synMax);   // phrases entières seulement
     if(synTxt){
-      ty+=8*s; ctx.font=`${bs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
+      const sfs=SYNFS||Math.round(bs*SYN_K), slh=sfs*1.22;      // synopsis : police agrandie au maximum (voir plus bas)
+      ty+=8*s; ctx.font=`${sfs}px ${BODY}`; ctx.textBaseline="top"; ctx.textAlign="left";
       const sl=wrapLines(ctx,synTxt,tw);
-      if(draw){ ctx.fillStyle="#222"; sl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*lh)); }
-      ty+=sl.length*lh;
+      if(draw){ ctx.fillStyle="#222"; sl.forEach((l,i)=>ctx.fillText(l,tx,ty+i*slh)); }
+      ty+=sl.length*slh;
     }
     // séances (hors cadre fixe : à la suite du texte)
     if(!ROW_PH){ ty+=14*s; ty+=seanceChips(ctx,f.seances,tx,ty,tw,Math.round(36*s),color,draw); }
@@ -2025,20 +2039,28 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
   const colH=lcw?charColumn(ctx,tags,0,0,lcw,Math.round(22*s),false):0;
   let chipBox=null;
   if(ROW_PH && f.seances.length){
-    const cbh=Math.round(ROW_PH*.2), R=side==="right", cx=R?x:x+pw+Math.round(40*s), wide=w-pw-Math.round(40*s), narrow=wide-lcw-lgap;
+    const cbh=Math.round(ROW_PH*(FLYER_LAYOUT==="deux"?.14:.2)), R=side==="right", cx=R?x:x+pw+Math.round(40*s), wide=w-pw-Math.round(40*s), narrow=wide-lcw-lgap;
     let cw=wide, chH=seanceChips(ctx,f.seances,0,0,cw,0,color,false,cbh);
     if(lcw && colH>ROW_PH-chH-ROW_PH*.04){ cw=narrow; chH=seanceChips(ctx,f.seances,0,0,cw,0,color,false,cbh); }
     chipBox={cx,cw,cbh,chH,gap:Math.round(ROW_PH*.04)};
   }
-  const txtOnly=pass(false), txtH=txtOnly+(chipBox?chipBox.gap+chipBox.chH:0), th=Math.max(txtH, colH);
+  let SYNFS=0;
+  const txtOnly0=pass(false), txtH=txtOnly0+(chipBox?chipBox.gap+chipBox.chH:0), th=Math.max(txtH, colH);
+  // synopsis le plus grand possible dans la case (au-dessus des séances), même taille pour tous les films d'une même semaine
+  if(draw && ROW_PH){ const room=ROW_PH-(chipBox?chipBox.gap+chipBox.chH:0)-Math.round(6*s), base=Math.round(30*s*SYN_K);
+    let kmax=1; for(let k=1.9;k>1.001;k-=0.03){ SYNFS=Math.round(base*k); if(pass(false)<=room){ kmax=k; break; } SYNFS=0; }
+    const synOk=!!(syn400Cache[f.key]||d.synopsis);
+    if(FLY_SYN_FIX===null){ if(synOk) FLY_SYN_REC[f.key]=kmax; SYNFS=Math.round(base*kmax); }
+    else { const k=Math.min(kmax, FLY_SYN_FIX[f.key]||kmax); SYNFS=k>1.001?Math.round(base*k):0; } }
+  const txtOnly=pass(false);
   // affiche : à la hauteur du texte (sans dépasser sa largeur de colonne ni descendre sous 60 % de sa taille)
   // toutes les affiches à la même largeur (colonne entière), hauteur selon leur format
-  const aw=pwMax, ph=ROW_PH||pwMax*ratio;
+  const aw=pwMax, ph=ROW_PH||pwMax*ratio, aph=ROW_PH?Math.round(ROW_PH*K3):ph;   // aph : hauteur de l'affiche dessinée
   if(draw){
     const ax=side==="right"?x+w-pwMax:x;   // affiche calée au bord gauche ou droit
     if(poster && ROW_PH){ // affiche à la hauteur de la ligne, même cadre pour toutes
-      ctx.save(); shadowOn(ctx,14,.25,5); ctx.fillStyle="#000"; ctx.fillRect(ax,y,aw,ph); shadowOff(ctx);
-      ctx.beginPath(); ctx.rect(ax,y,aw,ph); ctx.clip(); cover(ctx,poster,ax,y,aw,ph); ctx.restore(); }
+      ctx.save(); shadowOn(ctx,14,.25,5); ctx.fillStyle="#000"; ctx.fillRect(ax,y,aw,aph); shadowOff(ctx);
+      ctx.beginPath(); ctx.rect(ax,y,aw,aph); ctx.clip(); cover(ctx,poster,ax,y,aw,aph); ctx.restore(); }
     else if(poster){ shadowOn(ctx,14,.25,5); ctx.drawImage(poster,ax,y,aw,ph); shadowOff(ctx); }
     else { ctx.fillStyle="#ddd"; ctx.fillRect(ax,y,aw,ph); }
     const avail=ph-(chipBox?chipBox.gap+chipBox.chH:0);
@@ -2334,7 +2356,17 @@ async function regionNeed(pt, w, cols, s, syn, GAP){
 }
 
 // Programme de quinzaine : 1re semaine au recto, 2e semaine au verso (+ pied de page)
+// le flyer est composé deux fois : la 1re fois mesure la plus grande taille de synopsis possible pour chaque film,
+// la 2e applique à chaque semaine la plus petite de ces tailles (textes de même taille sur une même page)
+let FLY_SYN_FIX=null, FLY_SYN_REC={};
+const SYN_K=1.4;   // synopsis : 40 % plus grand que les autres lignes d'infos, avant agrandissement pour remplir la case
 async function renderFlyer(){
+  FLY_SYN_FIX=null; FLY_SYN_REC={};
+  const r1=await renderFlyer0(); const fix={};
+  for(const w of (r1.weeks||[])){ const ks=w.films.map(f=>FLY_SYN_REC[f.key]).filter(Boolean); const m=ks.length?Math.min(...ks):1; for(const f of w.films) fix[f.key]=Math.min(fix[f.key]||9, m); }
+  FLY_SYN_FIX=fix; try{ return await renderFlyer0(); } finally { FLY_SYN_FIX=null; }
+}
+async function renderFlyer0(){
   FLYER_LAYOUT=($("#flyerLayout")&&$("#flyerLayout").value)||"auto";
   await document.fonts.load(`100px "Bebas Neue"`, "ÉÀ0123456789");
   const ws=weekPair.map(i=>weeks[i]).filter(Boolean);
@@ -2546,6 +2578,11 @@ async function editsLoad(){
   if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/carton-edits.json",{cache:"no-store"}); if(r.ok) Object.assign(cartonEdits, await r.json()); }catch(e){} }
 }
 function editsSave(){ Store.set("cartonEdits",cartonEdits); if(SHARED && !sharedLoading) api("PUT","file/carton-edits.json",JSON.stringify(cartonEdits),"application/json").catch(e=>console.warn(e)); }
+// flou de l'arrière-plan des cartons : case + curseur (48 px par défaut, l'équivalent du flou des publications en 4K), mémorisés
+function cartonBlurPx(){ const cb=$("#cartonBlur"), r=$("#cartonBlurPx"); if(cb && !cb.checked) return 0; return r?Number(r.value)||0:48; }
+setTimeout(()=>{ try{ const cb=$("#cartonBlur"), r=$("#cartonBlurPx"), v=$("#cartonBlurV"); if(!cb) return;
+  const a=localStorage.getItem("cartonBlur"), b=localStorage.getItem("cartonBlurPx"); if(a!=null) cb.checked=a==="1"; if(b!=null){ r.value=b; v.textContent=b; }
+  cb.onchange=()=>localStorage.setItem("cartonBlur",cb.checked?"1":"0"); r.oninput=()=>{ v.textContent=r.value; localStorage.setItem("cartonBlurPx",r.value); }; }catch(e){} },0);
 async function prepareCarton(f, seances, E0){
   const E=E0||cartonEdits[editKey(f)]||{}, D=(o)=>o||{dx:0,dy:0};
   const cw=CARTON_WEEK||curWeek(), st={...(filmState[f.key]||{}), ...(cw?pbFlags(f,cw):flags(f))};
@@ -2606,8 +2643,12 @@ async function prepareCarton(f, seances, E0){
   const F=canvas(CW_,CH_), fx=F.getContext("2d"); fx.fillStyle="#fff"; fx.fillRect(0,0,CW_,CH_);
   let bgGeom=null;
   if(still){ fx.save(); fx.globalAlpha=.6;
-    if(E.bg){ bgGeom={...E.bg}; fx.drawImage(still,E.bg.ox,E.bg.oy,E.bg.iw,E.bg.ih); }
-    else { const g=await cartonBackground(fx,still,covers); bgGeom={ox:g.ox,oy:g.oy,iw:g.iw,ih:g.ih}; }
+    const bl=cartonBlurPx(), BW=fx.canvas.width, BH=fx.canvas.height, tmp=canvas(BW,BH), tx=tmp.getContext("2d");
+    if(E.bg){ bgGeom={...E.bg}; tx.drawImage(still,E.bg.ox,E.bg.oy,E.bg.iw,E.bg.ih); }
+    else { const g=await cartonBackground(tx,still,covers); bgGeom={ox:g.ox,oy:g.oy,iw:g.iw,ih:g.ih}; }
+    if(bl>0){ const m=Math.ceil(bl*2), pd=canvas(BW+2*m,BH+2*m), px=pd.getContext("2d");   // marge prolongée : pas de bords clairs une fois flouté
+      px.drawImage(tmp,0,0,pd.width,pd.height); px.drawImage(tmp,m,m); fx.filter=`blur(${bl}px)`; fx.drawImage(pd,-m,-m); }
+    else fx.drawImage(tmp,0,0);
     fx.restore(); }
   fx.drawImage(bg,0,0);
   return {bg:F, blinkers, lines, ss, lh, BX, BY, BW, BH, padY, color, T:cartonDuration(lines.length), rects, bgGeom, still, defaultLines:seances.map(d=>pbJour(d)+(d.showLang?` (${d.showLang})`:""))};
@@ -3764,10 +3805,94 @@ async function readyMount(root, o){
   readyTimers[o.key]=setInterval(()=>{ if(document.hidden || currentTab!==o.tab || !host.isConnected){ if(!host.isConnected) clearInterval(readyTimers[o.key]); return; }
     if(host.querySelector("[data-rdl][disabled]") && !document.querySelector("video:not([muted])[src^='blob:']")) draw(); }, 20000);
 }
+/* ---- Base de musiques (dossier de travail, sous-dossier « musiques ») ----
+   ecran : morceaux de l'écran fixe de 10 min, enchaînés (fondu 0,5 s au début et à la fin, fondus croisés entre deux morceaux),
+           choisis chaque semaine pour atteindre au moins 10 min au plus près ; intro : musiques des intros / fins BA */
+let musicDb={ecran:[], intro:[]};
+const MUS_XF=0.5;
+async function musicDbLoad(){ musicDb={ecran:[], intro:[], ...((await Store.get("musicDb"))||{})}; }
+function musicDbSave(){ Store.set("musicDb",musicDb); }
+function audioDur(file){ return new Promise(res=>{ const a=document.createElement("audio"), u=URL.createObjectURL(file); let done=false;
+  const end=d=>{ if(done) return; done=true; URL.revokeObjectURL(u); res(d); }; a.preload="metadata"; a.onloadedmetadata=()=>end(a.duration||0); a.onerror=()=>end(0); setTimeout(()=>end(0),15000); a.src=u; }); }
+async function musicAdd(dir, cat, files){
+  for(const f of files){ const ext=(f.name.split(".").pop()||"mp3").toLowerCase(), base=f.name.replace(/\.[^.]+$/,""), rel=`musiques/${cat}/${pbSafe(base)}.${ext}`;
+    await pbWrite(dir, rel, f); const dur=await audioDur(f);
+    musicDb[cat]=(musicDb[cat]||[]).filter(m=>m.file!==rel); musicDb[cat].push({file:rel, title:base.replace(/[_]+/g," "), dur}); }
+  musicDbSave();
+}
+let musicAudio=null;
+async function musicPlay(dir, m, btn){
+  if(musicAudio){ const same=musicAudio._file===m.file; musicAudio.pause(); URL.revokeObjectURL(musicAudio.src); document.querySelectorAll("[data-mplay]").forEach(b=>b.textContent="▶"); musicAudio=null; if(same) return; }
+  const f=await pbGetFile(dir, m.file); if(!f){ toast("Fichier introuvable : "+m.file); return; }
+  const a=new Audio(URL.createObjectURL(f)); a._file=m.file; musicAudio=a; btn.textContent="■"; a.play().catch(()=>{});
+  const stop=()=>{ if(musicAudio===a){ a.pause(); URL.revokeObjectURL(a.src); musicAudio=null; btn.textContent="▶"; } };
+  setTimeout(stop,30000); a.onended=stop;                 // écoute limitée à 30 s
+}
+function seeded(str){ let seed=[...str].reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619),2166136261)>>>0;
+  return ()=>{ seed=(seed+0x6D2B79F5)>>>0; let t=seed; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+// liste de la semaine : au moins 10 min (fondus croisés compris), la plus proche possible, différente d'une semaine à l'autre
+function pickPlaylist(seedStr, target=PB_A){
+  const T=(musicDb.ecran||[]).filter(m=>m.dur>2); if(!T.length) return null;
+  const rnd=seeded(seedStr), eff=l=>l.reduce((a,m)=>a+m.dur,0)-MUS_XF*Math.max(0,l.length-1);
+  const cand=new Map();
+  for(let it=0; it<800; it++){ const pool=[...T]; for(let i=pool.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+    const l=[]; let k=0; while(eff(l)<target && k<200){ l.push(pool[k%pool.length]); k++; }    // si la base est courte, les morceaux reviennent
+    const key=l.map(m=>m.file).sort().join("|"); if(!cand.has(key)) cand.set(key,{l, ex:eff(l)-target}); }
+  // parmi les sélections les plus proches de 10 min (à 5 s près), une différente chaque semaine
+  const all=[...cand.values()], min=Math.min(...all.map(c=>c.ex)), ok=all.filter(c=>c.ex<=min+5).sort((x,y)=>x.ex-y.ex);
+  return ok[Math.floor(rnd()*ok.length)].l;
+}
+// musique des intros / fins BA : choix fixe, ou automatique (change chaque semaine), sinon le fichier modèle « musique »
+async function pbIntroMusic(dir, seedStr, key="pbIntroChoice"){
+  const ch=pbS(key)||"auto", L=(musicDb.intro||[]).filter(m=>m.dur>0);
+  if(ch!=="auto" && ch!=="model"){ const m=L.find(x=>x.file===ch); if(m && await pbGetFile(dir,m.file)) return {path:m.file, title:m.title}; }
+  if(ch==="auto" && L.length){ const m=L[Math.floor(seeded(seedStr)()*L.length)]; if(await pbGetFile(dir,m.file)) return {path:m.file, title:m.title}; }
+  const mm=await pbModelFile(dir,"musique"); return mm?{path:mm.path, title:"musique (modèle)"}:null;
+}
+function musicBlock(){
+  const row=(cat,m,i)=>`<div class="row" style="gap:8px;align-items:center;flex-wrap:nowrap;margin:3px 0"><button class="small" data-mplay="${cat}:${i}" title="écouter 30 s">▶</button>
+    <input data-mtitle="${cat}:${i}" value="${esc(m.title)}" style="flex:1;min-width:120px"><span class="hint" style="margin:0;min-width:60px">${m.dur?fmtMS(m.dur):"?"}</span><button class="small" data-mrm="${cat}:${i}">✕</button></div>`;
+  const tot=(musicDb.ecran||[]).reduce((a,m)=>a+(m.dur||0),0);
+  const jobs=pbJobList(), prop=jobs.map(j=>{ const l=pickPlaylist(isoD(j.date)+j.kind); return l?`<div><b>${j.id}</b> : ${l.map(m=>esc(m.title)).join(" · ")} <span class="hint" style="margin:0">(${fmtMS(l.reduce((a,m)=>a+m.dur,0)-MUS_XF*(l.length-1))})</span></div>`:""; }).join("");
+  const ch=pbS("pbIntroChoice")||"auto";
+  return `<div class="pbBlock"><h3>🎵 Musiques</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div><b>Écran fixe 10 min</b> <span class="hint" style="margin:0">— ${musicDb.ecran.length} morceau(x), ${fmtMS(tot)} au total</span>
+      ${musicDb.ecran.map((m,i)=>row("ecran",m,i)).join("")||'<p class="hint">Aucun morceau : l\'écran fixe garde le son de sa vidéo.</p>'}
+      <button class="small" data-madd="ecran">＋ Ajouter des morceaux</button>
+      <p class="hint" style="margin:6px 0 2px">Fondu de 0,5 s au début et à la fin de chaque morceau, les deux fondus se chevauchant entre deux morceaux. Chaque semaine, une sélection différente d'au moins 10 min (au plus près) :</p>${prop}</div>
+    <div><b>Intros / fins BA</b> <span class="hint" style="margin:0">— ${musicDb.intro.length} morceau(x)</span>
+      ${musicDb.intro.map((m,i)=>row("intro",m,i)).join("")}
+      <button class="small" data-madd="intro">＋ Ajouter des morceaux</button>
+      <label style="display:block;margin-top:8px">Musique utilisée <select data-pbset="pbIntroChoice"><option value="auto"${ch==="auto"?" selected":""}>automatique (change chaque semaine)</option><option value="model"${ch==="model"?" selected":""}>fichier « Musique des intros / fins BA » (étape 2)</option>${musicDb.intro.map(m=>`<option value="${esc(m.file)}"${ch===m.file?" selected":""}>${esc(m.title)}</option>`).join("")}</select></label></div>
+  </div></div>`;
+}
+// PB Hall : mêmes musiques d'intros / fins BA (base partagée avec PB écran), choix, volume et fondus propres au hall
+function musicBlockHall(jobs){
+  const row=(m,i)=>`<div class="row" style="gap:8px;align-items:center;flex-wrap:nowrap;margin:3px 0"><button class="small" data-mplay="intro:${i}" title="écouter 30 s">▶</button>
+    <input data-mtitle="intro:${i}" value="${esc(m.title)}" style="flex:1;min-width:120px"><span class="hint" style="margin:0;min-width:60px">${m.dur?fmtMS(m.dur):"?"}</span><button class="small" data-mrm="intro:${i}">✕</button></div>`;
+  const ch=pbS("hallIntroChoice")||"auto", L=(musicDb.intro||[]).filter(m=>m.dur>0);
+  const prop=ch==="auto"&&L.length?jobs.map(j=>`<div><b>${esc(j.out)}</b> : ${esc(L[Math.floor(seeded("hall"+isoD(j.date)+j.kind)()*L.length)].title)}</div>`).join(""):"";
+  return `<div class="pbBlock"><h3>🎵 Musiques des intros / fins BA</h3>
+    <label style="display:block;margin-bottom:6px"><input type="checkbox" data-hmus ${pbS("hallMusic")==="1"?"checked":""}> Musique sur les intros et fins BA (jamais sur les bandes-annonces)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><span class="hint" style="margin:0">${musicDb.intro.length} morceau(x) — base partagée avec l'onglet PB écran</span>
+      ${musicDb.intro.map((m,i)=>row(m,i)).join("")}<button class="small" data-madd="intro">＋ Ajouter des morceaux</button></div>
+    <div><label style="display:block">Musique utilisée <select data-hset="hallIntroChoice"><option value="auto"${ch==="auto"?" selected":""}>automatique (change chaque semaine)</option><option value="model"${ch==="model"?" selected":""}>fichier « Musique des intros / fins BA » (PB écran, étape 2)</option>${musicDb.intro.map(m=>`<option value="${esc(m.file)}"${ch===m.file?" selected":""}>${esc(m.title)}</option>`).join("")}</select></label>
+      <div class="row" style="gap:12px;margin-top:8px;flex-wrap:wrap"><label>Volume (0–100) <input type="number" min="0" max="100" step="1" data-hset="hallVol" value="${esc(pbS("hallVol"))}" style="width:70px"></label>
+      <label>Fondu d'entrée (s) <input type="number" min="0" max="10" step="0.1" data-hset="hallFadeIn" value="${esc(pbS("hallFadeIn"))}" style="width:70px"></label>
+      <label>Fondu de sortie (s) <input type="number" min="0" max="10" step="0.1" data-hset="hallFadeOut" value="${esc(pbS("hallFadeOut"))}" style="width:70px"></label></div>
+      ${prop?`<p class="hint" style="margin:8px 0 2px">Cette quinzaine :</p>${prop}`:""}</div></div></div>`;
+}
+function musicWire(root, dir, rerender=renderPB){
+  root.querySelectorAll("[data-madd]").forEach(b=>b.onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.multiple=true; ip.accept="audio/*";
+    ip.onchange=async()=>{ if(!ip.files.length) return; b.disabled=true; b.textContent="Copie…"; await musicAdd(dir,b.dataset.madd,[...ip.files]); rerender(); }; ip.click(); });
+  root.querySelectorAll("[data-mplay]").forEach(b=>b.onclick=()=>{ const [c,i]=b.dataset.mplay.split(":"); musicPlay(dir,musicDb[c][+i],b); });
+  root.querySelectorAll("[data-mtitle]").forEach(inp=>inp.onchange=()=>{ const [c,i]=inp.dataset.mtitle.split(":"); musicDb[c][+i].title=inp.value.trim()||musicDb[c][+i].title; musicDbSave(); });
+  root.querySelectorAll("[data-mrm]").forEach(b=>b.onclick=()=>{ const [c,i]=b.dataset.mrm.split(":"); if(!confirm(`Retirer « ${musicDb[c][+i].title} » de la base ?`)) return; musicDb[c].splice(+i,1); musicDbSave(); rerender(); });
+}
 async function renderPB(){
   const root=$("#pbRoot"); if(!root) return;
   if(!fsOK()){ root.innerHTML='<p class="warn">Cet onglet a besoin de Chrome ou Edge (accès à des dossiers de l\'ordinateur).</p>'; return; }
-  pbJobs=(await Store.get("pbLists"))||{}; await flyerStockGet(isoD(flyerQ().prev)); hallKid=(await Store.get("hallKid"))||{};
+  pbJobs=(await Store.get("pbLists"))||{}; await flyerStockGet(isoD(flyerQ().prev)); await musicDbLoad(); hallKid=(await Store.get("hallKid"))||{};
   const dir=await pbDirGet(false), h=await Store.get("pbDirHandle"), dirE=await pbDirEGet(false), hE=await Store.get("pbDirHandleE");
   const jobs=pbJobList(); let tO=5, tC=6;
   const dirRow=(lab,hint,hh,d,k)=>`<div class="row" style="gap:10px;align-items:center;margin:6px 0"><b style="min-width:150px">${lab}</b><button class="small" data-pbdir="${k}">📁 ${hh?"Changer":"Choisir le dossier"}</button>
@@ -3790,6 +3915,7 @@ async function renderPB(){
       <label>Fondu d'entrée (s) <input type="number" min="0" max="10" step="0.1" data-pbset="pbFadeIn" value="${esc(pbS("pbFadeIn"))}" style="width:70px"></label>
       <label>Fondu de sortie (s) <input type="number" min="0" max="10" step="0.1" data-pbset="pbFadeOut" value="${esc(pbS("pbFadeOut"))}" style="width:70px"></label>
       <span class="hint" style="margin:0">Volume 20 = réglage « 20 » de Canva (20 % du niveau d'origine). La musique joue sur les intros et fins BA, jamais sur les bandes-annonces.</span></div></div>`;
+    html+=musicBlock();
     html+=`<div class="pbBlock"><h3>3. Films des PB</h3><p class="hint">Choisis les films dans le dossier PBA ou PBE, dans l'ordre de priorité : l'outil retient ceux qui font tomber les bandes-annonces entre 17 et 18 min. Les 2 PB de la quinzaine ont les mêmes séquences ; seule la fin (flyer écran de la date) change.</p><div class="pbJobs">`;
     for(const kind of ["PBA","PBE"]){ const src=kind==="PBA"?"A":"E", pool=pbScanCache[src]||[], L=pbJobs[kind]||[], S=pbSelect(L,tO,tC), j={kind};
       L.forEach(f=>{ const p=pool.find(x=>x.rel===f.rel); if(p){ if(!f.posterPick) f.poster=p.poster; f.title=p.title; } });   // affiche et titre relus dans le dossier
@@ -3798,8 +3924,8 @@ async function renderPB(){
       const fin=mine.map(x=>{ if(kind==="PBE" && !hasKidFilm(histWeek(x.date))) return `<b>${x.id}</b> : pas de film enfants au programme de la semaine → pas de PBE`;
         const fw=pbFlyerWeeks(x.date), n=fw.length, lp=pbLoop(PB_TOTAL_B_C-S.tot,n), pv=flyerQ().prev; return `<b>${x.id}</b> : flyer écran ${+x.date===+pv&&!fw.some(w=>w.stock)?`(écran du ${pad(pv.getDate())}/${pad(pv.getMonth()+1)} pas encore en stock) `:""}${n?`${n} écran(s) × ${lp.d?lp.d.toFixed(1):"—"} s × ${lp.k} tour(s)`:"⚠️ absent (dépose l'Excel correspondant)"}`; }).join("<br>");
       html+=`<div class="pbJob" data-job="${kind}"><h4>${mine.map(x=>x.id).join(" et ")} <span class="hint" style="margin:0">${kind==="PBA"?"adultes":"enfants"}</span></h4>
-        <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b>${esc(f.title)}</b> <span class="hint" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.round(f.dur%60))+" s":"⚠️ durée illisible"}${f.posterData?" · affiche choisie à la main":f.posterPick?` · 🖼 ${esc(f.poster.split("/").pop())} (choisie)`:f.poster?` · <span title="${esc(f.poster)}">🖼 ${esc(f.poster.split("/").pop())}</span>`:" · ⚠️ pas d'affiche"}${nb(f.rel)>1?` · ${nb(f.rel)}×`:""}${f.on===false?" · non retenu":""}</span>
-          <span style="float:right"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-dup="${i}" title="passer ce film une 2e fois">⧉</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
+        <ol>${(S.sel.length?S.sel:L).map((f,i)=>`<li class="${f.on===false?"pbOff":""}"><b class="pbT" title="${esc(f.title)}">${esc(f.title)}</b><span class="hint pbI" style="margin:0">${f.dur?Math.floor(f.dur/60)+" min "+pad(Math.floor(f.dur%60))+" s":"⚠️ durée illisible"}${f.posterData?" · affiche choisie à la main":f.posterPick?` · 🖼 ${esc(f.poster.split("/").pop())} (choisie)`:f.poster?` · <span title="${esc(f.poster)}">🖼 ${esc(f.poster.split("/").pop())}</span>`:" · ⚠️ pas d'affiche"}${nb(f.rel)>1?` · ${nb(f.rel)}×`:""}${f.on===false?" · non retenu":""}</span>
+<span class="pbB"><button class="small" data-up="${i}">↑</button><button class="small" data-down="${i}">↓</button><button class="small" data-aff="${i}" title="choisir une autre affiche">🖼</button><button class="small" data-dup="${i}" title="passer ce film une 2e fois">⧉</button><button class="small" data-rm="${i}">✕</button></span></li>`).join("")}</ol>
         ${(src==="A"?dir:dirE)?`<div class="row" style="gap:6px"><select data-add><option value="">＋ Ajouter un film du dossier ${j.kind}…</option>${pool.map(p=>`<option value="${esc(p.rel)}">${esc(p.title)}${nb(p.rel)?` (déjà ${nb(p.rel)}× : la reprendre)`:""}</option>`).join("")}</select>
           ${free.length?`<button class="small" data-addall>＋ Tout ajouter</button>`:""}</div>`:`<p class="warn" style="margin:4px 0">Choisis d'abord le dossier des films ${j.kind==="PBA"?"adultes":"enfants"} (étape 1).</p>`}
         ${short?`<div class="warn" style="margin:6px 0">Trop court (${fmtMS(S.tot)} au lieu de 17 à 18 min). <button class="small primary" data-fill>⧉ Compléter en doublant des films</button> ou ajoute / reprends des films avec ⧉ ou la liste.</div>`:""}
@@ -3847,6 +3973,7 @@ async function renderPB(){
     box.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ L.splice(+b.dataset.rm,1); save(); });
     box.querySelectorAll("[data-aff]").forEach(b=>b.onclick=()=>pbPickPoster(L[+b.dataset.aff], src, save, L));
   });
+  musicWire(root, dir);
   q("[data-pbgo]").onclick=()=>{ const pr=root.querySelector("[data-pbprog]"); bgTask("pba","PB écran","pba",pr,()=>pbBuild(dir, pr, tO, tC)); };
   if(bgRunning("pba")){ q("[data-pbgo]").disabled=true; root.querySelector("[data-pbprog]").textContent="⏳ Préparation en cours : "+(bgTasks.pba.msg||""); bgTasks.pba.rewatch(root.querySelector("[data-pbprog]")); }
 
@@ -3860,7 +3987,7 @@ async function pbBuild(dir, prog, tO, tC){
     const res=pbS("pbRes"), fps=Number(pbS("pbFps"))||30, W=res==="2K"?1998:3996, H=res==="2K"?1080:2160, tag=res+fps;
     const q=x=>Math.round(x*fps)/fps;                                                      // durées calées sur l'image
     const tOq=q(tO), tCq=q(tC);
-    const music=await pbModelFile(dir,"musique"), open=await pbModelFile(dir,"ouverture"), close=await pbModelFile(dir,"cloture");
+    const open=await pbModelFile(dir,"ouverture"), close=await pbModelFile(dir,"cloture"); await musicDbLoad();
     if(!open||!close) throw new Error("dépose d'abord les vidéos d'ouverture et de clôture (étape 2)");
     const vol=Math.max(0,Math.min(100,Number(pbS("pbVol"))||0))/100, FI=Number(pbS("pbFadeIn"))||0, FO=Number(pbS("pbFadeOut"))||0;
     const qn=pbDates()[1], folder=`quinzaine_${jjmm(qn)}`;
@@ -3879,8 +4006,17 @@ async function pbBuild(dir, prog, tO, tC){
       // A : écran fixe 10 min
       const ecr=await pbModelFile(dir,"ecran10_"+j.kind)||await pbModelFile(dir,"ecran10_PBA");
       if(!ecr) throw new Error("dépose l'écran fixe de 10 min (étape 2)");
-      const aOut=`../cache/ecran10_${j.kind}_${tag}.mov`;
-      step(aOut, `-i "../${ecr.path}" -map 0:v:0 -map 0:a:0 -vf "${VF}" -af "apad" -t ${PB_A} ${ENC}`);
+      const music=await pbIntroMusic(dir, isoD(j.date)+j.kind);   // musique des intros / fins BA de ce PB
+      const pl=pickPlaylist(isoD(j.date)+j.kind);                    // musique de l'écran fixe de cette semaine
+      let aOut;
+      if(pl){ const sig=pl.map(m=>m.file).join("|"), hsh=[...sig].reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619),2166136261)>>>0;
+        aOut=`../cache/ecran10_${j.kind}_${tag}_${hsh.toString(36)}.mov`;
+        const ins=pl.map(m=>`-i "../${m.file}"`).join(" "), n=pl.length;
+        let fcA=pl.map((m,i)=>`[${i+1}:a]aresample=48000,aformat=channel_layouts=stereo[m${i}]`).join(";"), last="m0";
+        for(let i=1;i<n;i++){ fcA+=`;[${last}][m${i}]acrossfade=d=${MUS_XF}:c1=tri:c2=tri[x${i}]`; last=`x${i}`; }
+        fcA+=`;[${last}]atrim=0:${PB_A},asetpts=PTS-STARTPTS,afade=t=in:st=0:d=${MUS_XF},afade=t=out:st=${PB_A-MUS_XF}:d=${MUS_XF}[aout]`;
+        step(aOut, `-i "../${ecr.path}" ${ins} -filter_complex "[0:v]${VF}[v];${fcA}" -map "[v]" -map "[aout]" -t ${PB_A} ${ENC}`); }
+      else { aOut=`../cache/ecran10_${j.kind}_${tag}.mov`; step(aOut, `-i "../${ecr.path}" -map 0:v:0 -map 0:a:0 -vf "${VF}" -af "apad" -t ${PB_A} ${ENC}`); }
       parts.push(aOut); let t=PB_A;
       // B : ouverture + bande-annonce + clôture
       for(let i=0;i<sel.length;i++){ const f=sel[i]; let src=f.posterData, pf=null;
@@ -4060,15 +4196,30 @@ function hallGuessKid(f){
   return /jeune\s+public|go[uû]ter/i.test(raw) || /animation|famille|jeune public/i.test(g);
 }
 // bande-annonce d'un film du programme : dans les dossiers de semaine de la base de données
-const hallProgSrcs=()=>hallQWeeks().map(d=>"S"+isoD(d));
-function hallFindBA(title){ const t=pbToks(title); let best=null;
-  for(const src of hallProgSrcs()) for(const p of (pbScanCache[src]||[])){ const s=pbMatch(t,pbToks(p.title)); if(s>=.6 && (!best||s>best.s)) best={s,p}; }
+// d'abord les 2 semaines de la quinzaine, puis les autres semaines déjà déposées (films repris), puis les dossiers de sorties
+let hallMoreSrcs=[];
+const hallProgSrcs=()=>[...hallQWeeks().map(d=>"S"+isoD(d)), ...hallMoreSrcs.filter(s=>!hallQWeeks().some(d=>"S"+isoD(d)===s))];
+const flatT=x=>norm(String(x||"").replace(/\.[^.\/]+$/,"")).replace(/ /g,"");
+function hallBAScore(names, p){
+  const pathT=pbToks(p.rel.replace(/\//g," ")), fp=flatT(p.rel.replace(/\//g," ")), ft=flatT(p.title); let best=0;
+  for(const n of names){ const t=pbToks(n), fn=flatT(n); if(!t.length && !fn) continue;
+    let s=Math.max(pbMatch(t,pbToks(p.title)), t.length?t.filter(x=>pathT.includes(x)).length/t.length:0);
+    if(fn.length>=3 && (fp.includes(fn) || ft===fn || (ft.length>=3 && fn.includes(ft)))) s=Math.max(s,1.2);   // « 15/48 » = « 15-48 » = « 1548 »
+    best=Math.max(best,s); }
+  return best; }
+function hallNames(f){ const k=f.key, d=k&&findDetails(k)||{}; return [...new Set([f.title, titleOf(f), d.title, d.originalTitle, d.titre_original, (FILM_DB[k]||{}).title].filter(Boolean))]; }
+function hallFindBA(f){ const names=typeof f==="string"?[f]:hallNames(f); let best=null;
+  const srcs=[...hallProgSrcs(), "A", "E"];
+  srcs.forEach((src,rank)=>{ for(const p of (pbScanCache[src]||[])){ const s=hallBAScore(names,p)-rank*0.001; if(s>=.6 && (!best||s>best.s)) best={s,p}; } });
   return best&&best.p; }
+async function hallScanWeeks(){   // dossiers de semaine mémorisés sur cet ordinateur (Base de données)
+  const out=[]; for(const iso of Object.keys(weekHist||{}).sort().reverse()){ const g=await weekDirGet(iso,false); if(!g) continue; if(!pbScanCache["S"+iso]) try{ await pbScan(g,"S"+iso); }catch(e){ continue; } out.push("S"+iso); }
+  hallMoreSrcs=out; }
 async function hallFill(j){
   const w=hallWeek(j); if(!w) return [];
   const out=[];
   for(const f of w.films){ if(hallGuessKid(f)!==(j.kind==="E")) continue;
-    const ba=hallFindBA(titleOf(f)), e={title:titleOf(f), key:f.key, prog:true};
+    const ba=hallFindBA(f), e={title:titleOf(f), key:f.key, prog:true};
     if(ba) Object.assign(e,{src:ba.src, rel:ba.rel, poster:ba.poster});
     out.push(e); }
   for(const e of out) if(e.rel){ const d=await hallSrcDir(e.src,false), fl=d&&await pbGetFile(d,e.rel), v=fl&&await videoInfo(fl); e.dur=v?v.d:0; }
@@ -4085,8 +4236,8 @@ async function hallPosterSrc(f){
 }
 // choix manuel d'une bande-annonce parmi les vidéos des dossiers, ou un fichier de l'ordinateur (copié dans le dossier de travail)
 async function hallPickBA(f, save){
-  const t=pbToks(f.title), all=[...hallProgSrcs(),"A","E"].flatMap(s=>(pbScanCache[s]||[]).map(p=>({...p, s:pbMatch(t,pbToks(p.title))}))).sort((a,b)=>b.s-a.s||a.title.localeCompare(b.title,"fr"));
-  const lab={A:"sorties adultes",E:"sorties enfants"}; hallQWeeks().forEach(d=>lab["S"+isoD(d)]=`dossier semaine du ${pad(d.getDate())}/${pad(d.getMonth()+1)}`);
+  const names=[f.title, ...(f.key?[titleOf({key:f.key,title:f.title})]:[])], all=[...hallProgSrcs(),"A","E"].flatMap(s=>(pbScanCache[s]||[]).map(p=>({...p, s:hallBAScore(names,p)}))).sort((a,b)=>b.s-a.s||a.title.localeCompare(b.title,"fr"));
+  const lab={A:"sorties adultes",E:"sorties enfants"}; hallProgSrcs().forEach(s=>{ const d=new Date(s.slice(1)+"T12:00:00"); lab[s]=`dossier semaine du ${pad(d.getDate())}/${pad(d.getMonth()+1)}`; });
   const ov=document.createElement("div"); ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center";
   ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:14px 16px;width:min(760px,94vw);max-height:88vh;overflow:auto"><h3 style="margin:0 0 6px">Bande-annonce de « ${esc(f.title)} »</h3>
     <div data-l style="display:flex;flex-direction:column;gap:4px"></div>
@@ -4110,6 +4261,7 @@ async function renderHall(relink){
   hallLists=(await Store.get("hallLists2"))||{}; hallKid=(await Store.get("hallKid"))||{};
   const dir=await pbDirGet(false), dirE=await pbDirEGet(false);
   if(dir && !pbScanCache.A) await pbScan(dir,"A"); if(dirE && !pbScanCache.E) await pbScan(dirE,"E");
+  await hallScanWeeks();
   const wkDirs=[]; for(const d of hallQWeeks()){ const iso=isoD(d), h=await Store.get("weekDir:"+iso), g=await weekDirGet(iso,false); if(g && !pbScanCache["S"+iso]) await pbScan(g,"S"+iso); wkDirs.push({d,iso,h,g}); }
   const jobs=hallJobList(); let tO=5, tC=6, models={};
   const st=(d,n)=>d?`✅ <b>${esc(d.name)}</b>${pbScanCache[n]?` · ${pbScanCache[n].length} bande(s)-annonce(s)`:""}`:"⚠️ à choisir dans l'onglet PB écran";
@@ -4117,6 +4269,7 @@ async function renderHall(relink){
     <p class="hint" style="margin:0 0 4px">Films du programme : bandes-annonces prises dans les dossiers de semaine de la Base de données (« Dossiers d'images des films »), affiches dans la base commune.</p>
     ${wkDirs.map((x,i)=>`<div class="row" style="gap:10px;align-items:center;margin:4px 0">Semaine du ${pad(x.d.getDate())}/${pad(x.d.getMonth()+1)} : <span>${x.g?`✅ <b>${esc(x.g.name)}</b> · ${(pbScanCache["S"+x.iso]||[]).length} bande(s)-annonce(s)`:x.h?"":"⚠️ dossier pas encore déposé sur cet ordinateur"}</span>
       ${x.h&&!x.g?`<button class="small primary" data-wreco="${x.iso}">🔓 Autoriser « ${esc(x.h.name)} »</button>`:""}<button class="small" data-wdir="${x.iso}" data-wi="${i}">📁 ${x.h?"Changer":"Choisir le dossier"}</button></div>`).join("")}
+    ${(()=>{ const o=hallMoreSrcs.filter(x=>!hallQWeeks().some(d=>"S"+isoD(d)===x)); return o.length?`<p class="hint" style="margin:4px 0">Bandes-annonces aussi cherchées dans les dossiers des semaines du ${o.map(x=>{ const d=new Date(x.slice(1)+"T12:00:00"); return pad(d.getDate())+"/"+pad(d.getMonth()+1); }).join(", ")} (films repris), puis dans les dossiers de sorties.</p>`:""; })()}
     <p class="hint" style="margin:8px 0 4px">Films en plus, au choix :</p>
     <div style="margin:4px 0">Sorties adultes (dossier PBA de l'onglet PB écran) : ${st(dir,"A")} ${!dir&&(await Store.get("pbDirHandle"))?`<button class="small primary" data-hwork>🔓 Autoriser l'accès au dossier « ${esc((await Store.get("pbDirHandle")).name)} »</button>`:""}</div>
     <div style="margin:4px 0">Sorties enfants (dossier PBE de l'onglet PB écran) : ${st(dirE,"E")}</div>
@@ -4125,8 +4278,8 @@ async function renderHall(relink){
     for(const k of ["ouverture","cloture","musique"]){ models[k]=await pbModelFile(dir,k); }
     if(models.ouverture){ const v=await videoInfo(models.ouverture.f); if(v) tO=v.d; } if(models.cloture){ const v=await videoInfo(models.cloture.f); if(v) tC=v.d; }
     html+=`<div class="pbBlock"><h3>2. Modèles (ceux de l'onglet PB écran)</h3>
-      <div>Vidéo intro BA : ${models.ouverture?"✅ "+esc(models.ouverture.f.name):"⚠️ à déposer dans PB écran"} · Vidéo fin BA : ${models.cloture?"✅ "+esc(models.cloture.f.name):"⚠️ à déposer dans PB écran"} · Musique : ${models.musique?"✅ "+esc(models.musique.f.name):"aucune"}</div>
-      <label style="display:block;margin-top:6px"><input type="checkbox" data-hmus ${pbS("hallMusic")==="1"?"checked":""}> Musique sur les intros et fins BA (volume et fondus de l'onglet PB écran)</label></div>`;
+      <div>Vidéo intro BA : ${models.ouverture?"✅ "+esc(models.ouverture.f.name):"⚠️ à déposer dans PB écran"} · Vidéo fin BA : ${models.cloture?"✅ "+esc(models.cloture.f.name):"⚠️ à déposer dans PB écran"}</div></div>`;
+    await musicDbLoad(); html+=musicBlockHall(jobs.filter(j=>j.kind!=="E"||hasKidFilm(hallWeek(j))));
     html+=`<div class="pbBlock"><h3>3. Films de chaque vidéo</h3><p class="hint">Au départ : les films du programme (toute la quinzaine pour la 1re date, la 2e semaine seulement pour la 2e date), classés adultes / enfants (⇄ pour changer de liste), avec leur bande-annonce (dossiers de semaine) et leur affiche (base commune). Tu peux compléter avec des films des dossiers de sorties. Pas de durée minimum.</p><div class="pbJobs">`;
     for(const j of jobs){ const L=hallLists[j.id]; const pool=pbScanCache[j.kind]||[];
       if(j.kind==="E" && !hasKidFilm(hallWeek(j))){ html+=`<div class="pbJob" data-hjobnone><h4>${esc(j.out)} <span class="hint" style="margin:0">${hallSpan(j)}</span></h4><p class="hint">Pas de film enfants au programme : pas de vidéo enfants à faire.</p></div>`; continue; }
@@ -4152,11 +4305,14 @@ async function renderHall(relink){
   // listes initiales : films du programme
   let filled=false; for(const j of jobs) if(!hallLists[j.id] && hallWeek(j)){ hallLists[j.id]=await hallFill(j); filled=true; }
   // films du programme dont la bande-annonce n'était pas trouvée (ou venait d'ailleurs) : nouvelle recherche dans les dossiers de semaine
-  for(const j of jobs) for(const f of (hallLists[j.id]||[])) if(f.prog && !f.baPick && (relink || !f.rel)){ const ba=hallFindBA(f.title);
+  for(const j of jobs) for(const f of (hallLists[j.id]||[])) if(f.prog && !f.baPick && (relink || !f.rel)){ const wf=f.key&&(hallWeek(j)||{films:[]}).films.find(g=>g.key===f.key), ba=hallFindBA(wf||f);
     if(ba && ba.rel!==f.rel){ const d=await hallSrcDir(ba.src,false), fl=d&&await pbGetFile(d,ba.rel), v=fl&&await videoInfo(fl); Object.assign(f,{src:ba.src, rel:ba.rel, poster:ba.poster, dur:v?v.d:0}); filled=true; }
     else if(!ba && f.rel && relink && /^[AEP]$/.test(f.src)){ delete f.rel; delete f.src; f.dur=0; filled=true; } }
   if(filled){ await Store.set("hallLists2",hallLists); return renderHall(); }
-  q("[data-hmus]").onchange=e=>{ settings.hallMusic=e.target.checked?"1":"0"; const own={}; for(const k of Object.keys(DEFAULTS)) if(settings[k]!==DEFAULTS[k]) own[k]=settings[k]; Store.set("settingsCommuns",own); shareSettings(); };
+  const hSave=async(k,v)=>{ settings[k]=v; const own={}; for(const kk of Object.keys(DEFAULTS)) if(settings[kk]!==DEFAULTS[kk]) own[kk]=settings[kk]; await Store.set("settingsCommuns",own); shareSettings(); };
+  q("[data-hmus]").onchange=e=>hSave("hallMusic",e.target.checked?"1":"0");
+  root.querySelectorAll("[data-hset]").forEach(i=>i.onchange=async()=>{ await hSave(i.dataset.hset,String(i.value)); if(i.tagName==="SELECT") renderHall(); });
+  musicWire(root, dir, ()=>renderHall());
   root.querySelectorAll("[data-hjob]").forEach(box=>{ const j=jobs.find(x=>x.id===box.dataset.hjob), L=hallLists[j.id]=hallLists[j.id]||[];
     const save=()=>{ Store.set("hallLists2",hallLists); renderHall(); };
     box.querySelector("[data-add]").onchange=async e=>{ const p=(pbScanCache[j.kind]||[]).find(x=>x.rel===e.target.value); if(!p) return; e.target.disabled=true;
@@ -4182,9 +4338,10 @@ async function hallBuild(dir, prog, tO, tC){
   const btn=$("#hallRoot [data-hgo]"); btn.disabled=true;
   try{
     const W=HALL_W, H=HALL_H, fps=HALL_FPS, tag="720p", q=x=>Math.round(x*fps)/fps, tOq=q(tO), tCq=q(tC);
-    const open=await pbModelFile(dir,"ouverture"), close=await pbModelFile(dir,"cloture"), music=pbS("hallMusic")==="1"?await pbModelFile(dir,"musique"):null;
+    await musicDbLoad();
+    const open=await pbModelFile(dir,"ouverture"), close=await pbModelFile(dir,"cloture");
     if(!open||!close) throw new Error("dépose d'abord les vidéos intro BA et fin BA dans l'onglet PB écran");
-    const vol=Math.max(0,Math.min(100,Number(pbS("pbVol"))||0))/100, FI=Number(pbS("pbFadeIn"))||0, FO=Number(pbS("pbFadeOut"))||0;
+    const vol=Math.max(0,Math.min(100,Number(pbS("hallVol"))||0))/100, FI=Number(pbS("hallFadeIn"))||0, FO=Number(pbS("hallFadeOut"))||0;
     const folder=`hall_${jjmm(pbDates()[1])}`;
     const VFfit=`scale=${W}:${H}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps=${fps},format=yuv420p,tpad=stop_mode=clone:stop_duration=3`;
     const VFfill=`scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},setsar=1,fps=${fps},format=yuv420p,tpad=stop_mode=clone:stop_duration=3`;
@@ -4195,6 +4352,7 @@ async function hallBuild(dir, prog, tO, tC){
       if(j.kind==="E" && !hasKidFilm(hallWeek(j))){ jobsOut.push({id:j.id, out:j.out, skip:"pas de film enfants au programme"}); continue; }
       const sel=(hallLists[j.id]||[]).filter(f=>f.rel&&f.dur);
       if(!sel.length){ jobsOut.push({id:j.id, out:j.out, skip:"aucun film avec bande-annonce"}); continue; }
+      const music=pbS("hallMusic")==="1"?await pbIntroMusic(dir, "hall"+isoD(j.date)+j.kind, "hallIntroChoice"):null;
       const parts=[], musicSegs=[]; let t=0;
       for(let i=0;i<sel.length;i++){ const f=sel[i]; prog.textContent=`${j.out} : ${f.title}…`;
         const ps=await hallPosterSrc(f); if(!ps) throw new Error(`affiche manquante pour « ${f.title} » (${j.out}) : bouton 🖼`);
