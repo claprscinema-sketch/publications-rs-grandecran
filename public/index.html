@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 17h05</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 18h15</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -169,8 +169,9 @@
   <div id="flyerFields" style="margin:16px 0 4px;padding:12px 14px;border:2px solid #5b3cc4;border-radius:8px;background:#f6f3ff;display:flex;gap:14px;align-items:center;flex-wrap:wrap"></div>
   <div class="films" id="infoList"></div>
 </section>
-<section data-tab="base">
-  <h2><span class="n">4</span> Bases communes <span class="hint" style="margin:0;font-weight:400">— sur le site, partagées avec tout le monde (modification protégée par le code d'équipe)</span></h2>
+<section data-tab="base" id="secBases" class="locked">
+  <div class="lockPane" style="margin:6px 0 4px"><button class="primary" data-unlockbases>🔒 Déverrouiller les bases communes</button> <span class="hint" style="margin:0">même code que les onglets Cartons écran, PB écran, Flyers écran et PB Hall</span></div>
+  <h2><span class="n">4</span> 🔒 Bases communes <span class="hint" style="margin:0;font-weight:400">— sur le site, partagées avec tout le monde (modification protégée par le code d'équipe)</span></h2>
   <details id="setDetails" open>
     <summary>🔒 Base commune — réseaux sociaux et écrans (logos, fonds, tarifs, textes)</summary>
     <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
@@ -284,6 +285,7 @@
   <div id="pbRoot"></div>
   <style>.pbBlock{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fff}.pbBlock h3{margin:0 0 6px}
   .pbModels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}.pbModel{display:flex;flex-direction:column;gap:4px;border:1px solid #eee;border-radius:8px;padding:8px}
+  #secBases.locked > :not(h2):not(.lockPane){display:none !important} #secBases:not(.locked) .lockPane{display:none}
   .pbJobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(640px,1fr));gap:12px}
   .pbJob li{display:flex;align-items:center;gap:8px;white-space:nowrap}.pbJob li .pbT{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}.pbJob li .pbI{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}.pbJob li .pbB{margin-left:auto;flex:none}.pbJob{border:1px solid #ddd;border-radius:8px;padding:8px 10px}.pbJob h4{margin:0 0 4px}
   .pbJob ol{margin:4px 0 8px;padding-left:22px}.pbJob li{margin:3px 0;font-size:14px}.pbJob li.pbOff{opacity:.45}.pbJob li button{padding:1px 6px}</style>
@@ -361,7 +363,7 @@ const COMMON_IMAGES = { climLogo: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ
 const FILM_DB = {"le petit prince naissance d une etoile": {"title": "Le Petit Prince, naissance d'une étoile", "genres": "Documentaire · Biographie", "duree": "0h59", "real": "Vincent Nguyen", "realLabel": "Réalisateur", "avec": "François Morel, François Berléand, Marta Domingo", "avecLabel": "Avec les voix de", "public": "", "synopsis": "À l'occasion des 80 ans du célèbre conte, ce documentaire mêle archives, dessins originaux et séquences d'animation pour retracer les quatre dernières années de la vie de Saint-Exupéry, de son exil new-yorkais à sa disparition en juillet 1944. Il révèle comment, en pleine guerre, l'écrivain-pilote a fait naître son Petit Prince.", "seances": ["mercredi 4 - 20h"], "semaine": "mercredi 4 novembre au mardi 10 novembre"}, "le fantome de l opera": {"title": "Le Fantôme de l'Opéra", "genres": "Drame · Fantastique · Romance", "duree": "2h14", "real": "Alexandre Castagnetti", "realLabel": "Réalisateur", "avec": "Deva Cassel, Julien de Saint-Jean, Romain Duris", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Dans le Paris d'aujourd'hui, Anastasia, jeune danseuse, intègre le prestigieux Opéra Garnier. Alors qu'elle répète Orpheus, un opéra maudit qui aurait été composé par le Fantôme de l'Opéra, elle tombe amoureuse d'un mystérieux pianiste. À l'approche de la première, entre accidents inexpliqués et révélations troublantes, elle se retrouve plongée dans une histoire d'amour impossible, à la frontière du réel et du fantastique.", "seances": ["mercredi 4 - 17h", "vendredi 6 - 20h30", "samedi 7 - 20h30", "dimanche 8 - 17h", "mardi 10 - 20h30"], "semaine": "mercredi 4 novembre au mardi 10 novembre", "syn400": "Dans le Paris d'aujourd'hui, Anastasia, jeune danseuse, intègre l'Opéra Garnier. Alors qu'elle répète Orpheus, un opéra maudit attribué au Fantôme de l'Opéra, elle tombe amoureuse d'un mystérieux pianiste. À l'approche de la première, entre accidents inexpliqués et révélations troublantes, elle plonge dans un amour impossible, à la frontière du réel et du fantastique."}, "justin le juste": {"title": "Justin le Juste", "genres": "Drame historique · Guerre", "duree": "1h50", "real": "Eric Barbier", "realLabel": "Réalisateur", "avec": "Alban Ivanov, Alexandra Lamy, Birane Ba", "avecLabel": "Avec", "public": "", "synopsis": "1915. La guerre, c'est une terre inconnue où l'on envoie Justin, misérable paysan, à une époque où il ne rêve que de s'occuper de ses champs. Il doit partir se battre, au nom d'une loi qu'il ignore, contre un ennemi qu'il n'a jamais vu. Sa rencontre avec Basile, un tirailleur sénégalais, va lui ouvrir les yeux sur cette guerre qu'il ne comprend pas, et l'aider à se révolter contre les injustices d'un commandement absurde.", "seances": ["dimanche 8 - 14h30"], "semaine": "mercredi 4 novembre au mardi 10 novembre", "syn400": "1915. Justin, paysan misérable qui ne rêve que de ses champs, part à la guerre au nom d'une loi qu'il ignore, contre un ennemi qu'il n'a jamais vu. Sa rencontre avec Basile, un tirailleur sénégalais, va lui ouvrir les yeux sur cette guerre qu'il ne comprend pas et l'aider à se révolter contre les injustices d'un commandement absurde."}, "minotaure": {"title": "Minotaure", "genres": "Drame", "duree": "2h20", "real": "Andreï Zviaguintsev", "realLabel": "Réalisateur", "avec": "Dmitri Mazourov, Iris Lebedeva, Boris Koudrine", "avecLabel": "Avec", "public": "", "synopsis": "Russie, 2022. Gleb, chef d'entreprise prospère, vit avec sa femme Galina et leur fils dans une ville de province. Confronté à des difficultés professionnelles croissantes dans un monde de plus en plus instable, il voit sa vie soigneusement construite s'effondrer et basculer dans la violence. Grand Prix du Festival de Cannes 2026.", "seances": ["dimanche 8 - 20h30"], "semaine": "mercredi 4 novembre au mardi 10 novembre"}, "garance": {"title": "Garance", "genres": "Drame", "duree": "1h55", "real": "Jeanne Herry", "realLabel": "Réalisatrice", "avec": "Adèle Exarchopoulos, Sara Giraudeau, Rudgy Pajany", "avecLabel": "Avec", "public": "", "synopsis": "Garance est une jeune actrice mais qui n'est pas une vedette. Elle gère et assure tout de son mieux, vaillante, joyeuse, et trouve dans l'alcool un carburant, un réconfort inconditionnel. Le film suit huit ans d'un parcours fait de déménagements, de rencontres, de fêtes et d'angoisses, jusqu'à une rencontre qui va tout changer. Présenté en Compétition au Festival de Cannes 2026.", "seances": ["lundi 9 - 18h30"], "semaine": "mercredi 4 novembre au mardi 10 novembre"}, "heart of the beast": {"title": "Heart of the Beast", "genres": "Action · Aventure", "duree": "1h41", "real": "David Ayer", "realLabel": "Réalisateur", "avec": "Brad Pitt, J.K. Simmons, Anna Lambe", "avecLabel": "Avec", "public": "", "synopsis": "Après un terrible crash d'avion, James Belmont, ancien des forces spéciales, se retrouve perdu au cœur de l'Alaska avec son chien Odin, son fidèle compagnon de toujours. Livrés à eux-mêmes dans une nature aussi magnifique qu'impitoyable, ils devront puiser dans leurs dernières forces pour survivre ensemble.", "seances": ["jeudi 5 - 20h30", "samedi 7 - 17h"], "semaine": "mercredi 4 novembre au mardi 10 novembre"}, "les sentinelles de la loire": {"title": "Les Sentinelles de la Loire", "genres": "Documentaire", "duree": "0h52", "real": "Laure Bourru", "realLabel": "Réalisatrice", "avec": "Barbara Réthoré, Julien Chapuis, Aurélie Calmet", "avecLabel": "Avec", "public": "", "synopsis": "Derrière la Loire se cache un monde invisible, peuplé de micro-organismes et de microplastiques. Des sources à l'estuaire, trois sentinelles — deux biologistes et une dessinatrice — mènent une enquête à la fois scientifique et artistique qui interroge notre rapport au sauvage et notre regard sur le fleuve à l'heure de l'Anthropocène.", "seances": ["mercredi 11 - 20h"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "les miserables": {"title": "Les Misérables", "genres": "Drame historique", "duree": "2h59", "real": "Fred Cavayé", "realLabel": "Réalisateur", "avec": "Vincent Lindon, Tahar Rahim, Camille Cottin", "avecLabel": "Avec", "public": "", "synopsis": "Libéré après dix-neuf ans de bagne pour le vol d'un pain, Jean Valjean décide de changer de vie et de faire le bien autour de lui. Sous une fausse identité, il devient avec le temps un notable respecté de tous. Mais son passé le rattrape, et l'inspecteur Javert est sur ses traces. Nouvelle adaptation du roman de Victor Hugo.", "seances": ["mercredi 11 - 17h"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "shaun le mouton la beeete d halloween": {"title": "Shaun le Mouton : La Bêêête d'Halloween", "genres": "Animation · Comédie · Famille", "duree": "1h21", "real": "Matthew Walker, Steve Cox", "realLabel": "Réalisateurs", "avec": "Justin Fletcher, John Sparkes, Kate Harbour", "avecLabel": "Voix originales", "public": "Tout public", "synopsis": "À Halloween, à la ferme de Mossy Bottom, la fête tourne court quand le Fermier maladroit saccage les citrouilles bien-aimées du troupeau. Pour réparer les dégâts, Shaun se transforme en savant fou, mais l'expérience dérape : le Fermier disparaît et une bête sauvage rôde dans les bois.", "seances": ["mercredi 11 - 15h", "samedi 14 - 17h", "dimanche 15 - 11h"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "moulin": {"title": "Moulin", "genres": "Drame historique", "duree": "2h14", "real": "László Nemes", "realLabel": "Réalisateur", "avec": "Gilles Lellouche, Lars Eidinger, Louise Bourgoin", "avecLabel": "Avec", "public": "Tout public avec avertissement", "synopsis": "Juin 1943, Jean Moulin, chef de la Résistance, est arrêté alors qu'il tente de réunifier les forces de l'Armée secrète. Interrogé par Klaus Barbie, le chef de la Gestapo de Lyon, il est entraîné dans une confrontation implacable : son ultime combat face à la manipulation et à la brutalité commence, et le destin de la France libre en dépend.", "seances": ["jeudi 12 - 20h30", "samedi 14 - 20h30", "dimanche 15 - 17h", "lundi 16 - 20h30", "mardi 17 - 20h30"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "quelques mots d amour": {"title": "Quelques mots d'amour", "genres": "Comédie dramatique", "duree": "1h37", "real": "Rudi Rosenberg", "realLabel": "Réalisateur", "avec": "Hafsia Herzi, Nour Salam, Paulette Chetrit", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Erika élève seule ses deux enfants à Sarcelles. Mais la quête obsessionnelle de sa fille aînée Abigaëlle, persuadée que le père qu'elle n'a jamais connu l'aime en silence quelque part, va bouleverser l'équilibre de la famille. Sélection Un Certain Regard au Festival de Cannes 2026.", "seances": ["vendredi 13 - 20h30", "dimanche 15 - 14h30", "lundi 16 - 18h30"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "wicker": {"title": "Wicker", "genres": "Comédie · Fantastique · Romance", "duree": "1h45", "real": "Alex Huston Fischer, Eleanor Wilson", "realLabel": "Réalisateurs", "avec": "Olivia Colman, Alexander Skarsgård, Peter Dinklage", "avecLabel": "Avec", "public": "", "synopsis": "Mise au ban de son village, une pêcheuse solitaire commande au vannier local un mari en osier. Cet époux improbable se révèle doté d'une sensibilité et de talents qui dépassent toutes ses attentes, et sa présence fait naître jalousie et chaos dans la communauté.", "seances": ["dimanche 15 - 20h30"], "semaine": "mercredi 11 novembre au mardi 17 novembre"}, "un bon patron": {"title": "Un bon patron", "genres": "Comédie", "duree": "1h27", "real": "Philippe de Chauveron", "realLabel": "Réalisateur", "avec": "Didier Bourdon, Catherine Frot, Jean-François Cayrey", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Antoine Blanchet, héritier d'une fabrique familiale de balances, voit son univers bien ordonné vaciller : un ancien employé campe devant l'usine, un contremaître perturbe la production et une stagiaire fait tourner les têtes. À la veille de recevoir un prix d'excellence, il doit sauver son entreprise et rétablir l'ordre, à sa manière, paternaliste et autoritaire. Remake français de la comédie espagnole El buen patrón.", "seances": [], "semaine": "mercredi 25 novembre au mardi 1er décembre", "syn400": "Antoine Blanchet, héritier d'une fabrique familiale de balances, voit son univers vaciller : un ancien employé campe devant l'usine, un contremaître perturbe la production et une stagiaire fait tourner les têtes. À la veille de recevoir un prix d'excellence, il doit sauver son entreprise et rétablir l'ordre, à sa manière, paternaliste et autoritaire."}, "de la ville a la campagne": {"title": "De la ville à la campagne", "genres": "Documentaire", "duree": "", "real": "", "realLabel": "", "avec": "", "avecLabel": "", "public": "", "synopsis": "", "seances": [], "semaine": "mercredi 18 novembre au mardi 24 novembre"}, "karma": {"title": "Karma", "genres": "Thriller · Drame", "duree": "2h20", "real": "Guillaume Canet", "realLabel": "Réalisateur", "avec": "Marion Cotillard, Denis Ménochet, Leonardo Sbaraglia", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Dans un village du nord de l'Espagne, Jeanne tente de reconstruire sa vie avec Daniel, qui ne sait rien de son passé trouble. Un jour, le filleul de Jeanne, âgé de six ans, disparaît mystérieusement et Jeanne devient la principale suspecte.", "seances": [], "semaine": "mercredi 18 novembre au mardi 24 novembre"}, "le mystere lucy lost": {"title": "Le Mystère Lucy Lost", "genres": "Animation · Aventure · Fantastique", "duree": "1h29", "real": "Olivier Clert", "realLabel": "Réalisateur", "avec": "Charlie Rosenzweig, Zach Valentin-Dattas, Jessica Monceau", "avecLabel": "Voix", "public": "Tout public", "synopsis": "En 1915, sur une île isolée, Lucy vit avec sa famille dans un village où ses dons extraordinaires suscitent le rejet des habitants. Lorsqu'elle rencontre Milly, une petite fille qu'elle seule peut voir, Lucy embarque dans une grande aventure pour percer le secret de ses mystérieux pouvoirs. D'après le roman de Michael Morpurgo.", "seances": [], "semaine": "mercredi 18 novembre au mardi 24 novembre"}, "le journal d une femme de chambre": {"title": "Le Journal d'une femme de chambre", "genres": "Drame · Satire", "duree": "1h34", "real": "Radu Jude", "realLabel": "Réalisateur", "avec": "", "avecLabel": "", "public": "", "synopsis": "Gianina, jeune Roumaine, travaille comme employée de maison dans une famille bourgeoise bordelaise. Le soir, elle répète avec une troupe de théâtre amateur le rôle d'une soubrette dans une adaptation du roman d'Octave Mirbeau, tandis que sa propre fille grandit loin d'elle, en Roumanie. Présenté à la Quinzaine des Cinéastes, Cannes 2026.", "seances": [], "semaine": "mercredi 18 novembre au mardi 24 novembre"}, "retour au college": {"title": "Retour au collège", "genres": "Documentaire", "duree": "1h25", "real": "Antoine Fromental", "realLabel": "Réalisateur", "avec": "", "avecLabel": "", "public": "", "synopsis": "Sarah et Yasmine, élèves de 3ème dans un collège de banlieue, risquent de passer devant le conseil de discipline. À quelques semaines de son départ en retraite, M. Comès, un principal pas comme les autres, a une décision difficile à prendre.", "seances": [], "semaine": "mercredi 25 novembre au mardi 1er décembre"}, "l affaire marie claire": {"title": "L'Affaire Marie-Claire", "genres": "Drame historique", "duree": "1h42", "real": "Lauriane Escaffre, Yvo Muller", "realLabel": "Réalisateurs", "avec": "Charlotte Gainsbourg, Cécile de France, Grégory Gadebois", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Novembre 1972, tribunal de Bobigny. Marie-Claire Chevalier, 16 ans, est jugée pour avoir avorté illégalement, avec sa mère et les femmes qui l'ont aidée. Leur avocate, Gisèle Halimi, fait le pari insensé de ne pas plaider coupable, mais de s'attaquer à la loi elle-même. Séance spéciale au Festival de Cannes 2026.", "seances": [], "semaine": "mercredi 25 novembre au mardi 1er décembre"}, "il faut bruler maman": {"title": "Il faut brûler Maman", "genres": "Comédie", "duree": "1h21", "real": "Albert Dupontel", "realLabel": "Réalisateur", "avec": "Louise Coldefy, Julia Piaton, Artus", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Dans une famille de croque-morts, deux sœurs et un frère se retrouvent pour les funérailles de leur mère. Le personnel étant en grève, ils doivent accomplir eux-mêmes le protocole funéraire. Mais comment s'accorder pour brûler Maman ?", "seances": [], "semaine": "mercredi 25 novembre au mardi 1er décembre"}, "une femme aujourd hui": {"title": "Une femme aujourd'hui", "genres": "Comédie dramatique", "duree": "2h03", "real": "Robert Guédiguian", "realLabel": "Réalisateur", "avec": "Marilou Aussilloux, Ariane Ascaride, Jean-Pierre Darroussin", "avecLabel": "Avec", "public": "Tout public", "synopsis": "Juliette, 30 ans, semble avoir tout pour elle : un poste prestigieux dans la finance, une belle maison, une vie rythmée par les voyages et les amours de passage. Lorsqu'elle est agressée par un collègue, son monde s'effondre. Elle s'engage alors sur un nouveau chemin pour redonner un sens à sa vie.", "seances": [], "semaine": "mercredi 25 novembre au mardi 1er décembre"}};
 
 const DEFAULTS = {
-  igUrl:"https://www.instagram.com/cinema_grandecran_la_pommeraye/", fbUrl:"https://www.facebook.com/profile.php?id=61579580175493",
+  igUrl:"https://instagram.com/cinema_grandecran_la_pommeraye", fbUrl:"https://fb.com/profile.php?id=61579580175493",
   pAdult:"5,50", pReduit:"4", pJeune:"3,50",
   link:"", address:"Cinéma Grand Écran, 4 passage Lino Ventura, La Pommeraye",
   flyerAddress:"4 passage Lino Ventura — La Pommeraye, 49620 Mauges-sur-Loire", phone:"", web:"cinemagrandecran.org",
@@ -2015,21 +2017,22 @@ const flyerSeance = d=>`${JOURS[d.getDay()].slice(0,3)} ${dnum(d)} · ${hm(d)}${
 function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
 
 // Pastilles de séances qui passent à la ligne ; renvoie la hauteur
-function seanceChips(ctx, seances, x, y, maxW, size, color, draw, boxH=0){
+function seanceChips(ctx, seances, x, y, maxW, size, color, draw, boxH=0, align="left"){
   let ph=size*.45, h=size*1.25, g=size*.3;
   if(boxH && seances.length){ // encarts de hauteur imposée (20 % de l'affiche) : texte le plus grand possible, sur une ligne si on peut
     h=boxH; g=boxH*.16; ctx.font=`100px ${FONT}`;
     const W=seances.reduce((a,d)=>a+ctx.measureText(flyerSeance(d)).width,0), n=seances.length;
     size=Math.max(boxH*.36, Math.min(boxH*.68, (maxW-(n-1)*g)/(W/100+n*.8))); ph=size*.4; }
   ctx.font=`${size}px ${FONT}`;
-  let cx=x, cy=y;
-  for(const d of seances){
-    const t=flyerSeance(d), w=ctx.measureText(t).width+ph*2;
-    if(cx>x && cx+w>x+maxW){ cx=x; cy+=h+g; }
-    if(draw){ ctx.fillStyle=color; rr(ctx,cx,cy,w,h,h*.22); ctx.fill(); ctx.fillStyle="#fff"; ctx.textBaseline="middle"; ctx.textAlign="left"; ctx.fillText(t,cx+ph,cy+h/2+size*.04); }
-    cx+=w+g;
-  }
-  return seances.length ? cy+h-y : 0;
+  // répartition en lignes, puis dessin (calées à gauche, ou à droite quand l'affiche est à droite)
+  const lines=[[]]; let lw=0;
+  for(const d of seances){ const t=flyerSeance(d), w=ctx.measureText(t).width+ph*2, L=lines[lines.length-1];
+    if(L.length && lw+w>maxW){ lines.push([]); lw=0; } lines[lines.length-1].push({t,w}); lw+=w+g; }
+  let cy=y;
+  for(const L of lines){ if(!L.length) continue; const tot=L.reduce((a,c)=>a+c.w,0)+g*(L.length-1); let cx=align==="right"?x+maxW-tot:x;
+    for(const {t,w} of L){ if(draw){ ctx.fillStyle=color; rr(ctx,cx,cy,w,h,h*.22); ctx.fill(); ctx.fillStyle="#fff"; ctx.textBaseline="middle"; ctx.textAlign="left"; ctx.fillText(t,cx+ph,cy+h/2+size*.04); } cx+=w+g; }
+    cy+=h+g; }
+  return seances.length ? cy-g-y : 0;
 }
 // Petites étiquettes (VO, Avant-première…) ; renvoie la hauteur
 // Caractéristiques (VO, Avant-première, Sortie nationale, Documentaire, Entrée gratuite) : logo de la base commune, sinon étiquette texte
@@ -2169,7 +2172,7 @@ async function flyerBlock(ctx, f, x, y, w, s, synMax, draw, side="left"){
     else { ctx.fillStyle="#ddd"; ctx.fillRect(ax,y,aw,ph); }
     // haut de l'affiche = haut du titre ; bas de l'affiche = bas des encarts de séances
     pass(true, 0);
-    if(chipBox) seanceChips(ctx,f.seances,chipBox.cx,y+(ROW_PH?aph:ph)-chipBox.chH,chipBox.cw,0,color,true,chipBox.cbh);
+    if(chipBox) seanceChips(ctx,f.seances,chipBox.cx,y+(ROW_PH?aph:ph)-chipBox.chH,chipBox.cw,0,color,true,chipBox.cbh,side==="right"?"right":"left");   // calées côté affiche
     if(lcw) charColumn(ctx,tags,side==="right"?x+w-pw-Math.round(40*s)-lcw:x+w-lcw,y,lcw,Math.round(22*s),true);
   }
   return ROW_PH?Math.max(ph, th+(ROW_PH-aphRow)):Math.max(ph, th);   // le texte et les séances tiennent dans la hauteur de l'affiche
@@ -2280,23 +2283,39 @@ async function flyerFooter(ctx, x, y, w, draw){
     // petite flèche vers les QR codes
     ctx.strokeStyle="#FBD30F"; ctx.lineWidth=5; ctx.lineCap="round"; ctx.lineJoin="round";
     const ay=cy-30, ax0=sx-ctx.measureText("NOUS").width-4; ctx.beginPath(); ctx.moveTo(sx-sw+20,cy+86); ctx.lineTo(sx-4,cy+86); ctx.moveTo(sx-18,cy+76); ctx.lineTo(sx-4,cy+86); ctx.lineTo(sx-18,cy+96); ctx.stroke(); }
-  const qig=await qrCanvas(settings.igUrl||DEFAULTS.igUrl, qs-14, assets.igLogo), qfb=await qrCanvas(settings.fbUrl||DEFAULTS.fbUrl, qs-14, assets.fbLogo);
+  const qig=await qrCanvas(settings.igUrl||DEFAULTS.igUrl, qs-14, assets.igLogo, "#B1307A"), qfb=await qrCanvas(settings.fbUrl||DEFAULTS.fbUrl, qs-14, assets.fbLogo, "#0B5BD3");
   [[qig,"Instagram",qx0],[qfb,"Facebook",qx0+qs+qg]].forEach(([q,t,qx])=>{ ctx.fillStyle="#fff"; ctx.fillRect(qx,qy,qs,qs); if(q) ctx.drawImage(q,qx+7,qy+7,qs-14,qs-14);
     ctx.fillStyle="#fff"; ctx.font=`30px ${FONT}`; ctx.textAlign="center"; ctx.textBaseline="top"; ctx.fillText(t.toUpperCase(),qx+qs/2,qy+qs+6); });
   return H;
 }
 
 
-// QR code fabriqué à la taille exacte du document (correction d'erreur maximale « H », 30 %) avec le logo au centre
-async function qrCanvas(url, size, logoSrc){
+// QR code fabriqué à la taille exacte du document, avec les plus gros motifs possibles (lisible même petit et mal imprimé) :
+// adresse raccourcie (sans « www. » ni « / » final, facebook.com → fb.com), le moins de modules possible,
+// avec logo au centre (18 % de la largeur) : la correction la plus forte sans ajouter de modules ; sans logo : « L »
+const qrShort=u=>String(u||"").trim().replace(/^http:\/\//i,"https://").replace(/^https:\/\/www\./i,"https://").replace(/^https:\/\/(m\.)?facebook\.com\//i,"https://fb.com/").replace(/\/$/,"");
+// couleur dominante d'un logo (pixels colorés, regroupés par teinte), assombrie si besoin pour rester bien lisible sur blanc
+function logoColor(im, fallback){
+  try{ const W=64, H=Math.max(1,Math.round(64*im.height/im.width)), c=canvas(W,H), g=c.getContext("2d"); g.drawImage(im,0,0,W,H);
+    const d=g.getImageData(0,0,W,H).data, bins={};
+    for(let i=0;i<d.length;i+=4){ const [r,gg,b,a]=[d[i],d[i+1],d[i+2],d[i+3]]; if(a<200) continue; const mx=Math.max(r,gg,b), mn=Math.min(r,gg,b); if(mx-mn<60) continue;   // ni gris, ni blanc, ni transparent
+      const h=Math.round(((()=>{ const dd=mx-mn; let h=mx===r?((gg-b)/dd)%6:mx===gg?(b-r)/dd+2:(r-gg)/dd+4; return (h*60+360)%360; })())/15); const B=bins[h]=bins[h]||{n:0,r:0,g:0,b:0}; B.n++; B.r+=r; B.g+=gg; B.b+=b; }
+    const top=Object.values(bins).sort((a,b)=>b.n-a.n)[0]; if(!top) return fallback;
+    let rgb=[top.r/top.n, top.g/top.n, top.b/top.n]; const lum=v=>(.2126*v[0]+.7152*v[1]+.0722*v[2])/255;
+    while(lum(rgb)>.32) rgb=rgb.map(v=>v*.9);
+    return `rgb(${rgb.map(v=>Math.round(v)).join(",")})`; }catch(e){ return fallback; } }
+async function qrCanvas(url, size, logoSrc, color){
   size=Math.round(size); const c=canvas(size,size), x=c.getContext("2d"); x.imageSmoothingEnabled=false;
-  const q=qrcode(0,"H"); q.addData(String(url||"")); q.make();
-  const n=q.getModuleCount(), quiet=1, m=size/(n+2*quiet), at=v=>Math.round(v*m);
-  x.fillStyle="#fff"; x.fillRect(0,0,size,size); x.fillStyle="#000";
-  const L=logoSrc?await loadImg(logoSrc):null, lz=L?Math.ceil(n*.24)|1:0, l0=(n-lz)/2;   // zone du logo : 24 % de la largeur (< 30 % récupérables)
+  const L=logoSrc?await loadImg(logoSrc):null;
+  const mk=ec=>{ const qq=qrcode(0,ec); qq.addData(qrShort(url)); qq.make(); return qq; };
+  let q=mk(L?"M":"L");   // avec logo : la correction la plus forte qui garde le même nombre de modules que « M »
+  if(L) for(const ec of ["Q","H"]){ const t=mk(ec); if(t.getModuleCount()===q.getModuleCount()) q=t; else break; }
+  const n=q.getModuleCount(), quiet=2, m=size/(n+2*quiet), at=v=>Math.round(v*m);   // marge blanche de 2 modules
+  x.fillStyle="#fff"; x.fillRect(0,0,size,size); x.fillStyle=(L?logoColor(L,color):color)||"#000";   // QR code à la couleur dominante du logo
+  const lz=L?Math.ceil(n*.2)|1:0, l0=(n-lz)/2;   // zone du logo : 20 % de la largeur (4 % des modules, bien moins que les 25 % récupérables)
   for(let r=0;r<n;r++) for(let k=0;k<n;k++){ if(!q.isDark(r,k)) continue; if(L && r>=Math.floor(l0)-0 && r<Math.ceil(l0+lz) && k>=Math.floor(l0) && k<Math.ceil(l0+lz)) continue;
     x.fillRect(at(k+quiet),at(r+quiet),at(k+quiet+1)-at(k+quiet),at(r+quiet+1)-at(r+quiet)); }
-  if(L){ x.imageSmoothingEnabled=true; const box=lz*m, bx=(size-box)/2, pad=box*.06; x.fillStyle="#fff"; rr(x,bx,bx,box,box,box*.18); x.fill();
+  if(L){ x.imageSmoothingEnabled=true; const box=lz*m, bx=(size-box)/2, pad=box*.17;   // un peu d'espace blanc autour du logo x.fillStyle="#fff"; rr(x,bx,bx,box,box,box*.18); x.fill();
     const k2=Math.min((box-2*pad)/L.width,(box-2*pad)/L.height), w=L.width*k2, h=L.height*k2; x.drawImage(L,(size-w)/2,(size-h)/2,w,h); }
   return c;
 }
@@ -3079,7 +3098,8 @@ let currentTab="base";
 // Onglets PB : code demandé une seule fois, vérifié par le site, puis mémorisé sur cet appareil
 const PB_TABS=["cartons","pba","flyerspb","pbhall"];
 let pbOk=(()=>{ try{ return !!localStorage.getItem("codePB"); }catch(e){ return false; } })();
-function pbMark(){ document.querySelectorAll("#tabs [data-pb]").forEach(b=>b.textContent=b.textContent.replace(/^🔒 /,pbOk?"":"🔒 ")); }
+function pbMark(){ const sb=document.getElementById("secBases"); if(sb){ sb.classList.toggle("locked",!pbOk); const h=sb.querySelector("h2"); if(h) h.innerHTML=h.innerHTML.replace(/🔒 /g,"").replace(/(<\/span>\s*)/, pbOk?"$1":"$1🔒 "); }
+  document.querySelectorAll("#tabs [data-pb]").forEach(b=>b.textContent=b.textContent.replace(/^🔒 /,pbOk?"":"🔒 ")); }
 // fenêtre de saisie du code (dans la page : pas de boîte de dialogue du navigateur, qui peut être bloquée)
 function askCode(msg){
   return new Promise(res=>{
@@ -3112,7 +3132,7 @@ async function checkPB(c){
 async function unlockPB(){
   if(pbOk) return true;
   if(!/^https?:$/.test(location.protocol)){ pbOk=true; pbMark(); return true; }   // fichier ouvert en local : pas de serveur pour vérifier
-  const c=await askCode("Pour les onglets Cartons écran, PB écran, Flyers écran et PB Hall (demandé une seule fois sur cet appareil).");
+  const c=await askCode("Pour les bases communes et les onglets Cartons écran, PB écran, Flyers écran et PB Hall (demandé une seule fois sur cet appareil).");
   if(!c) return false;
   try{ localStorage.setItem("codePB",c); }catch(e){}
   pbOk=true; pbMark(); return true;
@@ -3150,6 +3170,31 @@ async function showTab(t){
 }
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 pbMark();
+// Code d'accès au site (code d'équipe) : demandé une seule fois par ordinateur, revérifié à chaque ouverture
+async function checkSite(c){
+  try{ let r=await fetch("/api/base/check-site",{headers:{"x-code":c},cache:"no-store"});
+    if(r.status===404) r=await fetch("/api/base/file/site-acces.txt",{method:"PUT",headers:{"x-code":c,"content-type":"text/plain"},body:"ok",cache:"no-store"});   // ancienne fonction du site
+    if(r.ok) return true; if(r.status===401) return "Code incorrect."; return "Vérification impossible pour le moment (erreur "+r.status+").";
+  }catch(e){ return "Vérification impossible : "+e.message; } }
+(async()=>{ if(!/^https?:$/.test(location.protocol)) return;   // fichier ouvert en local : pas de serveur
+  const saved=(()=>{ try{ return localStorage.getItem("codeEquipe")||""; }catch(e){ return ""; } })();
+  if(saved && await checkSite(saved)!=="Code incorrect.") return;
+  try{ localStorage.removeItem("codeEquipe"); }catch(e){}
+  const ov=document.createElement("div"); ov.id="siteGate";
+  ov.style.cssText="position:fixed;inset:0;background:#1d1d22;z-index:99999;display:flex;align-items:center;justify-content:center";
+  ov.innerHTML=`<form style="background:#fff;border-radius:14px;padding:26px 28px;min-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+    <h3 style="margin:0 0 6px">🎬 Cinéma Grand Écran</h3><p class="hint" style="margin:0 0 12px">Code d'accès (demandé une seule fois sur cet ordinateur)</p>
+    <input type="password" autocomplete="current-password" style="width:100%;font-size:18px;padding:8px 10px;box-sizing:border-box">
+    <div class="gErr" style="color:#b71c1c;font-size:14px;min-height:20px;margin-top:6px"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:6px"><button class="primary" type="submit">Entrer</button></div></form>`;
+  document.body.appendChild(ov); const f=ov.querySelector("form"), inp=f.querySelector("input"), err=f.querySelector(".gErr"); setTimeout(()=>inp.focus(),30);
+  f.onsubmit=async e=>{ e.preventDefault(); const c=inp.value.trim(); if(!c) return; err.textContent="Vérification…"; const r=await checkSite(c);
+    if(r===true){ try{ localStorage.setItem("codeEquipe",c); }catch(_){} ov.remove(); } else { err.textContent=r; inp.select(); } };
+})();
+document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest("[data-unlockbases]")) unlockPB(); });
+// code mémorisé sur cet appareil : revérifié à l'ouverture (si le code a changé, on reverrouille)
+(async()=>{ try{ const c=localStorage.getItem("codePB"); if(!c || !/^https?:$/.test(location.protocol)) return;
+  const r=await checkPB(c); if(r==="Code incorrect."){ localStorage.removeItem("codePB"); pbOk=false; pbMark(); if(PB_TABS.includes(currentTab)) showTab("base"); } }catch(e){} })();
 
 /* ========================== Historique des semaines (pour les écrans PB) ========================== */
 // Chaque Excel chargé est ajouté à l'historique : les écrans PB peuvent ainsi montrer la semaine en cours
