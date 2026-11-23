@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 12h25</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 13h00</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -297,7 +297,7 @@
     <label style="font-size:14px;font-weight:600">Durée par écran <select id="pbDur"><option value="10" selected>10 s</option></select></label>
     <label style="font-size:14px;font-weight:600">Images par seconde <select id="pbFps"><option value="30">30</option><option value="60">60</option></select></label>
     <label style="font-size:14px;font-weight:600" title="Les vidéos MP4 restent en 3996×2160 ; ce choix règle seulement le DCP fabriqué par le Pack DCP">Format du DCP <select id="pbDcpRes"><option value="2K">2K</option><option value="4K">4K</option></select> <span class="hint" style="margin:0;font-weight:400">(MP4 toujours en 3996×2160)</span></label>
-    <label style="font-size:14px;font-weight:600" title="Flyer 1 : écran en stock de la quinzaine passée + les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée boucle 1 <span class="hint" style="margin:0;font-weight:400">(3 écrans)</span> <input id="pbLoop" placeholder="ex. 2:00" style="width:70px"></label>
+    <label style="font-size:14px;font-weight:600" title="Flyer 1 : écran en stock de la quinzaine passée + les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; chaque écran dure entre 7 et 10 s">Durée boucle 1 <span class="hint" style="margin:0;font-weight:400">(3 écrans)</span> <input id="pbLoop" placeholder="2:00" style="width:70px"></label>
     <label style="font-size:14px;font-weight:600" title="Flyer 2 : les 2 semaines de la quinzaine, en boucle jusqu'à cette durée ; vide = même durée que la boucle 1">Durée boucle 2 <span class="hint" style="margin:0;font-weight:400">(2 écrans)</span> <input id="pbLoop2" placeholder="= boucle 1" style="width:80px"></label>
     <label style="font-size:14px;font-weight:600"><input type="checkbox" id="pbTrans" checked> Transition fondu 0,5 s</label>
     <label style="font-size:14px;font-weight:600">Vignettes <select id="pbMode"><option value="clignote">clignotement (lent)</option><option value="pulse">pulsation (zoom / dézoom)</option></select></label>
@@ -1247,7 +1247,7 @@ makeDrop($("#dropOldXlsx"),".xlsx,.xls,.xlsm",async file=>{
   try{ const ws=parseWorkbook(await readFile(file,"buf")); if(!ws.length){ alert("Aucune semaine trouvée dans ce fichier."); return; }
     histMerge(ws,true,false); $("#pbProgress").textContent=`✓ ${ws.length} semaine(s) ajoutée(s) à l'historique (${file.name}).`; }
   catch(e){ alert("Lecture impossible : "+e.message); } });
-setTimeout(histLoad,0); setTimeout(editsLoad,0);
+setTimeout(histLoad,0); setTimeout(editsLoad,0); setTimeout(flagsLoad,0);
 
 function curWeek(){ return weeks[Number($("#weekSel").value)||0]; }
 
@@ -1280,10 +1280,13 @@ function infoCard(f){
     const chk = !d||!d.synopsis ? '<span class="chk none">infos à compléter</span>' : d.check ? '<span class="chk todo">⚠ à vérifier</span>' : '<span class="chk ok">infos ✓</span>';
     el.innerHTML=`<div><h3>${esc((d&&d.title)||f.title)}${chk}</h3>${d&&d.check?`<div class="meta" style="color:#9a5b00">⚠ ${esc(d.check)}</div>`:""}</div>
       <details class="info"><summary>Infos du film</summary>
+        <div class="tags" style="margin:6px 0 10px">${charBoxes({...charOf(f), telethon:!!(filmState[f.key]||{}).telethon || !!(filmFlags[f.key]||{}).telethon})}</div>
         <div class="grid">${INFO_FIELDS.map(([k,l])=>k==="synopsis"
           ? `<label class="full">${l} <span class="hint">${((d&&d.synopsis)||"").length} car.</span><textarea data-i="${k}">${esc((d&&d[k])||"")}</textarea></label>`
           : `<label>${l}<input data-i="${k}" value="${esc((d&&d[k])||"")}"></label>`).join("")}</div>
       </details>`;
+    el.dataset.fkey=f.key;
+    el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));
     el.querySelectorAll("[data-i]").forEach(inp=>inp.addEventListener("change",()=>{
       const cur=details[f.key]||(details[f.key]={title:f.title});
       cur[inp.dataset.i]=inp.value.trim(); delete cur.check; delete cur.auto; saveInfo(f.key); draw(); el.querySelector("details.info").open=true;
@@ -1310,9 +1313,8 @@ async function renderCompact(boxId, only=null){
       const st=filmState[f.key], fl=flags(f), el=document.createElement("div"); el.className="cfilm";
       el.innerHTML=`<div class="cposter" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"":"affiche manquante"}</div>
         <b>${esc(titleOf(f))}</b><div class="tags">${charBoxes(fl)}</div>`;
-      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{
-        const k=cb.dataset.t; if(k==="telethon"){ st.telethon=cb.checked; saveFilm(f.key); document.querySelectorAll(`.film[data-key="${CSS.escape(f.key)}"] [data-t="telethon"]`).forEach(x=>x.checked=cb.checked); return; }
-        if(curWeek()===w){ st[k]=cb.checked; const card=document.querySelector(`.film[data-key="${CSS.escape(f.key)}"] [data-t="${k}"]`); if(card) card.checked=cb.checked; } else f[k]=cb.checked; });
+      el.dataset.fkey=f.key;
+      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));
       grid.appendChild(el);
     }
   }
@@ -1339,7 +1341,7 @@ function filmCard(f){
       st.poster=await Store.image(await shrinkFilm(await readFile(file))); st.palette=await posterPalette(st.poster); st.color=st.palette[0]; saveFilm(f.key); draw(); shareFilmImage(f,"poster",file);
     });
     makeDrop(el.querySelector(".still"),"image/*",async file=>{ st.still=await Store.image(await shrinkFilm(await readFile(file))); saveFilm(f.key); draw(); shareFilmImage(f,"still",file); });
-    el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; if(cb.dataset.t==="telethon") saveFilm(f.key); });   // partagé avec les autres onglets
+    el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));   // partagé : tous les onglets, base commune
     el.querySelectorAll(".sw[data-c]").forEach(sw=>sw.onclick=()=>{ st.color=sw.dataset.c; saveFilm(f.key); draw(); });
     el.querySelector("input[type=color]").onchange=e=>{ st.color=e.target.value.toUpperCase(); if(!(st.palette||[]).includes(st.color)) st.palette=[...(st.palette||[]),st.color]; saveFilm(f.key); draw(); };
   };
@@ -1447,7 +1449,26 @@ async function fillInfos(auto){
 
 /* ========================== Newsletter ========================== */
 const CHARS=[["reprise","Reprise","repLogo"],["sn","Sortie nationale","snLogo"],["avp","Avant-première","avpLogo"],["vo","VO","voLogo"],["doc","Documentaire","docLogo"],["gratuit","Entrée gratuite","gratuitLogo"]];
-const charOf=f=>({reprise:!!f.reprise, sn:!!f.sn, avp:!!f.avp, vo:!!f.vo, doc:!!f.doc, gratuit:!!f.gratuit});
+// Caractéristiques d'un film : d'après l'Excel, corrigées par les cases cochées / décochées à la main (gardées dans la base commune)
+let filmFlags={};
+const charOf=f=>{ const b={reprise:!!f.reprise, sn:!!f.sn, avp:!!f.avp, vo:!!f.vo, doc:!!f.doc, gratuit:!!f.gratuit}, o=filmFlags[f.key];
+  if(o) for(const k of Object.keys(o)) if(typeof o[k]==="boolean") b[k]=o[k];
+  return b; };
+async function flagsLoad(){
+  filmFlags={...((await Store.get("filmFlags"))||{})};
+  if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/film-flags.json",{cache:"no-store"}); if(r.ok) Object.assign(filmFlags, await r.json()); }catch(e){} }
+  for(const [k,o] of Object.entries(filmFlags)) if(filmState[k]) for(const [kk,v] of Object.entries(o)) if(typeof v==="boolean") filmState[k][kk]=v;
+}
+// une case cochée ou décochée : retenue pour ce film dans tous les onglets, toutes les semaines et sur tous les ordinateurs
+function setFlag(key, k, v){
+  filmFlags[key]={...(filmFlags[key]||{}), [k]:!!v};
+  if(filmState[key]) filmState[key][k]=!!v;
+  for(const w of (typeof weeks!=="undefined"?weeks:[])) for(const f of w.films) if(f.key===key) f[k]=!!v;
+  document.querySelectorAll(`[data-fkey="${CSS.escape(key)}"] [data-t="${k}"], .film[data-key="${CSS.escape(key)}"] [data-t="${k}"]`).forEach(x=>x.checked=!!v);
+  Store.set("filmFlags",filmFlags);
+  if(typeof SHARED!=="undefined" && SHARED && !sharedLoading) api("PUT","file/film-flags.json",JSON.stringify(filmFlags),"application/json").catch(e=>console.warn(e));
+  if(k==="telethon") saveFilm(key);
+}
 // Cases à cocher des caractéristiques (même choix dans tous les onglets)
 const charBoxes=st=>CHARS.map(([k,l])=>`<label><input type="checkbox" data-t="${k}" ${st[k]?"checked":""}> ${l}</label>`).join("")
   +`<label title="logo Téléthon, déplaçable sur le visuel"><input type="checkbox" data-t="telethon" ${st.telethon?"checked":""}> Téléthon</label>`;
@@ -1541,7 +1562,8 @@ const BADGE_COL={tp:["#2e7d32","#f0fff1"],rep:["#6a1b9a","#fdf4ff"],vo:["#1565c0
 // sauf pour la semaine affichée où les cases cochées à l'étape 2 font foi
 function flags(f){
   const cw=curWeek(), st=(cw&&cw.films.includes(f)&&filmState[f.key])||{};
-  return {reprise:st.reprise??f.reprise, vo:st.vo??f.vo, doc:st.doc??f.doc, avp:st.avp??f.avp, sn:st.sn??f.sn, gratuit:st.gratuit??f.gratuit, telethon:!!(filmState[f.key]||{}).telethon};
+  const o=filmFlags[f.key]||{}, g=k=>typeof o[k]==="boolean"?o[k]:(st[k]??f[k]);
+  return {reprise:g("reprise"), vo:g("vo"), doc:g("doc"), avp:g("avp"), sn:g("sn"), gratuit:g("gratuit"), telethon:typeof o.telethon==="boolean"?o.telethon:!!(filmState[f.key]||{}).telethon};
 }
 function filmBadges(f, d){
   const raw=String(f.infoRaw||""), out=[];
@@ -1825,7 +1847,8 @@ async function renderEcranList(){
         <div class="colors">${(st.palette||[]).map(c=>`<span class="sw ${c===cur?"sel":""}" data-e="${c}" style="background:${c}"></span>`).join("")}
           <input type="color" value="${cur}" title="Autre couleur"></div>`;
       el.querySelectorAll(".sw").forEach(sw=>sw.onclick=()=>{ st.ecran=sw.dataset.e; saveFilm(p.f.key); draw(); });
-      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ st[cb.dataset.t]=cb.checked; if(cb.dataset.t==="telethon") saveFilm(p.f.key); draw(); const card=document.querySelector(`.film[data-key="${CSS.escape(p.f.key)}"] [data-t="${cb.dataset.t}"]`); if(card) card.checked=cb.checked; });
+      el.dataset.fkey=p.f.key;
+      el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>{ setFlag(p.f.key, cb.dataset.t, cb.checked); draw(); });
       el.querySelector("input[type=color]").onchange=e=>{ st.ecran=e.target.value.toUpperCase(); if(!(st.palette||[]).includes(st.ecran)) st.palette=[...(st.palette||[]),st.ecran]; saveFilm(p.f.key); draw(); };
       const tb=el.querySelector("[data-tl]"); if(tb) tb.onclick=async()=>{ if(await tlEditor(p.f,"ecran",()=>renderEcran(p.f,p.seances))) draw(); };
       el.querySelector("img").onclick=async()=>{ const big=await renderEcran(p.f,p.seances); $("#zoom img").src=big.toDataURL("image/jpeg",.9); $("#zoom").style.display="flex"; };
@@ -3027,7 +3050,8 @@ const pbJour=d=>`${JOURS[d.getDay()]} ${d.getDate()} - ${d.getHours()}h${d.getMi
 // « Toujours à l'affiche » : film en reprise, ou déjà programmé la semaine précédente (historique des Excel)
 function wasShownBefore(key, start){ const prev=weekHist[isoD(addDays(start,-7))]; return !!(prev && prev.films.some(x=>x.key===key)); }
 function pbFlags(f, w){ const cw=curWeek(); const fl=(cw && isoD(cw.start)===isoD(w.start)) ? flags(cw.films.find(x=>x.key===f.key)||f) : charOf(f);
-  return {...fl, reprise: fl.reprise || wasShownBefore(f.key, w.start), telethon:!!(filmState[f.key]||{}).telethon}; }
+  const o=filmFlags[f.key]||{};
+  return {...fl, reprise: typeof o.reprise==="boolean"?o.reprise:(fl.reprise || wasShownBefore(f.key, w.start)), telethon:typeof o.telethon==="boolean"?o.telethon:!!(filmState[f.key]||{}).telethon}; }
 // tampon vert « Toujours à l'affiche » (films en reprise), dessiné comme sur le modèle
 function stampToujours(w){
   const h=Math.round(w*.42), c=canvas(Math.round(w*1.1),Math.round(h*1.6)), x=c.getContext("2d");
@@ -3074,7 +3098,9 @@ async function preparePB(w){
   // zone des films : sous le titre, au-dessus du logo
   // grille la plus grande possible ; elle descend jusqu'en bas si elle ne touche pas le logo (en bas à gauche)
   let cells=null, logoX=100;
-  for(let bottom=2100; bottom>=1500; bottom-=15){ cells=pbGrid(films.length, 150, 410, EW-300, bottom-410); const lx=bestLogoX(approx(cells)); if(lx!==null){ logoX=lx; break; } }
+  // logo toujours en bas à gauche : la grille descend tant qu'elle reste à 80 px du logo
+  const logoR={x:100,y:LY,w:LW,h:LH};
+  for(let bottom=2100; bottom>=1300; bottom-=15){ cells=pbGrid(films.length, 150, 410, EW-300, bottom-410); if(!logo || Math.min(...approx(cells).map(q=>dist(logoR,q)))>=GAP) break; }
   const logoZone={x:logoX-GAP, y:LY-GAP, w:LW+2*GAP, h:LH+2*GAP}, hitsZone=r=>dist(r,logoZone)<=0;
   const blinkers=[];
   // effet « imparfait » : décalages et tailles légèrement variables, toujours les mêmes pour une semaine donnée
@@ -3129,7 +3155,7 @@ async function preparePB(w){
       const it={im, x:c.x+c.pw-im.width*.42, y:Math.max(c.y-im.height*.1, by-im.height*.78), w:im.width, h:im.height}; blinkers.push(it); used.push(it); }
   }
   // position définitive du logo d'après les zones réellement occupées
-  if(logo){ const lx=bestLogoX(used); ctx.drawImage(logo, lx!==null?lx:logoX, LY, LW, LH); }
+  if(logo) ctx.drawImage(logo, 100, LY, LW, LH);   // en bas à gauche de l'écran
   return {bg, blinkers, films};
 }
 function pbDrawVignette(ctx,v){
@@ -3211,12 +3237,13 @@ async function generatePB(){
     let n=0; const total=all.length;
     for(const w of all){ n++;
       const P=await preparePB(w); preps[isoD(w.start)]=P;
-      done[isoD(w.start)]=await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran ${n}/${total} : semaine du ${shortDate(w.start)}… ${Math.round(p*100)} %`);
+      // seuls les boucles sont livrées ; l'écran de la 2e semaine est quand même fabriqué seul pour être mis en stock (1er écran de la quinzaine suivante)
+      done[isoD(w.start)]=isoD(w.start)===isoD(q2) ? await encodeFrames((ctx,t)=>drawPBFrame(ctx,P,t,mode),T,fps,p=>pr.textContent=`Écran mis en stock (semaine du ${shortDate(w.start)})… ${Math.round(p*100)} %`) : {live:true};
     }
     // le dernier écran de la quinzaine part en stock pour la quinzaine suivante
     if(done[isoD(q2)]) await flyerStockSet(isoD(q2), {...done[isoD(q2)], fps, T, mode, made:new Date().toISOString()});
     if(stock) done[isoD(prev)]={blob:stock.blob, poster:stock.poster};
-    const LT1=parseDur($("#pbLoop").value), LT2=parseDur($("#pbLoop2").value)||LT1, trans=$("#pbTrans").checked;
+    const LT1=parseDur($("#pbLoop").value)||120, LT2=parseDur($("#pbLoop2").value)||LT1, trans=$("#pbTrans").checked;   // vide : 2 min
     try{ localStorage.setItem("pbLoop",$("#pbLoop").value); localStorage.setItem("pbLoop2",$("#pbLoop2").value); localStorage.setItem("pbTrans",trans?"1":"0"); }catch(e){}
     let di=0;
     for(const d of dossiers){ di++; const LT=di===1?LT1:LT2;      // boucle 1 : 3 écrans (stock + quinzaine) ; boucle 2 : les 2 semaines
@@ -3224,22 +3251,24 @@ async function generatePB(){
       const files=d.slots.map((sl,i)=>({name:`${i+1}_semaine_du_${ddmm(sl.date)}.mp4`, date:sl.date, stock:!!sl.stock, ...(done[isoD(sl.date)]||{})}));
       // vidéo en boucle de la durée totale choisie (écrans disponibles, dans l'ordre)
       let loopFile=null;
-      if(LT>0){ const av=files.filter(f=>f.blob), scr=[];
+      if(LT>0){ const av=files.filter(f=>f.blob||preps[isoD(f.date)]), scr=[];
         for(const f of av){ const P=preps[f.iso||isoD(f.date)]; scr.push(P?((ctx,t)=>drawPBFrame(ctx,P,t,mode)):await stockDrawer(f.blob)); }
         if(scr.length){ const pl=loopPlan(LT,scr.length);
           const r=await encodeLoop(scr, LT, fps, trans, p=>pr.textContent=`Boucle ${di}/${dossiers.length} (${fmtMS(LT)}, ${pl.n} passages de ${pl.d.toFixed(1)} s)… ${Math.round(p*100)} %`);
           loopFile={name:`flyer_${di}_boucle_du_${tag}_${fmtMS(LT).replace(":","m")}.mp4`, date:d.start, loop:true, plan:r.plan, missing:d.slots.length-scr.length, blob:r.blob, poster:r.poster}; } }
-      if(loopFile) files.unshift(loopFile);
+      // livrables : la boucle seule (et la case de l'écran en stock s'il manque, pour pouvoir déposer son MP4)
+      const waiting=files.filter(f=>f.stock&&!f.blob);
+      files.length=0; if(loopFile) files.push(loopFile); files.push(...waiting);
       pbResults.push({name:`flyers_ecran_du_${tag}`, files});
       const box=document.createElement("div"); box.style.cssText="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff";
-      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyer ${di} — du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — ${files.filter(f=>!f.loop).length} écran(s) à la suite${files.some(f=>!f.blob)?" (1 case en attente)":""}${loopFile?` + boucle de ${fmtMS(LT)}`:""}</h3>
+      box.innerHTML=`<h3 style="margin:0 0 8px">📁 Flyer ${di} — du ${pad(d.start.getDate())}/${pad(d.start.getMonth()+1)} — boucle de ${fmtMS(LT)} (${di===1?"écran de la quinzaine passée + ":""}2 semaines de la quinzaine)${files.some(f=>!f.blob)?" — écran de la quinzaine passée en attente":""}</h3>
         ${d.miss.length?`<div class="warn">⚠️ Semaine(s) absente(s) de l'historique : ${d.miss.map(x=>pad(x.getDate())+"/"+pad(x.getMonth()+1)).join(", ")} — dépose l'Excel correspondant (onglet Base de données).</div>`:""}
         <div class="films" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
         <button class="primary" data-zip>⬇ Télécharger le dossier (zip)</button> <button data-dcp style="background:#4b2a7a;color:#fff">🎞️ Pack DCP</button>`;
       const grid=box.querySelector(".films");
       const drawCard=(f,el)=>{ el.className="cfilm";
         if(!f.blob){ el.style.cssText="border:2px dashed #c9b37a;background:#fbf7ec;display:flex;flex-direction:column;gap:6px;justify-content:center;min-height:180px;padding:10px;border-radius:8px";
-          el.innerHTML=`<b>${esc(f.name)}</b><span class="hint" style="margin:0">Case en attente : c'est le dernier écran de la quinzaine précédente. Il se remplira tout seul quand cette quinzaine aura été générée ici ; tu peux aussi déposer son MP4.</span><button class="small">📂 Déposer le MP4…</button>`;
+          el.innerHTML=`<b>${esc(f.name)}</b><span class="hint" style="margin:0">Écran de la quinzaine passée en attente : il se remplit tout seul quand cette quinzaine a été générée ici ; tu peux aussi déposer son MP4, puis cliquer à nouveau sur « Générer » pour l'ajouter à la boucle.</span><button class="small">📂 Déposer le MP4…</button>`;
           el.querySelector("button").onclick=()=>{ const ip=document.createElement("input"); ip.type="file"; ip.accept="video/mp4,video/*";
             ip.onchange=async()=>{ const fl=ip.files[0]; if(!fl) return; const o={blob:fl, poster:"", fps, T, mode, made:new Date().toISOString()}; await flyerStockSet(isoD(f.date),o); f.blob=fl; f.poster=""; el.innerHTML=""; el.removeAttribute("style"); drawCard(f,el); }; ip.click(); };
           return; }
@@ -3247,14 +3276,14 @@ async function generatePB(){
         el.querySelector("button").onclick=()=>saveFile(f.name,f.blob); };
       files.forEach(f=>{ f.iso=isoD(f.date); const el=document.createElement("div"); drawCard(f,el); grid.appendChild(el); });
       const ready=()=>files.filter(f=>f.blob);
-      const forDcp=()=>loopFile?[loopFile]:ready().filter(f=>!f.loop);       // avec une boucle : le DCP est fait de la boucle seule
+      const forDcp=()=>loopFile?[loopFile]:[];       // avec une boucle : le DCP est fait de la boucle seule
       box.querySelector("[data-dcp]").onclick=async()=>{ try{ await dcpPack(`Flyers_ecran_${tag}`, forDcp(), "pb"); }catch(e){ alert("Pack DCP impossible : "+e.message); } };
       box.querySelector("[data-zip]").onclick=async()=>{ const z=new JSZip(), dir=z.folder(`${pbResults.find(r=>r.files===files).name}`);
-        ready().forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
+        ready().filter(f=>f.loop).forEach(f=>dir.file(f.name,f.blob,{compression:"STORE"}));
         await saveFile(`flyers_ecran_du_${tag}.zip`, await z.generateAsync({type:"blob",compression:"STORE"})); };
       out.appendChild(box);
     }
-    pr.textContent=`✓ ${pbResults.length} dossier(s) prêt(s) (${fps} images/s, ${T} s par écran). L'écran du ${pad(q2.getDate())}/${pad(q2.getMonth()+1)} est mis en stock pour la quinzaine suivante.`+(stock?"":` Case du ${pad(prev.getDate())}/${pad(prev.getMonth()+1)} en attente (pas encore d'écran en stock).`);
+    pr.textContent=`✓ ${pbResults.length} flyers en boucle prêts (${fps} images/s). L'écran du ${pad(q2.getDate())}/${pad(q2.getMonth()+1)} est mis en stock pour la quinzaine suivante.`+(stock?"":` Case du ${pad(prev.getDate())}/${pad(prev.getMonth()+1)} en attente (pas encore d'écran en stock).`);
   }catch(e){ console.error(e); pr.textContent="Erreur : "+e.message; }
   btn.disabled=false;
 }
