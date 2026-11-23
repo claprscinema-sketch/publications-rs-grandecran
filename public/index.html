@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 21h50</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 22h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -277,6 +277,7 @@
     <input type="hidden" id="flyerLayout" value="auto">
   </div>
   <p class="hint">Utilise l'Excel, les dossiers d'images et les infos des films (onglet Base de données), pour les deux semaines du fichier Excel. Recto : la 1re semaine ; verso : la 2e semaine. Chaque film avec affiche, genre, durée, réalisation, casting, synopsis, restrictions, VO et séances. Sur chaque face, « Toujours à l'affiche » (films en reprise) et en bas : labels, QR codes Instagram et Facebook, coordonnées et tarifs. Vérifie les cases de chaque film avant de composer (elles sont remplies d'après l'Excel).</p>
+  <p class="hint" style="margin:4px 0">↔️ Glisse les films pour choisir leur ordre sur le flyer : le plus à gauche est en 1re ligne, puis le suivant… (ordre partagé ; par défaut, l'ordre des séances)</p>
   <div id="flyerFilms"></div>
   <div class="row" style="margin-top:10px"><button class="primary" id="btnFlyer">Composer le flyer</button><button id="btnFlyerPdf" disabled>⬇ PDF A5 (2 pages)</button><button id="btnFlyerJpg" disabled>⬇ Images recto / verso</button></div>
   <div id="flyerProgress" class="hint"></div>
@@ -1522,11 +1523,25 @@ async function renderCompact(boxId, only=null){
     const e=new Date(w.start); e.setDate(e.getDate()+6);
     const h=document.createElement("h3"); h.className="wkh"; h.textContent=`Semaine du ${shortDate(w.start)} au ${shortDate(e)}`; box.appendChild(h);
     const grid=document.createElement("div"); grid.className="compact"; box.appendChild(grid);
-    for(const f of w.films){
+    const isFly=boxId==="#flyerFilms", list=isFly?flyerSorted(w):w.films;
+    if(isFly){ // cliquer-glisser pour l'ordre du flyer
+      let drag=null;
+      grid.addEventListener("dragstart",e=>{ drag=e.target.closest(".cfilm"); if(drag){ drag.style.opacity=".4"; e.dataTransfer.effectAllowed="move"; } });
+      grid.addEventListener("dragend",()=>{ if(drag) drag.style.opacity=""; drag=null; });
+      grid.addEventListener("dragover",e=>{ if(!drag) return; e.preventDefault(); const t=e.target.closest(".cfilm"); if(!t||t===drag) return;
+        const r=t.getBoundingClientRect(), after=(e.clientX-r.left)>r.width/2; grid.insertBefore(drag, after?t.nextSibling:t); });
+      grid.addEventListener("drop",e=>{ e.preventDefault(); FLY_ORDER[isoD(w.start)]=[...grid.querySelectorAll(".cfilm")].map(x=>x.dataset.fkey); flyOrderSave();
+        grid.querySelectorAll(".cfilm .fnum").forEach((n,i)=>n.textContent=i+1); });
+    }
+    for(const f of list){
       const st=filmState[f.key], fl=flags(f), el=document.createElement("div"); el.className="cfilm";
       el.innerHTML=`<div class="cposter" style="${st.poster?`background-image:url('${st.poster}')`:""}">${st.poster?"":"affiche manquante"}</div>
         <b>${esc(titleOf(f))}</b>`;   // cases : dans Base de données > Infos du film
       el.dataset.fkey=f.key;
+      if(isFly){ el.draggable=true; el.style.cursor="grab"; el.title="Glisser pour changer l'ordre sur le flyer";
+        const n=document.createElement("span"); n.className="fnum"; n.textContent=list.indexOf(f)+1;
+        n.style.cssText="position:absolute;top:4px;left:4px;background:#1d1d22;color:#fff;border-radius:10px;min-width:20px;height:20px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px";
+        el.style.position="relative"; el.appendChild(n); }
       if(boxId==="#cartonFilms"){ const gb=document.createElement("button"); gb.className="small"; gb.textContent="🎬 Générer ce carton"; gb.style.marginTop="4px";
         gb.onclick=()=>bgTask("carton_"+f.key,"Carton « "+titleOf(f)+" »","cartons","#cartonProgress",()=>generateCartonSingle(f,w)); el.appendChild(gb); }
       el.querySelectorAll("[data-t]").forEach(cb=>cb.onchange=()=>setFlag(f.key, cb.dataset.t, cb.checked));
@@ -1681,6 +1696,16 @@ let filmFlags={};
 const charOf=f=>{ const b={reprise:!!f.reprise, sn:!!f.sn, avp:!!f.avp, vo:!!f.vo, doc:!!f.doc, gratuit:!!f.gratuit, ae:!!f.vo||/art\s*(et|&)\s*essai/i.test(String(f.infoRaw||""))}, o=filmFlags[f.key];
   if(o) for(const k of Object.keys(o)) if(typeof o[k]==="boolean") b[k]=o[k];
   return b; };
+// Ordre des films sur le flyer, par semaine (cliquer-glisser dans l'onglet Flyers) — partagé dans la base
+let FLY_ORDER={};
+async function flyOrderLoad(){ FLY_ORDER={...((await Store.get("flyerOrder"))||{})};
+  if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/flyer-order.json",{cache:"no-store"}); if(r.ok) Object.assign(FLY_ORDER, await r.json()); }catch(e){} } }
+function flyOrderSave(){ Store.set("flyerOrder",FLY_ORDER); if(SHARED && !sharedLoading) api("PUT","file/flyer-order.json",JSON.stringify(FLY_ORDER),"application/json").catch(e=>console.warn(e)); }
+// films d'une semaine dans l'ordre du flyer : ordre choisi, sinon par première séance (les films non classés vont à la fin, par séance)
+function flyerSorted(w){ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]), o=FLY_ORDER[isoD(w.start)];
+  if(!o||!o.length) return byFirst; const ix=k=>{ const i=o.indexOf(k); return i<0?1e6:i; };
+  return byFirst.map((f,i)=>[f,i]).sort((a,b)=>(ix(a[0].key)-ix(b[0].key))||(a[1]-b[1])).map(x=>x[0]); }
+setTimeout(flyOrderLoad,0);
 async function flagsLoad(){
   filmFlags={...((await Store.get("filmFlags"))||{})};
   if(/^https?:$/.test(location.protocol)){ try{ const r=await fetch(API+"file/film-flags.json",{cache:"no-store"}); if(r.ok) Object.assign(filmFlags, await r.json()); }catch(e){} }
@@ -2633,7 +2658,7 @@ async function renderFlyer0(){
   if(!ws.length) ws.push(curWeek());
   for(const w of ws) for(const f of w.films) if(!filmState[f.key]){ const s=(await Store.get("film:"+f.key))||{}; filmState[f.key]={...s,...charOf(f)}; }
   await prepareSyn400(ws.flatMap(w=>w.films), t=>$("#flyerProgress").textContent=t); await loadCharImgs();
-  const parts=ws.map(w=>{ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]);
+  const parts=ws.map(w=>{ const byFirst=flyerSorted(w);   // ordre choisi par cliquer-glisser (sinon ordre des séances)
     return {week:w, news:byFirst.filter(f=>!flags(f).reprise), reps:byFirst.filter(f=>flags(f).reprise)}; });
   const tmp=canvas(10,10).getContext("2d"), GAP=30, W0=FW-2*FM;
   const headHs=[await flyerHeader(tmp,ws[0],false), await flyerHeader(tmp,ws[0],false,true)], footH=await flyerFooter(tmp,FM,0,W0,false);
@@ -2708,7 +2733,7 @@ async function renderA3(){
   await prepareSyn400(ws.flatMap(w=>w.films), t=>$("#a3Progress").textContent=t); await loadCharImgs();
   const saveFH=FH; FH=A3H/A3K;
   try{
-    const parts=ws.map(w=>{ const byFirst=[...w.films].sort((a,b)=>a.seances[0]-b.seances[0]);
+    const parts=ws.map(w=>{ const byFirst=flyerSorted(w);
       return {week:w, news:byFirst.filter(f=>!flags(f).reprise), reps:byFirst.filter(f=>flags(f).reprise)}; });
     const tmp=canvas(10,10).getContext("2d"), GAP=30, CG=50;
     const ncol=parts.length, CW=(FW-2*FM-CG*(ncol-1))/ncol, WF=FW-2*FM;
