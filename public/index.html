@@ -124,7 +124,7 @@
 <header>
   <div>
     <h1>Publications <span>Grand Écran</span></h1>
-    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 23/11/2026 23h10</span></p>
+    <p>Excel de programmation → réseaux sociaux, écrans dynamiques, flyers, affiches A3, cartons écran <span style="opacity:.6;font-size:12px">· version du 25/11/2026 22h05</span></p>
   </div>
   <span class="cloud" id="cloudState">…</span>
 </header>
@@ -178,7 +178,7 @@
     <p class="hint" style="margin-top:8px">Clique sur une case ou glisse une image dessus pour la remplacer ; les textes (tarifs, lien, adresse…) se modifient directement. Sur le site, chaque changement est enregistré dans la base partagée et vaut pour tout le monde (code d'équipe demandé). « Image d'origine » remet l'image fournie avec l'outil.</p>
     <div class="settings" id="assets"></div>
     <h3 style="margin:6px 0 4px">🎟️ Vignettes de tarifs</h3>
-    <p class="hint" style="margin:0 0 8px">Prix et couleur de chaque tarif (partagés) ; chaque paire = l'original et sa version 2.0 en négatif, choisie automatiquement selon le fond. Sur les visuels : adulte, réduit et -16 ans ; sans -16 ans pour les films Art et Essai ; les 2 tarifs 11h si toutes les séances sont avant midi ; les 2 tarifs 45mn pour un film de moins de 45 min. Les vignettes PNG (rondes, transparentes autour, 1000 × 1000 px) se téléchargent une par une ou toutes ensemble ; « 2.0 » = version en négatif (disque blanc).</p>
+    <p class="hint" style="margin:0 0 8px">Prix et couleur de chaque tarif (partagés) ; chaque paire = l'original et sa version 2.0 en négatif, choisie automatiquement selon le fond. Sur les visuels : adulte, réduit et -16 ans ; sans -16 ans pour les films Art et Essai et pour le film du dimanche soir ; les 2 tarifs 11h si toutes les séances sont avant midi ; les 2 tarifs 45mn pour un film de moins de 45 min. Les vignettes PNG (rondes, transparentes autour, 1000 × 1000 px) se téléchargent une par une ou toutes ensemble ; « 2.0 » = version en négatif (disque blanc).</p>
     <div id="tarifBadges" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
     <button class="small" id="tarifZip" style="margin-top:10px">⬇ Toutes les vignettes de tarifs (ZIP)</button>
     <div class="fields" id="commonFields"></div>
@@ -926,7 +926,9 @@ function filmTarifs(f, seances){
   let L=null;
   if(mn && mn<45 && ok([T("p45A"),T("p45E")])) L=[T("p45A"),T("p45E")];
   else if(sc.length && sc.every(d=>d.getHours()<12) && ok([T("p11A"),T("p11E")])) L=[T("p11A"),T("p11E")];
-  else L=charOf(f).ae?[T("pAdult"),T("pReduit")]:[T("pAdult"),T("pReduit"),T("pJeune")];
+  else { // pas de tarif -16 ans pour les films Art et Essai, ni pour le film du dimanche soir (toutes ses séances le dimanche à partir de 18 h)
+    const dimSoir=sc.length>0 && sc.every(d=>d.getDay()===0 && d.getHours()>=18);
+    L=(charOf(f).ae||dimSoir)?[T("pAdult"),T("pReduit")]:[T("pAdult"),T("pReduit"),T("pJeune")]; }
   if(L.length===2) L.sort((a,b)=>tarifPrice(settings[b[0]])-tarifPrice(settings[a[0]]));   // le plus cher à gauche
   return L; }
 const tarifText=f=>filmTarifs(f).map(t=>`${settings[t[0]]} € ${t[2].replace(/^TARIF /,"").toLowerCase()}`).join(" · ");
